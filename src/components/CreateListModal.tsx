@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { PALETTE, colorForName } from '../lib/colors'
 
 const TEMPLATES = [
   { label: '🛒 Compra', name: 'Compra' },
@@ -19,6 +20,7 @@ export default function CreateListModal({
   const { user } = useAuth()
   const [name, setName] = useState('')
   const [expensesEnabled, setExpensesEnabled] = useState(false)
+  const [color, setColor] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,11 +43,18 @@ export default function CreateListModal({
     })
     const list = rpcData as { id: string } | null
 
-    setSubmitting(false)
     if (rpcErr || !list) {
+      setSubmitting(false)
       setError(rpcErr?.message ?? 'No se pudo crear la lista.')
       return
     }
+
+    await supabase
+      .from('lists')
+      .update({ color: color ?? colorForName(name.trim()) })
+      .eq('id', list.id)
+
+    setSubmitting(false)
     onCreated(list.id)
   }
 
@@ -87,6 +96,22 @@ export default function CreateListModal({
               placeholder="Escribe un nombre libre o elige una plantilla"
               className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Color (opcional)</label>
+            <div className="flex flex-wrap gap-2">
+              {PALETTE.map((c) => (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => setColor(c)}
+                  aria-label={`Color ${c}`}
+                  className="h-8 w-8 rounded-full transition"
+                  style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
+                />
+              ))}
+            </div>
           </div>
 
           <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">

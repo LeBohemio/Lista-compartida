@@ -64,8 +64,8 @@ export default function BalanceSummary({
             return (
               <div key={idx} className="flex items-center justify-between text-sm">
                 <span className="text-slate-700">
-                  <strong>{profileById.get(d.from)}</strong> debe {formatEuro(d.amount)} a{' '}
-                  <strong>{profileById.get(d.to)}</strong>
+                  <strong className="text-red-500">{profileById.get(d.from)}</strong> debe {formatEuro(d.amount)} a{' '}
+                  <strong className="text-green-600">{profileById.get(d.to)}</strong>
                 </span>
                 {canSettle && (
                   <button

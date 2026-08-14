@@ -14,6 +14,7 @@ export type List = {
   name: string
   owner_id: string
   expenses_enabled: boolean
+  color: string | null
   created_at: string
 }
 
@@ -25,6 +26,7 @@ export type ListMember = {
   invited_identifier: string
   created_at: string
   responded_at: string | null
+  last_read_message_at: string | null
   // joined
   profile?: Profile
 }

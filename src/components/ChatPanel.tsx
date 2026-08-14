@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
+import { colorForName } from '../lib/colors'
 import type { Message } from '../lib/types'
 
 export default function ChatPanel({ listId, messages }: { listId: string; messages: Message[] }) {
@@ -95,16 +96,26 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
         {messages.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">Todavía no hay mensajes. ¡Escribe el primero!</p>
         ) : (
-          messages.map((m) => {
+          messages.map((m, idx) => {
             const isMine = m.sender_id === user?.id
+            const isFirstInGroup = idx === 0 || messages[idx - 1].sender_id !== m.sender_id
             return (
               <div key={m.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
                 {!isMine && (
-                  <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />
+                  <div className="w-7 shrink-0">
+                    {isFirstInGroup && (
+                      <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />
+                    )}
+                  </div>
                 )}
                 <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                  {!isMine && (
-                    <p className="mb-0.5 px-1 text-xs font-medium text-slate-500">{m.sender?.username ?? '—'}</p>
+                  {!isMine && isFirstInGroup && (
+                    <p
+                      className="mb-0.5 px-1 text-xs font-medium"
+                      style={{ color: colorForName(m.sender?.username ?? '?') }}
+                    >
+                      {m.sender?.username ?? '—'}
+                    </p>
                   )}
                   <div
                     className={`rounded-2xl px-3 py-2 text-sm shadow-sm ${

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLists } from '../hooks/useLists'
@@ -7,6 +7,7 @@ import CreateListModal from '../components/CreateListModal'
 import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
 import ProfileModal from '../components/ProfileModal'
+import { colorForList } from '../lib/colors'
 
 export default function ListsPage() {
   const { profile } = useAuth()
@@ -28,9 +29,38 @@ export default function ListsPage() {
     refetch()
   }
 
+  const deleteOrLeaveList = async (e: MouseEvent, listId: string, name: string, isOwner: boolean) => {
+    e.stopPropagation()
+    if (isOwner) {
+      if (
+        !confirm(
+          `¿Eliminar definitivamente la lista "${name}"? Se borrará para todos los miembros, junto con sus notas, gastos y chat. Esta acción no se puede deshacer.`,
+        )
+      )
+        return
+      const { error: err } = await supabase.from('lists').delete().eq('id', listId)
+      if (err) {
+        alert(`No se pudo eliminar la lista: ${err.message}`)
+        return
+      }
+    } else {
+      if (!confirm(`¿Salir de la lista "${name}"? Dejarás de verla, pero seguirá existiendo para el resto.`)) return
+      const { error: err } = await supabase
+        .from('list_members')
+        .delete()
+        .eq('list_id', listId)
+        .eq('user_id', profile!.id)
+      if (err) {
+        alert(`No se pudo salir de la lista: ${err.message}`)
+        return
+      }
+    }
+    refetch()
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Logo size={34} className="rounded-lg" />
@@ -39,13 +69,18 @@ export default function ListsPage() {
               <p className="font-semibold text-slate-900">{profile?.username ?? '…'}</p>
             </div>
           </div>
-          <button onClick={() => setShowProfile(true)} className="rounded-full" aria-label="Tu perfil">
+          <button onClick={() => setShowProfile(true)} className="relative rounded-full" aria-label="Tu perfil">
             <Avatar
               username={profile?.username ?? '?'}
               avatarUrl={profile?.avatar_url}
               size={38}
               className="ring-2 ring-white hover:ring-brand-200"
             />
+            {invitations.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
+                {invitations.length > 9 ? '9+' : invitations.length}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -107,22 +142,44 @@ export default function ListsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {lists.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => navigate(`/lists/${l.id}`)}
-                  className="flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">{l.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {l.owner_id === profile?.id ? 'Creador' : 'Miembro'}
-                      {l.expenses_enabled ? ' · Gastos activados' : ''}
-                    </p>
+              {lists.map((l) => {
+                const isOwner = l.owner_id === profile?.id
+                return (
+                  <div
+                    key={l.id}
+                    onClick={() => navigate(`/lists/${l.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    className="flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: colorForList(l) }}
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="font-medium text-slate-900">{l.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {isOwner ? 'Creador' : 'Miembro'}
+                          {l.expenses_enabled ? ' · Gastos activados' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => deleteOrLeaveList(e, l.id, l.name, isOwner)}
+                        aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+                        title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+                        className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                      >
+                        🗑
+                      </button>
+                      <span className="text-slate-300">›</span>
+                    </div>
                   </div>
-                  <span className="text-slate-300">›</span>
-                </button>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>

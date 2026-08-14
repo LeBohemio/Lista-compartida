@@ -60,6 +60,7 @@ create table if not exists public.lists (
   name text not null,
   owner_id uuid not null references public.profiles (id) on delete cascade,
   expenses_enabled boolean not null default false,
+  color text,
   created_at timestamptz not null default now()
 );
 
@@ -76,6 +77,7 @@ create table if not exists public.list_members (
   invited_identifier text not null default '',
   created_at timestamptz not null default now(),
   responded_at timestamptz,
+  last_read_message_at timestamptz,
   primary key (list_id, user_id)
 );
 
@@ -215,6 +217,9 @@ create policy "expenses_insert_member" on public.expenses
 create policy "expenses_delete_member" on public.expenses
   for delete to authenticated using (public.is_list_member(list_id, true) and created_by = auth.uid());
 
+create policy "expenses_update_member" on public.expenses
+  for update to authenticated using (public.is_list_member(list_id, true) and created_by = auth.uid());
+
 -- ----------------------------------------------------------------------------
 -- 6. EXPENSE_SHARES (reparto de cada gasto)
 -- ----------------------------------------------------------------------------
@@ -238,6 +243,14 @@ create policy "expense_shares_select_member" on public.expense_shares
 
 create policy "expense_shares_insert_member" on public.expense_shares
   for insert to authenticated with check (
+    exists (
+      select 1 from public.expenses e
+      where e.id = expense_id and public.is_list_member(e.list_id, true) and e.created_by = auth.uid()
+    )
+  );
+
+create policy "expense_shares_delete_member" on public.expense_shares
+  for delete to authenticated using (
     exists (
       select 1 from public.expenses e
       where e.id = expense_id and public.is_list_member(e.list_id, true) and e.created_by = auth.uid()

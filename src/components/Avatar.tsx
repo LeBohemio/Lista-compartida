@@ -1,21 +1,4 @@
-const COLORS = [
-  '#6366f1',
-  '#0ea5e9',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#ec4899',
-  '#8b5cf6',
-  '#14b8a6',
-]
-
-function colorForName(name: string) {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return COLORS[Math.abs(hash) % COLORS.length]
-}
+import { colorForName } from '../lib/colors'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)

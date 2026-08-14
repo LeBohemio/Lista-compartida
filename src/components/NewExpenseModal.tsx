@@ -2,7 +2,7 @@ import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
-import type { ListMember } from '../lib/types'
+import type { Expense, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom'
 
@@ -21,29 +21,37 @@ function splitEqually(totalCents: number, userIds: string[]): Record<string, num
 export default function NewExpenseModal({
   listId,
   members,
+  editing,
   onClose,
   onCreated,
 }: {
   listId: string
   members: ListMember[]
+  editing?: Expense
   onClose: () => void
   onCreated: () => void
 }) {
   const { user } = useAuth()
   const acceptedMembers = useMemo(() => members.filter((m) => m.status === 'accepted'), [members])
+  const isEditing = !!editing
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrProgress, setOcrProgress] = useState(0)
-  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(editing?.ocr_confidence ?? null)
   const [ocrChecked, setOcrChecked] = useState(false)
 
-  const [description, setDescription] = useState('')
-  const [amountInput, setAmountInput] = useState('')
-  const [paidBy, setPaidBy] = useState(user?.id ?? '')
-  const [splitMode, setSplitMode] = useState<SplitMode>('equal')
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({})
+  const [description, setDescription] = useState(editing?.description ?? '')
+  const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
+  const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
+  const [splitMode, setSplitMode] = useState<SplitMode>(editing ? 'custom' : 'equal')
+  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(() => {
+    if (!editing?.shares) return {}
+    const initial: Record<string, string> = {}
+    for (const s of editing.shares) initial[s.user_id] = s.amount.toFixed(2)
+    return initial
+  })
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +123,7 @@ export default function NewExpenseModal({
 
     setSubmitting(true)
 
-    let receiptPath: string | null = null
+    let receiptPath: string | null = editing?.receipt_image_path ?? null
     if (file) {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
@@ -130,24 +138,51 @@ export default function NewExpenseModal({
       receiptPath = path
     }
 
-    const { data: expense, error: expenseErr } = await supabase
-      .from('expenses')
-      .insert({
-        list_id: listId,
-        description: description.trim() || null,
-        total_amount: totalAmount,
-        receipt_image_path: receiptPath,
-        ocr_confidence: ocrConfidence,
-        paid_by: paidBy,
-        created_by: user.id,
-      })
-      .select()
-      .single()
+    let expenseId: string
+    if (isEditing) {
+      const { error: updateErr } = await supabase
+        .from('expenses')
+        .update({
+          description: description.trim() || null,
+          total_amount: totalAmount,
+          receipt_image_path: receiptPath,
+          ocr_confidence: ocrConfidence,
+          paid_by: paidBy,
+        })
+        .eq('id', editing!.id)
+      if (updateErr) {
+        setError(updateErr.message)
+        setSubmitting(false)
+        return
+      }
+      expenseId = editing!.id
+      const { error: delSharesErr } = await supabase.from('expense_shares').delete().eq('expense_id', expenseId)
+      if (delSharesErr) {
+        setError(delSharesErr.message)
+        setSubmitting(false)
+        return
+      }
+    } else {
+      const { data: expense, error: expenseErr } = await supabase
+        .from('expenses')
+        .insert({
+          list_id: listId,
+          description: description.trim() || null,
+          total_amount: totalAmount,
+          receipt_image_path: receiptPath,
+          ocr_confidence: ocrConfidence,
+          paid_by: paidBy,
+          created_by: user.id,
+        })
+        .select()
+        .single()
 
-    if (expenseErr || !expense) {
-      setError(expenseErr?.message ?? 'No se pudo registrar el gasto.')
-      setSubmitting(false)
-      return
+      if (expenseErr || !expense) {
+        setError(expenseErr?.message ?? 'No se pudo registrar el gasto.')
+        setSubmitting(false)
+        return
+      }
+      expenseId = expense.id
     }
 
     const shareCentsById = splitMode === 'equal' ? equalShares : null
@@ -156,7 +191,7 @@ export default function NewExpenseModal({
         splitMode === 'equal'
           ? shareCentsById![m.user_id]
           : Math.round(Number.parseFloat((customAmounts[m.user_id] ?? '0').replace(',', '.')) * 100)
-      return { expense_id: expense.id, user_id: m.user_id, amount: cents / 100 }
+      return { expense_id: expenseId, user_id: m.user_id, amount: cents / 100 }
     })
 
     const { error: sharesErr } = await supabase.from('expense_shares').insert(shareRows)
@@ -174,11 +209,13 @@ export default function NewExpenseModal({
         className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Nuevo gasto</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Foto del ticket (opcional)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Foto del ticket {isEditing ? '(sustituir, opcional)' : '(opcional)'}
+            </label>
             <input
               type="file"
               accept="image/*"
@@ -186,6 +223,9 @@ export default function NewExpenseModal({
               onChange={handleFile}
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
             />
+            {!previewUrl && isEditing && editing?.receipt_image_path && (
+              <p className="mt-2 text-xs text-slate-400">Ya hay una foto de ticket guardada. Sube una nueva para sustituirla.</p>
+            )}
             {previewUrl && (
               <img src={previewUrl} alt="Vista previa del ticket" className="mt-3 max-h-48 rounded-lg object-contain" />
             )}
@@ -311,7 +351,7 @@ export default function NewExpenseModal({
               disabled={submitting || ocrRunning}
               className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
-              {submitting ? 'Guardando…' : 'Guardar gasto'}
+              {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Guardar gasto'}
             </button>
           </div>
         </form>
