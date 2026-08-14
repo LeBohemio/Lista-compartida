@@ -2,7 +2,8 @@ import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
-import type { Expense, ListMember } from '../lib/types'
+import { EXPENSE_CATEGORIES } from '../lib/categories'
+import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom'
 
@@ -43,13 +44,14 @@ export default function NewExpenseModal({
   const [ocrChecked, setOcrChecked] = useState(false)
 
   const [description, setDescription] = useState(editing?.description ?? '')
+  const [category, setCategory] = useState<ExpenseCategory>(editing?.category ?? 'otros')
   const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
   const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
   const [splitMode, setSplitMode] = useState<SplitMode>(editing ? 'custom' : 'equal')
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(() => {
     if (!editing?.shares) return {}
     const initial: Record<string, string> = {}
-    for (const s of editing.shares) initial[s.user_id] = s.amount.toFixed(2)
+    for (const s of editing.shares) if (s.user_id) initial[s.user_id] = s.amount.toFixed(2)
     return initial
   })
 
@@ -147,6 +149,7 @@ export default function NewExpenseModal({
           total_amount: totalAmount,
           receipt_image_path: receiptPath,
           ocr_confidence: ocrConfidence,
+          category,
           paid_by: paidBy,
         })
         .eq('id', editing!.id)
@@ -171,6 +174,7 @@ export default function NewExpenseModal({
           total_amount: totalAmount,
           receipt_image_path: receiptPath,
           ocr_confidence: ocrConfidence,
+          category,
           paid_by: paidBy,
           created_by: user.id,
         })
@@ -206,14 +210,14 @@ export default function NewExpenseModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Foto del ticket {isEditing ? '(sustituir, opcional)' : '(opcional)'}
             </label>
             <input
@@ -221,7 +225,7 @@ export default function NewExpenseModal({
               accept="image/*"
               capture="environment"
               onChange={handleFile}
-              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-300 dark:file:bg-brand-950/40 dark:file:text-brand-400"
             />
             {!previewUrl && isEditing && editing?.receipt_image_path && (
               <p className="mt-2 text-xs text-slate-400">Ya hay una foto de ticket guardada. Sube una nueva para sustituirla.</p>
@@ -230,10 +234,10 @@ export default function NewExpenseModal({
               <img src={previewUrl} alt="Vista previa del ticket" className="mt-3 max-h-48 rounded-lg object-contain" />
             )}
             {ocrRunning && (
-              <p className="mt-2 text-sm text-slate-500">Leyendo el ticket… {ocrProgress}%</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Leyendo el ticket… {ocrProgress}%</p>
             )}
             {ocrChecked && !ocrRunning && (
-              <p className={`mt-2 text-sm ${needsManualReview ? 'text-amber-600' : 'text-green-600'}`}>
+              <p className={`mt-2 text-sm ${needsManualReview ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
                 {needsManualReview
                   ? '⚠️ No hemos podido leer el importe con confianza. Revisa y corrige el total manualmente.'
                   : '✓ Importe detectado automáticamente. Puedes corregirlo si no es correcto.'}
@@ -242,38 +246,58 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Importe total (€)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Importe total (€)</label>
             <input
               type="text"
               inputMode="decimal"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
               placeholder="0.00"
-              className={`w-full rounded-lg border px-3 py-2.5 text-base focus:outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border px-3 py-2.5 text-base focus:outline-none focus:ring-2 dark:bg-slate-900 dark:text-slate-100 ${
                 needsManualReview
                   ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-100'
-                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100 dark:border-slate-600'
               }`}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Descripción (opcional)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Descripción (opcional)</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ej. Supermercado, cena…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">¿Quién ha pagado?</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Categoría</label>
+            <div className="flex flex-wrap gap-2">
+              {EXPENSE_CATEGORIES.map((c) => (
+                <button
+                  type="button"
+                  key={c.value}
+                  onClick={() => setCategory(c.value)}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                    category === c.value
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'border-slate-300 text-slate-600 hover:border-brand-300 dark:border-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {c.icon} {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">¿Quién ha pagado?</label>
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             >
               {acceptedMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
@@ -284,13 +308,15 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Reparto</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Reparto</label>
             <div className="mb-3 flex gap-2">
               <button
                 type="button"
                 onClick={() => setSplitMode('equal')}
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                  splitMode === 'equal' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-600'
+                  splitMode === 'equal'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                    : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
                 }`}
               >
                 Partes iguales
@@ -299,7 +325,9 @@ export default function NewExpenseModal({
                 type="button"
                 onClick={() => setSplitMode('custom')}
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                  splitMode === 'custom' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-600'
+                  splitMode === 'custom'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                    : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
                 }`}
               >
                 Importes personalizados
@@ -309,9 +337,9 @@ export default function NewExpenseModal({
             <div className="space-y-2">
               {acceptedMembers.map((m) => (
                 <div key={m.user_id} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-700">{m.profile?.username ?? m.user_id}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{m.profile?.username ?? m.user_id}</span>
                   {splitMode === 'equal' ? (
-                    <span className="text-sm font-medium text-slate-500">
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                       {((equalShares[m.user_id] ?? 0) / 100).toFixed(2)} €
                     </span>
                   ) : (
@@ -323,26 +351,26 @@ export default function NewExpenseModal({
                         setCustomAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))
                       }
                       placeholder="0.00"
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                     />
                   )}
                 </div>
               ))}
             </div>
             {splitMode === 'custom' && totalValid && (
-              <p className={`mt-2 text-xs ${customMatchesTotal ? 'text-green-600' : 'text-red-500'}`}>
+              <p className={`mt-2 text-xs ${customMatchesTotal ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                 Suma actual: {(customTotalCents / 100).toFixed(2)} € de {totalAmount.toFixed(2)} €
               </p>
             )}
           </div>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>

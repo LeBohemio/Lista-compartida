@@ -21,17 +21,17 @@ export function computeNetBalances(expenses: Expense[], settlements: Settlement[
   }
 
   for (const expense of expenses) {
-    add(expense.paid_by, toCents(expense.total_amount))
+    if (expense.paid_by) add(expense.paid_by, toCents(expense.total_amount))
     for (const share of expense.shares ?? []) {
-      add(share.user_id, -toCents(share.amount))
+      if (share.user_id) add(share.user_id, -toCents(share.amount))
     }
   }
 
   for (const s of settlements) {
     // from_user salda deuda -> su balance mejora (menos negativo)
-    add(s.from_user, toCents(s.amount))
+    if (s.from_user) add(s.from_user, toCents(s.amount))
     // to_user ya cobró -> su crédito pendiente baja
-    add(s.to_user, -toCents(s.amount))
+    if (s.to_user) add(s.to_user, -toCents(s.amount))
   }
 
   const result: NetBalance = {}

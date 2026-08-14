@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
+import ConfirmDialog from './ConfirmDialog'
 import type { Item } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
@@ -12,6 +13,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [confirmEmpty, setConfirmEmpty] = useState(false)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -75,8 +77,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   }
 
   const emptyDone = async () => {
-    if (doneItems.length === 0) return
-    if (!confirm(`¿Eliminar definitivamente los ${doneItems.length} ítems marcados como hechos/comprados?`)) return
+    setConfirmEmpty(false)
     await supabase.from('items').delete().eq('list_id', listId).eq('done', true)
   }
 
@@ -88,7 +89,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Añadir ítem…"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
         <button
           type="submit"
@@ -123,7 +124,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Hechos / comprados ({doneItems.length})
                 </p>
-                <button onClick={emptyDone} className="text-xs font-medium text-red-500 hover:text-red-700">
+                <button onClick={() => setConfirmEmpty(true)} className="text-xs font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                   🗑 Vaciar comprados
                 </button>
               </div>
@@ -147,6 +148,17 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
 
       {lastPendingId && (
         <UndoToast message="Ítem eliminado" onUndo={() => undoDelete(lastPendingId)} />
+      )}
+
+      {confirmEmpty && (
+        <ConfirmDialog
+          title="Vaciar comprados"
+          message={`¿Eliminar definitivamente los ${doneItems.length} ítems marcados como hechos/comprados? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onCancel={() => setConfirmEmpty(false)}
+          onConfirm={emptyDone}
+        />
       )}
     </div>
   )
@@ -184,7 +196,7 @@ function ItemRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200">
+    <div className="flex items-center gap-3 rounded-lg bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       <input
         type="checkbox"
         checked={item.done}
@@ -200,12 +212,12 @@ function ItemRow({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={() => onSaveEdit(draft)}
-            className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
+            className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-slate-900 dark:text-slate-100"
           />
         ) : (
           <p
             onClick={startEdit}
-            className={`truncate text-sm ${item.done ? 'text-slate-400 line-through' : 'cursor-text text-slate-800'}`}
+            className={`truncate text-sm ${item.done ? 'text-slate-400 line-through' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
           >
             {item.content}
           </p>
@@ -220,7 +232,7 @@ function ItemRow({
       {!editing && (
         <button
           onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           aria-label="Editar"
           title="Editar"
         >
@@ -229,7 +241,7 @@ function ItemRow({
       )}
       <button
         onClick={() => onDelete(item.id)}
-        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
         aria-label="Eliminar"
         title="Eliminar"
       >

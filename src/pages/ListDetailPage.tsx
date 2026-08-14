@@ -9,6 +9,7 @@ import ExpensesPanel from '../components/ExpensesPanel'
 import InviteMemberModal from '../components/InviteMemberModal'
 import ChatPanel from '../components/ChatPanel'
 import RenameListModal from '../components/RenameListModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
 
 type Tab = 'notas' | 'gastos' | 'chat'
@@ -34,6 +35,7 @@ export default function ListDetailPage() {
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -54,7 +56,7 @@ export default function ListDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <p className="text-slate-400">Cargando lista…</p>
       </div>
     )
@@ -62,9 +64,9 @@ export default function ListDetailPage() {
 
   if (error || !list) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center">
-        <p className="text-slate-600">No se pudo cargar la lista. Puede que ya no tengas acceso.</p>
-        <button onClick={() => navigate('/lists')} className="text-brand-600 underline">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-300">No se pudo cargar la lista. Puede que ya no tengas acceso.</p>
+        <button onClick={() => navigate('/lists')} className="text-brand-600 underline dark:text-brand-400">
           Volver a mis listas
         </button>
       </div>
@@ -73,9 +75,11 @@ export default function ListDetailPage() {
 
   if (!myMembership || myMembership.status !== 'accepted') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center">
-        <p className="text-slate-600">Tienes una invitación pendiente para "{list.name}". Acéptala desde tus listas.</p>
-        <button onClick={() => navigate('/lists')} className="text-brand-600 underline">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-300">
+          Tienes una invitación pendiente para "{list.name}". Acéptala desde tus listas.
+        </p>
+        <button onClick={() => navigate('/lists')} className="text-brand-600 underline dark:text-brand-400">
           Ir a mis listas
         </button>
       </div>
@@ -91,31 +95,37 @@ export default function ListDetailPage() {
     refetch()
   }
 
-  const removeMember = async (userId: string, username: string) => {
-    if (!confirm(`¿Eliminar a ${username} de esta lista?`)) return
-    await supabase.from('list_members').delete().eq('list_id', list.id).eq('user_id', userId)
+  const removeMember = async () => {
+    if (!confirmRemove) return
+    await supabase.from('list_members').delete().eq('list_id', list.id).eq('user_id', confirmRemove.userId)
+    setConfirmRemove(null)
     refetch()
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-screen bg-slate-50 pb-16 dark:bg-slate-900">
       <header
-        className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur"
+        className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur dark:border-slate-700 dark:from-slate-800 dark:to-slate-800"
         style={{ borderTopColor: listColor, borderTopWidth: 3 }}
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/lists')} className="text-xl text-slate-400 hover:text-slate-600">
+            <button onClick={() => navigate('/lists')} className="text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               ‹
             </button>
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: listColor }} />
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-semibold text-slate-900">{list.name}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{list.name}</p>
+                {list.archived_at && (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                    Archivada
+                  </span>
+                )}
                 {isOwner && (
                   <button
                     onClick={() => setShowRename(true)}
-                    className="text-xs text-slate-300 hover:text-brand-600"
+                    className="text-xs text-slate-300 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
                     aria-label="Editar lista"
                     title="Editar lista"
                   >
@@ -123,7 +133,7 @@ export default function ListDetailPage() {
                   </button>
                 )}
               </div>
-              <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600">
+              <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">
                 {acceptedMembers.length} miembro{acceptedMembers.length === 1 ? '' : 's'}
               </button>
             </div>
@@ -131,7 +141,7 @@ export default function ListDetailPage() {
           {isOwner && (
             <button
               onClick={() => setShowInvite(true)}
-              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
             >
               + Invitar
             </button>
@@ -139,24 +149,26 @@ export default function ListDetailPage() {
         </div>
 
         {showMembers && (
-          <div className="mx-auto mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm">
+          <div className="mx-auto mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
             <ul className="space-y-2">
               {members.map((m) => (
                 <li key={m.user_id} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-700">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                     <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
                     {m.profile?.username ?? m.user_id}
                     {m.user_id === profile?.id ? ' (tú)' : ''}
                     {m.role === 'owner' ? ' · creador' : ''}
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600' : 'text-amber-600'}`}>
+                    <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {m.status === 'accepted' ? 'Activo' : 'Invitación pendiente'}
                     </span>
                     {isOwner && m.role !== 'owner' && (
                       <button
-                        onClick={() => removeMember(m.user_id, m.profile?.username ?? 'este usuario')}
-                        className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                        onClick={() =>
+                          setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? 'este usuario' })
+                        }
+                        className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
                         aria-label="Eliminar miembro"
                         title="Eliminar miembro"
                       >
@@ -174,7 +186,7 @@ export default function ListDetailPage() {
           <button
             onClick={() => setTab('notas')}
             className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'notas' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
+              tab === 'notas' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
             Notas
@@ -183,7 +195,7 @@ export default function ListDetailPage() {
             <button
               onClick={() => setTab('gastos')}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                tab === 'gastos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
+                tab === 'gastos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
               }`}
             >
               Gastos
@@ -191,7 +203,7 @@ export default function ListDetailPage() {
           ) : isOwner ? (
             <button
               onClick={enableExpenses}
-              className="flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
+              className="flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
             >
               Activar gastos
             </button>
@@ -199,7 +211,7 @@ export default function ListDetailPage() {
           <button
             onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'chat' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
+              tab === 'chat' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
             Chat
@@ -229,11 +241,23 @@ export default function ListDetailPage() {
           listId={list.id}
           currentName={list.name}
           currentColor={list.color}
+          isArchived={!!list.archived_at}
           onClose={() => setShowRename(false)}
           onSaved={() => {
             setShowRename(false)
             refetch()
           }}
+        />
+      )}
+
+      {confirmRemove && (
+        <ConfirmDialog
+          title="Eliminar miembro"
+          message={`¿Eliminar a ${confirmRemove.username} de esta lista? Dejará de tener acceso a las notas, gastos y chat.`}
+          confirmLabel="Eliminar"
+          danger
+          onCancel={() => setConfirmRemove(null)}
+          onConfirm={removeMember}
         />
       )}
     </div>

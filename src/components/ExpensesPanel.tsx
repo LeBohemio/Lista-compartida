@@ -7,6 +7,7 @@ import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
+import { categoryIcon } from '../lib/categories'
 
 const UNDO_DELAY_MS = 5000
 
@@ -102,7 +103,7 @@ export default function ExpensesPanel({
 
       <BalanceSummary listId={listId} members={members} expenses={visibleExpenses} settlements={settlements} />
 
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Histórico</h3>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Histórico</h3>
 
       {ledger.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-400">Todavía no hay gastos registrados.</p>
@@ -110,12 +111,13 @@ export default function ExpensesPanel({
         <div className="space-y-2">
           {ledger.map((row) =>
             row.kind === 'expense' ? (
-              <div key={`e-${row.data.id}`} className="rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
+              <div key={`e-${row.data.id}`} className="rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
                 <div className="flex w-full items-center justify-between px-4 py-3">
                   <button onClick={() => toggleExpand(row.data)} className="flex flex-1 items-center gap-2 text-left">
                     <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
                     <div>
-                      <p className="text-sm font-medium text-slate-800">
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                        <span className="mr-1">{categoryIcon(row.data.category)}</span>
                         {row.data.description || 'Ticket'}
                         {!soloList ? ` · pagado por ${row.data.payer?.username ?? '—'}` : ''}
                       </p>
@@ -125,7 +127,7 @@ export default function ExpensesPanel({
                     </div>
                   </button>
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-slate-800">{formatEuro(row.data.total_amount)}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">{formatEuro(row.data.total_amount)}</span>
                     {row.data.created_by === user?.id && (
                       <>
                         <button
@@ -133,7 +135,7 @@ export default function ExpensesPanel({
                             e.stopPropagation()
                             setEditingExpense(row.data)
                           }}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                           aria-label="Editar gasto"
                           title="Editar gasto"
                         >
@@ -141,7 +143,7 @@ export default function ExpensesPanel({
                         </button>
                         <button
                           onClick={(e) => requestDelete(e, row.data.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
                           aria-label="Eliminar gasto"
                           title="Eliminar gasto"
                         >
@@ -152,7 +154,7 @@ export default function ExpensesPanel({
                   </div>
                 </div>
                 {expandedId === row.data.id && (
-                  <div className="border-t border-slate-100 px-4 py-3">
+                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
                     {row.data.receipt_image_path && (
                       <div className="mb-3">
                         {receiptUrl ? (
@@ -162,10 +164,10 @@ export default function ExpensesPanel({
                         )}
                       </div>
                     )}
-                    <p className="mb-1 text-xs font-medium text-slate-500">Reparto:</p>
+                    <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Reparto:</p>
                     <div className="space-y-1">
                       {(row.data.shares ?? []).map((s) => (
-                        <div key={s.id} className="flex justify-between text-sm text-slate-600">
+                        <div key={s.id} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
                           <span>{s.profile?.username ?? s.user_id}</span>
                           <span>{formatEuro(s.amount)}</span>
                         </div>
@@ -177,16 +179,16 @@ export default function ExpensesPanel({
             ) : (
               <div
                 key={`s-${row.data.id}`}
-                className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 ring-1 ring-green-100"
+                className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
               >
                 <div>
-                  <p className="text-sm text-green-800">
+                  <p className="text-sm text-green-800 dark:text-green-400">
                     ✓ {row.data.from_profile?.username ?? '—'} pagó a {row.data.to_profile?.username ?? '—'}
                     {row.data.note ? ` · ${row.data.note}` : ''}
                   </p>
-                  <p className="text-xs text-green-600">{new Date(row.data.created_at).toLocaleString('es-ES')}</p>
+                  <p className="text-xs text-green-600 dark:text-green-500">{new Date(row.data.created_at).toLocaleString('es-ES')}</p>
                 </div>
-                <span className="font-semibold text-green-800">{formatEuro(row.data.amount)}</span>
+                <span className="font-semibold text-green-800 dark:text-green-400">{formatEuro(row.data.amount)}</span>
               </div>
             ),
           )}

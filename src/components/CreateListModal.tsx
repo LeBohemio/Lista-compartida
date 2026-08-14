@@ -61,14 +61,14 @@ export default function CreateListModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Nueva lista</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Nueva lista</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Plantillas sugeridas</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Plantillas sugeridas</label>
             <div className="flex flex-wrap gap-2">
               {TEMPLATES.map((t) => (
                 <button
@@ -77,8 +77,8 @@ export default function CreateListModal({
                   onClick={() => setName(t.name)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition ${
                     name === t.name
-                      ? 'border-brand-600 bg-brand-50 text-brand-700'
-                      : 'border-slate-300 text-slate-600 hover:border-brand-300'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'border-slate-300 text-slate-600 hover:border-brand-300 dark:border-slate-600 dark:text-slate-300'
                   }`}
                 >
                   {t.label}
@@ -88,18 +88,18 @@ export default function CreateListModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Nombre de la lista</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nombre de la lista</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Escribe un nombre libre o elige una plantilla"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Color (opcional)</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Color (opcional)</label>
             <div className="flex flex-wrap gap-2">
               {PALETTE.map((c) => (
                 <button
@@ -114,7 +114,7 @@ export default function CreateListModal({
             </div>
           </div>
 
-          <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+          <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-600">
             <input
               type="checkbox"
               checked={expensesEnabled}
@@ -122,21 +122,21 @@ export default function CreateListModal({
               className="mt-0.5 h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             <span>
-              <span className="block text-sm font-medium text-slate-700">Activar gastos compartidos</span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Activar gastos compartidos</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
                 Podrás subir tickets y repartir gastos entre los miembros. Si no lo activas ahora, podrás hacerlo
                 más adelante desde la lista.
               </span>
             </span>
           </label>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>

@@ -55,45 +55,45 @@ export default function SettleUpModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
+        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-1 text-lg font-semibold text-slate-900">Marcar deuda como saldada</h2>
-        <p className="mb-4 text-sm text-slate-500">
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Marcar deuda como saldada</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           <strong>{fromName}</strong> paga a <strong>{toName}</strong>. Esto quedará registrado en el histórico y
           actualizará el balance.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Importe (€)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Importe (€)</label>
             <input
               type="text"
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             <p className="mt-1 text-xs text-slate-400">Deuda sugerida: {debt.amount.toFixed(2)} €. Puedes registrar un pago parcial.</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Nota (opcional)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nota (opcional)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Ej. Bizum, efectivo…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>

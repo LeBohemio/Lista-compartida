@@ -1,8 +1,12 @@
+export type Theme = 'light' | 'dark' | 'system'
+
 export type Profile = {
   id: string
   username: string
   email: string
   avatar_url: string | null
+  theme: Theme
+  accent_color: string | null
   created_at: string
 }
 
@@ -15,6 +19,7 @@ export type List = {
   owner_id: string
   expenses_enabled: boolean
   color: string | null
+  archived_at: string | null
   created_at: string
 }
 
@@ -40,12 +45,14 @@ export type Item = {
   list_id: string
   content: string
   done: boolean
-  created_by: string
+  created_by: string | null
   created_at: string
   done_at: string | null
   // joined
   creator?: Profile
 }
+
+export type ExpenseCategory = 'comida' | 'transporte' | 'alojamiento' | 'ocio' | 'compras' | 'otros'
 
 export type Expense = {
   id: string
@@ -54,8 +61,9 @@ export type Expense = {
   total_amount: number
   receipt_image_path: string | null
   ocr_confidence: number | null
-  paid_by: string
-  created_by: string
+  category: ExpenseCategory
+  paid_by: string | null
+  created_by: string | null
   created_at: string
   // joined
   payer?: Profile
@@ -65,7 +73,7 @@ export type Expense = {
 export type ExpenseShare = {
   id: string
   expense_id: string
-  user_id: string
+  user_id: string | null
   amount: number
   // joined
   profile?: Profile
@@ -74,11 +82,11 @@ export type ExpenseShare = {
 export type Settlement = {
   id: string
   list_id: string
-  from_user: string
-  to_user: string
+  from_user: string | null
+  to_user: string | null
   amount: number
   note: string | null
-  created_by: string
+  created_by: string | null
   created_at: string
   // joined
   from_profile?: Profile
@@ -100,7 +108,7 @@ export type SuggestedDebt = {
 export type Message = {
   id: string
   list_id: string
-  sender_id: string
+  sender_id: string | null
   content: string | null
   image_path: string | null
   created_at: string
