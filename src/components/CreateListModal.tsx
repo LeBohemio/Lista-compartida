@@ -32,24 +32,39 @@ export default function CreateListModal({
     setSubmitting(true)
     setError(null)
 
+    // Comprobación defensiva: nos aseguramos de que hay una sesión activa y
+    // válida justo antes de escribir, y usamos su user.id (no el del contexto,
+    // por si estuviera obsoleto) para descartar problemas de sesión caducada.
+    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
+    const activeUser = sessionData.session?.user ?? null
+    if (sessionErr || !activeUser) {
+      setError(
+        `No se detecta una sesión válida (sessionErr: ${sessionErr?.message ?? 'ninguno'}). Cierra sesión y vuelve a entrar.`,
+      )
+      setSubmitting(false)
+      return
+    }
+
     const { data: list, error: listErr } = await supabase
       .from('lists')
-      .insert({ name: name.trim(), owner_id: user.id, expenses_enabled: expensesEnabled })
+      .insert({ name: name.trim(), owner_id: activeUser.id, expenses_enabled: expensesEnabled })
       .select()
       .single()
 
     if (listErr || !list) {
-      setError(listErr?.message ?? 'No se pudo crear la lista.')
+      setError(
+        `${listErr?.message ?? 'No se pudo crear la lista.'} [debug: user.id=${activeUser.id}, contexto.id=${user.id}, coinciden=${activeUser.id === user.id}]`,
+      )
       setSubmitting(false)
       return
     }
 
     const { error: memberErr } = await supabase.from('list_members').insert({
       list_id: list.id,
-      user_id: user.id,
+      user_id: activeUser.id,
       role: 'owner',
       status: 'accepted',
-      invited_identifier: user.email ?? '',
+      invited_identifier: activeUser.email ?? '',
       responded_at: new Date().toISOString(),
     })
 
