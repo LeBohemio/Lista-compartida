@@ -6,15 +6,28 @@ import { supabase } from '../lib/supabaseClient'
 import ItemsPanel from '../components/ItemsPanel'
 import ExpensesPanel from '../components/ExpensesPanel'
 import InviteMemberModal from '../components/InviteMemberModal'
+import ChatPanel from '../components/ChatPanel'
+import Avatar from '../components/Avatar'
 
-type Tab = 'notas' | 'gastos'
+type Tab = 'notas' | 'gastos' | 'chat'
 
 export default function ListDetailPage() {
   const { listId } = useParams<{ listId: string }>()
   const { user, profile } = useAuth()
   const navigate = useNavigate()
-  const { list, members, acceptedMembers, myMembership, items, expenses, settlements, loading, error, refetch } =
-    useListData(listId)
+  const {
+    list,
+    members,
+    acceptedMembers,
+    myMembership,
+    items,
+    expenses,
+    settlements,
+    messages,
+    loading,
+    error,
+    refetch,
+  } = useListData(listId)
   const [tab, setTab] = useState<Tab>('notas')
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
@@ -83,10 +96,11 @@ export default function ListDetailPage() {
 
         {showMembers && (
           <div className="mx-auto mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm">
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {members.map((m) => (
                 <li key={m.user_id} className="flex items-center justify-between">
-                  <span className="text-slate-700">
+                  <span className="flex items-center gap-2 text-slate-700">
+                    <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
                     {m.profile?.username ?? m.user_id}
                     {m.user_id === profile?.id ? ' (tú)' : ''}
                     {m.role === 'owner' ? ' · creador' : ''}
@@ -126,6 +140,14 @@ export default function ListDetailPage() {
               Activar gastos
             </button>
           ) : null}
+          <button
+            onClick={() => setTab('chat')}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
+              tab === 'chat' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            Chat
+          </button>
         </div>
       </header>
 
@@ -134,6 +156,7 @@ export default function ListDetailPage() {
         {tab === 'gastos' && list.expenses_enabled && (
           <ExpensesPanel listId={list.id} members={members} expenses={expenses} settlements={settlements} />
         )}
+        {tab === 'chat' && <ChatPanel listId={list.id} messages={messages} />}
       </main>
 
       {showInvite && (

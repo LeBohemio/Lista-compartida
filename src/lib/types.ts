@@ -2,6 +2,7 @@ export type Profile = {
   id: string
   username: string
   email: string
+  avatar_url: string | null
   created_at: string
 }
 
@@ -92,4 +93,15 @@ export type SuggestedDebt = {
   from: string // debe
   to: string // le deben
   amount: number
+}
+
+export type Message = {
+  id: string
+  list_id: string
+  sender_id: string
+  content: string | null
+  image_path: string | null
+  created_at: string
+  // joined
+  sender?: Profile
 }

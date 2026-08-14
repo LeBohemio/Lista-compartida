@@ -14,6 +14,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text not null,
   email text not null unique,
+  avatar_url text,
   created_at timestamptz not null default now()
 );
 
@@ -272,6 +273,31 @@ create policy "settlements_insert_member" on public.settlements
   );
 
 -- ----------------------------------------------------------------------------
+-- 7bis. MESSAGES (chat de texto/fotos por lista)
+-- ----------------------------------------------------------------------------
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid not null references public.lists (id) on delete cascade,
+  sender_id uuid not null references public.profiles (id) on delete cascade,
+  content text,
+  image_path text,
+  created_at timestamptz not null default now(),
+  check (content is not null or image_path is not null)
+);
+
+alter table public.messages enable row level security;
+
+create policy "messages_select_member" on public.messages
+  for select to authenticated using (public.is_list_member(list_id, true));
+
+create policy "messages_insert_member" on public.messages
+  for insert to authenticated
+  with check (public.is_list_member(list_id, true) and sender_id = auth.uid());
+
+create policy "messages_delete_own" on public.messages
+  for delete to authenticated using (sender_id = auth.uid());
+
+-- ----------------------------------------------------------------------------
 -- 8. REALTIME — publica los cambios para que otros miembros los reciban
 --    automáticamente sin recargar.
 -- ----------------------------------------------------------------------------
@@ -311,6 +337,12 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+do $$
+begin
+  alter publication supabase_realtime add table public.messages;
+exception when duplicate_object then null;
+end $$;
+
 -- ----------------------------------------------------------------------------
 -- 9. STORAGE — bucket privado para las fotos de tickets
 -- ----------------------------------------------------------------------------
@@ -338,6 +370,56 @@ create policy "receipts_select_member" on storage.objects
 create policy "receipts_delete_owner" on storage.objects
   for delete to authenticated
   using (bucket_id = 'receipts' and owner = auth.uid());
+
+-- ----------------------------------------------------------------------------
+-- 10. STORAGE — bucket público para las fotos de perfil (avatares)
+-- ----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+-- Convención de rutas: {user_id}/{archivo}.
+create policy "avatars_insert_own" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and ((storage.foldername(name))[1]) = auth.uid()::text);
+
+create policy "avatars_update_own" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'avatars' and ((storage.foldername(name))[1]) = auth.uid()::text);
+
+create policy "avatars_delete_own" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and ((storage.foldername(name))[1]) = auth.uid()::text);
+
+create policy "avatars_select_public" on storage.objects
+  for select to authenticated, anon
+  using (bucket_id = 'avatars');
+
+-- ----------------------------------------------------------------------------
+-- 11. STORAGE — bucket privado para las fotos del chat
+-- ----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('chat-images', 'chat-images', false)
+on conflict (id) do nothing;
+
+-- Convención de rutas: {list_id}/{archivo}.
+create policy "chat_images_insert_member" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'chat-images'
+    and public.is_list_member(((storage.foldername(name))[1])::uuid, true)
+  );
+
+create policy "chat_images_select_member" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'chat-images'
+    and public.is_list_member(((storage.foldername(name))[1])::uuid, true)
+  );
+
+create policy "chat_images_delete_owner" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'chat-images' and owner = auth.uid());
 
 -- ============================================================================
 -- Fin del script. Ya puedes conectar la app con la URL y la anon key

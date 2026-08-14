@@ -4,6 +4,7 @@ import { formatEuro } from '../lib/balances'
 import type { Expense, ListMember, Settlement } from '../lib/types'
 import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
+import Avatar from './Avatar'
 
 type LedgerRow =
   | { kind: 'expense'; date: string; data: Expense }
@@ -69,13 +70,16 @@ export default function ExpensesPanel({
                   onClick={() => toggleExpand(row.data)}
                   className="flex w-full items-center justify-between px-4 py-3 text-left"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">
-                      {row.data.description || 'Ticket'} · pagado por {row.data.payer?.username ?? '—'}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {new Date(row.data.created_at).toLocaleString('es-ES')}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">
+                        {row.data.description || 'Ticket'} · pagado por {row.data.payer?.username ?? '—'}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {new Date(row.data.created_at).toLocaleString('es-ES')}
+                      </p>
+                    </div>
                   </div>
                   <span className="font-semibold text-slate-800">{formatEuro(row.data.total_amount)}</span>
                 </button>

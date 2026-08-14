@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/Logo'
 
 export default function RegisterPage() {
   const { user, signUp } = useAuth()
@@ -58,9 +59,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-bold text-white">
-            L
-          </div>
+          <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />
           <h1 className="text-2xl font-semibold text-slate-900">Crear cuenta</h1>
           <p className="mt-1 text-sm text-slate-500">Únete para crear y compartir listas</p>
         </div>

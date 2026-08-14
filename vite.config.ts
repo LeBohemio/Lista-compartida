@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'Lista Compartida',
-        short_name: 'Listas',
+        name: 'Listas en Común',
+        short_name: 'En Común',
         description: 'Listas de notas y gastos compartidos entre varias personas',
         theme_color: '#4f46e5',
         background_color: '#ffffff',

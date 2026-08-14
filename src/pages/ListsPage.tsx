@@ -4,11 +4,15 @@ import { useAuth } from '../context/AuthContext'
 import { useLists } from '../hooks/useLists'
 import { supabase } from '../lib/supabaseClient'
 import CreateListModal from '../components/CreateListModal'
+import Logo from '../components/Logo'
+import Avatar from '../components/Avatar'
+import ProfileModal from '../components/ProfileModal'
 
 export default function ListsPage() {
-  const { profile, signOut } = useAuth()
+  const { profile } = useAuth()
   const { lists, invitations, loading, error, refetch } = useLists()
   const [showCreate, setShowCreate] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const navigate = useNavigate()
 
   const respondInvitation = async (listId: string, accept: boolean) => {
@@ -28,15 +32,20 @@ export default function ListsPage() {
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-400">Hola,</p>
-            <p className="font-semibold text-slate-900">{profile?.username ?? '…'}</p>
+          <div className="flex items-center gap-2.5">
+            <Logo size={34} className="rounded-lg" />
+            <div>
+              <p className="text-xs text-slate-400">Hola,</p>
+              <p className="font-semibold text-slate-900">{profile?.username ?? '…'}</p>
+            </div>
           </div>
-          <button
-            onClick={() => signOut()}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
-          >
-            Salir
+          <button onClick={() => setShowProfile(true)} className="rounded-full" aria-label="Tu perfil">
+            <Avatar
+              username={profile?.username ?? '?'}
+              avatarUrl={profile?.avatar_url}
+              size={38}
+              className="ring-2 ring-white hover:ring-brand-200"
+            />
           </button>
         </div>
       </header>
@@ -136,6 +145,8 @@ export default function ListsPage() {
           }}
         />
       )}
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   )
 }

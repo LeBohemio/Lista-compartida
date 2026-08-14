@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import type { Expense, Item, List, ListMember, Settlement } from '../lib/types'
+import type { Expense, Item, List, ListMember, Message, Settlement } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
 
 export function useListData(listId: string | undefined) {
@@ -10,6 +10,7 @@ export function useListData(listId: string | undefined) {
   const [items, setItems] = useState<Item[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [settlements, setSettlements] = useState<Settlement[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,7 +18,7 @@ export function useListData(listId: string | undefined) {
     if (!listId) return
     setError(null)
 
-    const [listRes, membersRes, itemsRes, expensesRes, settlementsRes] = await Promise.all([
+    const [listRes, membersRes, itemsRes, expensesRes, settlementsRes, messagesRes] = await Promise.all([
       supabase.from('lists').select('*').eq('id', listId).maybeSingle(),
       supabase
         .from('list_members')
@@ -43,10 +44,20 @@ export function useListData(listId: string | undefined) {
         )
         .eq('list_id', listId)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('messages')
+        .select('*, sender:profiles!messages_sender_id_fkey(*)')
+        .eq('list_id', listId)
+        .order('created_at', { ascending: true }),
     ])
 
     const firstError =
-      listRes.error || membersRes.error || itemsRes.error || expensesRes.error || settlementsRes.error
+      listRes.error ||
+      membersRes.error ||
+      itemsRes.error ||
+      expensesRes.error ||
+      settlementsRes.error ||
+      messagesRes.error
     if (firstError) {
       setError(firstError.message)
       setLoading(false)
@@ -58,6 +69,7 @@ export function useListData(listId: string | undefined) {
     setItems((itemsRes.data as unknown as Item[]) ?? [])
     setExpenses((expensesRes.data as unknown as Expense[]) ?? [])
     setSettlements((settlementsRes.data as unknown as Settlement[]) ?? [])
+    setMessages((messagesRes.data as unknown as Message[]) ?? [])
     setLoading(false)
   }, [listId])
 
@@ -88,6 +100,11 @@ export function useListData(listId: string | undefined) {
         { event: '*', schema: 'public', table: 'settlements', filter: `list_id=eq.${listId}` },
         fetchAll,
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `list_id=eq.${listId}` },
+        fetchAll,
+      )
       .subscribe()
 
     return () => {
@@ -106,6 +123,7 @@ export function useListData(listId: string | undefined) {
     items,
     expenses,
     settlements,
+    messages,
     loading,
     error,
     refetch: fetchAll,

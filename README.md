@@ -1,4 +1,4 @@
-# Lista Compartida
+# Listas en Común
 
 PWA instalable en móvil para listas de notas y (opcionalmente) gastos
 compartidos entre varias personas, con persistencia real en la nube.
@@ -18,6 +18,11 @@ de un CDN externo) · desplegado como PWA en Vercel/Netlify.
    todas las tablas, las políticas de seguridad (RLS), el trigger que crea el
    perfil al registrarse, la publicación de Realtime y el bucket de Storage
    `receipts` para las fotos de tickets.
+   - Si tu proyecto ya existía antes de las fotos de perfil y el chat, ejecuta
+     además [`supabase/migration_avatars_chat.sql`](./supabase/migration_avatars_chat.sql)
+     una sola vez (añade la columna `avatar_url`, la tabla `messages` y los
+     buckets `avatars`/`chat-images`). Los proyectos nuevos ya lo tienen todo
+     con solo `schema.sql`.
 4. Ve a **Project Settings → API** y copia la **Project URL** y la
    **anon public key**.
 

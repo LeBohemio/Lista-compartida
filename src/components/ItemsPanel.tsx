@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import Avatar from './Avatar'
 import type { Item } from '../lib/types'
 
 export default function ItemsPanel({ listId, items }: { listId: string; items: Item[] }) {
@@ -111,7 +112,10 @@ function ItemRow({
           {item.content}
         </p>
         {item.creator?.username && (
-          <p className="truncate text-xs text-slate-400">Añadido por {item.creator.username}</p>
+          <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
+            <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />
+            Añadido por {item.creator.username}
+          </p>
         )}
       </div>
       {item.done && (
