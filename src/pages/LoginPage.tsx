@@ -1,0 +1,81 @@
+import { useState, type FormEvent } from 'react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+
+export default function LoginPage() {
+  const { user, signIn } = useAuth()
+  const location = useLocation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  if (user) return <Navigate to={(location.state as any)?.from ?? '/lists'} replace />
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    const { error: err } = await signIn(email.trim(), password)
+    setSubmitting(false)
+    if (err) setError(err)
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-bold text-white">
+            L
+          </div>
+          <h1 className="text-2xl font-semibold text-slate-900">Lista Compartida</h1>
+          <p className="mt-1 text-sm text-slate-500">Entra para ver tus listas</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              placeholder="tu@email.com"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Contraseña</label>
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
+          >
+            {submitting ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          ¿No tienes cuenta?{' '}
+          <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
+            Regístrate
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
