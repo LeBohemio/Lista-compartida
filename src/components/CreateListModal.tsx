@@ -32,45 +32,18 @@ export default function CreateListModal({
     setSubmitting(true)
     setError(null)
 
-    // Comprobación defensiva: nos aseguramos de que hay una sesión activa y
-    // válida justo antes de escribir, y usamos su user.id (no el del contexto,
-    // por si estuviera obsoleto) para descartar problemas de sesión caducada.
-    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
-    const activeUser = sessionData.session?.user ?? null
-    if (sessionErr || !activeUser) {
-      setError(
-        `No se detecta una sesión válida (sessionErr: ${sessionErr?.message ?? 'ninguno'}). Cierra sesión y vuelve a entrar.`,
-      )
-      setSubmitting(false)
-      return
-    }
-
-    const { data: list, error: listErr } = await supabase
-      .from('lists')
-      .insert({ name: name.trim(), owner_id: activeUser.id, expenses_enabled: expensesEnabled })
-      .select()
-      .single()
-
-    if (listErr || !list) {
-      setError(
-        `${listErr?.message ?? 'No se pudo crear la lista.'} [debug: user.id=${activeUser.id}, contexto.id=${user.id}, coinciden=${activeUser.id === user.id}]`,
-      )
-      setSubmitting(false)
-      return
-    }
-
-    const { error: memberErr } = await supabase.from('list_members').insert({
-      list_id: list.id,
-      user_id: activeUser.id,
-      role: 'owner',
-      status: 'accepted',
-      invited_identifier: activeUser.email ?? '',
-      responded_at: new Date().toISOString(),
+    // Creamos la lista + la membresía del owner mediante una función RPC
+    // (SECURITY DEFINER) que deriva el propietario de auth.uid() en el propio
+    // servidor, en vez de un INSERT directo desde el cliente.
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('create_list_with_owner', {
+      p_name: name.trim(),
+      p_expenses_enabled: expensesEnabled,
     })
+    const list = rpcData as { id: string } | null
 
     setSubmitting(false)
-    if (memberErr) {
-      setError(memberErr.message)
+    if (rpcErr || !list) {
+      setError(rpcErr?.message ?? 'No se pudo crear la lista.')
       return
     }
     onCreated(list.id)
