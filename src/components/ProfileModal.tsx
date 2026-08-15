@@ -8,8 +8,9 @@ import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
 import AvatarCropper from './AvatarCropper'
 import AvatarPicker from './AvatarPicker'
-import { CURRENCIES } from '../lib/currencies'
+import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
+import { disablePush, enablePush, isPushSupported } from '../lib/push'
 
 const THEME_OPTIONS: { value: Theme; labelKey: TranslationKey }[] = [
   { value: 'light', labelKey: 'theme.light' },
@@ -99,7 +100,42 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
 
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState<string | null>(null)
+
   if (!user || !profile) return null
+
+  const togglePush = async () => {
+    setPushError(null)
+    setPushBusy(true)
+    try {
+      if (profile.notify_push_enabled) {
+        await disablePush(user.id)
+      } else {
+        await enablePush(user.id)
+      }
+      await refreshProfile()
+    } catch (err) {
+      const code = err instanceof Error ? err.message : 'unknown'
+      setPushError(
+        code === 'denied'
+          ? t('profile.pushDenied')
+          : code === 'unsupported'
+            ? t('profile.pushUnsupported')
+            : t('profile.pushGenericError'),
+      )
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  const setNotifyPref = async (
+    field: 'notify_chat' | 'notify_expenses' | 'notify_invites' | 'notify_settlements',
+    value: boolean,
+  ) => {
+    await supabase.from('profiles').update({ [field]: value }).eq('id', user.id)
+    await refreshProfile()
+  }
 
   const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -371,22 +407,82 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.currency')}</p>
-            <div className="flex flex-wrap gap-2">
+            <select
+              value={profile.currency}
+              onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+              className="w-full rounded-lg border px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+            >
               {CURRENCIES.map((c) => (
-                <button
-                  key={c.code}
-                  onClick={() => setCurrency(c.code)}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                    profile.currency === c.code
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
-                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code} — {c.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.notifications')}</p>
+
+          {!isPushSupported() ? (
+            <p className="text-xs text-slate-400">{t('profile.pushUnsupported')}</p>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={togglePush}
+                disabled={pushBusy}
+                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
+                  profile.notify_push_enabled
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                }`}
+              >
+                <span>{t('profile.pushEnableToggle')}</span>
+                <span
+                  aria-hidden="true"
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+                    profile.notify_push_enabled ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600'
                   }`}
                 >
-                  {c.flag} {c.code}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      profile.notify_push_enabled ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </span>
+              </button>
+
+              {pushError && <p className="text-xs text-red-500 dark:text-red-400">{pushError}</p>}
+
+              {profile.notify_push_enabled && (
+                <div className="space-y-2 rounded-lg p-3 bg-[var(--color-surface-alt)]">
+                  {(
+                    [
+                      { field: 'notify_chat', label: t('profile.notifyChat'), value: profile.notify_chat },
+                      { field: 'notify_expenses', label: t('profile.notifyExpenses'), value: profile.notify_expenses },
+                      { field: 'notify_invites', label: t('profile.notifyInvites'), value: profile.notify_invites },
+                      {
+                        field: 'notify_settlements',
+                        label: t('profile.notifySettlements'),
+                        value: profile.notify_settlements,
+                      },
+                    ] as const
+                  ).map((row) => (
+                    <label key={row.field} className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
+                      {row.label}
+                      <input
+                        type="checkbox"
+                        checked={row.value}
+                        onChange={(e) => setNotifyPref(row.field, e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 accent-brand-600"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">

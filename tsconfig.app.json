@@ -22,5 +22,10 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // sw.ts se compila aparte (ver tsconfig.sw.json): es un Service Worker,
+  // vive en un scope global distinto (webworker, no DOM) — "self" ahí no es
+  // "window" — así que no puede compartir el tsconfig de la app normal sin
+  // chocar en los tipos.
+  "exclude": ["src/sw.ts"]
 }

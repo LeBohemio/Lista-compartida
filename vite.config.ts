@@ -9,6 +9,20 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // injectManifest (en vez de generateSW): necesitamos un Service
+      // Worker escrito a mano para poder reaccionar a los avisos push que
+      // llegan del servidor (evento "push") y a que los toquen (evento
+      // "notificationclick") — generateSW no permite añadir ese código
+      // propio, solo genera el cacheo. El cacheo de siempre (precache de la
+      // app + las dos rutas en caliente para el OCR y los avatares) ahora
+      // vive dentro de src/sw.ts en vez de aquí.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        globIgnores: ['**/tesseract-core/**', '**/tessdata/**', '**/tesseract/**', '**/avatars/**'],
+      },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
@@ -24,37 +38,6 @@ export default defineConfig({
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        // El motor de OCR (worker + core wasm + datos de idioma) pesa varios MB:
-        // no lo precacheamos al instalar la PWA, se descarga la primera vez que
-        // se usa y a partir de ahí queda cacheado (runtimeCaching de abajo).
-        // Los avatares prediseñados (public/avatars) tampoco se precachean: son
-        // ~7MB en total y solo hacen falta si la persona abre el selector de
-        // avatar, así que se descargan (y cachean) bajo demanda igual que el OCR.
-        globIgnores: ['**/tesseract-core/**', '**/tessdata/**', '**/tesseract/**', '**/avatars/**'],
-        navigateFallbackDenylist: [/^\/api/],
-        runtimeCaching: [
-          {
-            urlPattern: /\/(tesseract|tesseract-core|tessdata)\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'ocr-engine-assets',
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 180 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: /\/avatars\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'preset-avatars',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
         ],
       },
     }),

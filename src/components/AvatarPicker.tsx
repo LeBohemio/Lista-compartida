@@ -53,6 +53,23 @@ export default function AvatarPicker({
           </button>
         </div>
 
+        {/* Previsualización grande de la que tengas seleccionada ahora
+            mismo — se actualiza al momento al tocar cualquier avatar de la
+            rejilla de abajo, para que se vea bien antes de confirmar. */}
+        <div className="mt-4 flex justify-center">
+          {selected ? (
+            <img
+              src={selected}
+              alt=""
+              className="h-24 w-24 rounded-full object-cover ring-4 ring-brand-100 dark:ring-brand-950/50"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed text-xs text-slate-400 border-[var(--color-surface-border)]">
+              {t('avatarPicker.noneSelected')}
+            </div>
+          )}
+        </div>
+
         <div className="mt-4 flex gap-1.5 overflow-x-auto px-6 pb-1">
           {AVATAR_CATEGORIES.map((cat) => (
             <button

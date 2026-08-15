@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useListData } from '../hooks/useListData'
@@ -33,7 +33,15 @@ export default function ListDetailPage() {
     error,
     refetch,
   } = useListData(listId)
-  const [tab, setTab] = useState<Tab>('notas')
+  // Al tocar un aviso de notificación push (?tab=chat, por ejemplo) hay que
+  // aterrizar directamente en esa pestaña, no siempre en "notas". Solo se
+  // mira al arrancar la página — search param se ignora si vuelves a
+  // cambiar de pestaña a mano.
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    initialTab === 'gastos' || initialTab === 'chat' ? initialTab : 'notas',
+  )
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
@@ -126,6 +134,19 @@ export default function ListDetailPage() {
     if (!confirmRemove) return
     await supabase.from('list_members').delete().eq('list_id', list.id).eq('user_id', confirmRemove.userId)
     setConfirmRemove(null)
+    refetch()
+  }
+
+  // Silenciar SOLO el chat de esta lista (no toca las demás listas ni otros
+  // tipos de aviso) — deja de sonar/avisar por push aunque lleguen mensajes
+  // nuevos, hasta que se vuelva a activar. Ver migration_v15.sql.
+  const toggleMuted = async () => {
+    if (!user || !myMembership) return
+    await supabase
+      .from('list_members')
+      .update({ muted: !myMembership.muted })
+      .eq('list_id', list.id)
+      .eq('user_id', user.id)
     refetch()
   }
 
@@ -275,7 +296,15 @@ export default function ListDetailPage() {
             )}
           </div>
         )}
-        {tab === 'notas' && <ItemsPanel listId={list.id} items={items} soloList={soloList} readOnly={isCompleted} />}
+        {tab === 'notas' && (
+          <ItemsPanel
+            listId={list.id}
+            items={items}
+            soloList={soloList}
+            readOnly={isCompleted}
+            onCompleteList={isOwner && !isCompleted ? () => setConfirmComplete(true) : undefined}
+          />
+        )}
         {tab === 'gastos' && list.expenses_enabled && (
           <ExpensesPanel
             listId={list.id}
@@ -287,7 +316,21 @@ export default function ListDetailPage() {
             readOnly={isCompleted}
           />
         )}
-        {tab === 'chat' && <ChatPanel listId={list.id} messages={messages} readOnly={isCompleted} />}
+        {tab === 'chat' && (
+          <>
+            {myMembership && (
+              <div className="mb-3 flex justify-end">
+                <button
+                  onClick={toggleMuted}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
+                >
+                  {myMembership.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
+                </button>
+              </div>
+            )}
+            <ChatPanel listId={list.id} messages={messages} readOnly={isCompleted} />
+          </>
+        )}
       </main>
 
       {showInvite && (

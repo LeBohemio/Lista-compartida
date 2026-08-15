@@ -20,6 +20,26 @@ export type Profile = {
   // solo filtra lo que ve esta persona en su propio resumen. Ver
   // migration_v13.sql.
   expenses_reset_at: string | null
+  // Preferencias de notificaciones push (ver migration_v14.sql).
+  // notify_push_enabled es el interruptor general: si está en false, no se
+  // manda nada aunque los 4 de abajo estén en true. Se activa la primera
+  // vez que la persona pulsa "activar notificaciones" en Ajustes.
+  notify_push_enabled: boolean
+  notify_chat: boolean
+  notify_expenses: boolean
+  notify_invites: boolean
+  notify_settlements: boolean
+}
+
+// Una fila por cada dispositivo/navegador donde una persona ha activado las
+// notificaciones (puede tener varias). Ver migration_v14.sql.
+export type PushSubscriptionRow = {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  created_at: string
 }
 
 export type MemberStatus = 'invited' | 'accepted'
@@ -48,6 +68,9 @@ export type ListMember = {
   created_at: string
   responded_at: string | null
   last_read_message_at: string | null
+  // Silenciar el chat de ESTA lista (no afecta a otras listas ni a otros
+  // tipos de aviso). Ver migration_v15.sql.
+  muted: boolean
   // joined
   profile?: Profile
 }
