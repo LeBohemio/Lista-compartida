@@ -107,6 +107,16 @@ export function useDragReorder<T>({
         el.style.transition = 'none'
         el.style.zIndex = '30'
         el.style.willChange = 'transform'
+        // Importante: esto tiene que aplicarse aquí, de forma inmediata e
+        // imperativa (no esperar a que React vuelva a renderizar con la
+        // clase `touch-none`). Si lo dejamos para el render, pasan unos
+        // milisegundos entre "se confirma la pulsación mantenida" y "el
+        // navegador se entera de que no debe hacer scroll", y en ese hueco
+        // el propio navegador puede interpretar el primer movimiento del
+        // dedo como un scroll de página normal — eso es lo que se sentía
+        // como que "el fondo se mueve" y la pantalla se desliza a la vez
+        // que arrastramos la nota.
+        el.style.touchAction = 'none'
       }
     },
     [items, captureRects],
@@ -150,6 +160,14 @@ export function useDragReorder<T>({
 
       const draggingId = draggingIdRef.current
       if (!draggingId) return
+      // Refuerzo del bloqueo de scroll: aunque ya hemos puesto
+      // touch-action: none al empezar a arrastrar, algunos navegadores
+      // (sobre todo Safari en iOS) pueden haber empezado a interpretar el
+      // gesto como scroll justo antes de que ese cambio surta efecto. Frenar
+      // el comportamiento por defecto en cada movimiento mientras arrastramos
+      // asegura que la página no se desplace por su cuenta mientras se mueve
+      // la nota.
+      e.preventDefault()
       const currentY = e.clientY
       lastPointerYRef.current = currentY
 
@@ -258,6 +276,10 @@ export function useDragReorder<T>({
     if (el) {
       el.style.transition = 'transform 180ms cubic-bezier(0.2, 0, 0.2, 1)'
       el.style.transform = ''
+      // El touch-action lo quitamos ya mismo (no hace falta esperar a que
+      // termine la animación): el arrastre ya ha acabado, así que el scroll
+      // normal debe volver a funcionar en esta fila de inmediato.
+      el.style.touchAction = ''
       const cleanupEl = el
       window.setTimeout(() => {
         cleanupEl.style.transition = ''

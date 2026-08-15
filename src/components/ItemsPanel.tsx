@@ -653,8 +653,15 @@ function ItemRow({
       onPointerMove={inReorder ? onDragPointerMove : undefined}
       onPointerUp={inReorder ? onDragPointerUp : undefined}
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
-      className={`px-3 sm:pl-11 ${inReorder ? 'select-none' : ''} ${
-        dragging ? 'relative touch-none shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
+      // El touch-action: none hace falta desde el momento en que la fila
+      // entra en modo reordenar, no solo mientras se arrastra de verdad: el
+      // navegador decide si un toque va a hacer scroll o no nada más tocar
+      // la pantalla, así que si esperamos a aplicarlo justo cuando empieza
+      // el arrastre (tras mantener pulsado), ya es tarde y el navegador
+      // puede haber empezado a mover la página él solo — eso era lo que
+      // hacía que "el fondo se moviera" al resaltar una nota.
+      className={`px-3 sm:pl-11 ${inReorder ? 'select-none touch-none' : ''} ${
+        dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}
     >
