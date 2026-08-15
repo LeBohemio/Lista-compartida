@@ -31,7 +31,10 @@ export default defineConfig({
         // El motor de OCR (worker + core wasm + datos de idioma) pesa varios MB:
         // no lo precacheamos al instalar la PWA, se descarga la primera vez que
         // se usa y a partir de ahí queda cacheado (runtimeCaching de abajo).
-        globIgnores: ['**/tesseract-core/**', '**/tessdata/**', '**/tesseract/**'],
+        // Los avatares prediseñados (public/avatars) tampoco se precachean: son
+        // ~7MB en total y solo hacen falta si la persona abre el selector de
+        // avatar, así que se descargan (y cachean) bajo demanda igual que el OCR.
+        globIgnores: ['**/tesseract-core/**', '**/tessdata/**', '**/tesseract/**', '**/avatars/**'],
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
@@ -40,6 +43,15 @@ export default defineConfig({
             options: {
               cacheName: 'ocr-engine-assets',
               expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\/avatars\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'preset-avatars',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
