@@ -73,6 +73,10 @@ export type Expense = {
   paid_by: string | null
   created_by: string | null
   created_at: string
+  // true cuando el reparto no suma el total (importes personalizados o
+  // porcentajes incompletos) — se guardó igualmente al salir del
+  // formulario, como borrador, para no perder lo ya escrito.
+  is_draft: boolean
   // joined
   payer?: Profile
   shares?: ExpenseShare[]

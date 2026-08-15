@@ -196,7 +196,12 @@ export default function ExpensesPanel({
         <div className="space-y-2">
           {filteredLedger.map((row) =>
             row.kind === 'expense' ? (
-              <div key={`e-${row.data.id}`} className="rounded-lg shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+              <div
+                key={`e-${row.data.id}`}
+                className={`rounded-lg shadow-sm ring-1 bg-[var(--color-surface)] ${
+                  row.data.is_draft ? 'ring-amber-300 dark:ring-amber-700' : 'ring-[var(--color-surface-border)]'
+                }`}
+              >
                 <div className="flex w-full items-center justify-between px-4 py-3">
                   <button onClick={() => toggleExpand(row.data)} className="flex flex-1 items-center gap-2 text-left">
                     <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
@@ -208,6 +213,9 @@ export default function ExpensesPanel({
                       </p>
                       <p className="text-xs text-slate-400">
                         {new Date(row.data.created_at).toLocaleString('es-ES')}
+                        {row.data.is_draft && (
+                          <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">{t('expenses.draftBadge')}</span>
+                        )}
                       </p>
                     </div>
                   </button>

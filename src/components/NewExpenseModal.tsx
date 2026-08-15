@@ -1,11 +1,12 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
 import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
-type SplitMode = 'equal' | 'custom'
+type SplitMode = 'equal' | 'custom' | 'percent'
 
 function splitEqually(totalCents: number, userIds: string[]): Record<string, number> {
   const n = userIds.length
@@ -33,6 +34,7 @@ export default function NewExpenseModal({
   onCreated: () => void
 }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const acceptedMembers = useMemo(() => members.filter((m) => m.status === 'accepted'), [members])
   const isEditing = !!editing
 
@@ -58,6 +60,7 @@ export default function NewExpenseModal({
     for (const s of editing.shares) if (s.user_id) initial[s.user_id] = s.amount.toFixed(2)
     return initial
   })
+  const [percentAmounts, setPercentAmounts] = useState<Record<string, string>>({})
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,30 +108,41 @@ export default function NewExpenseModal({
   )
   const customMatchesTotal = totalValid && customTotalCents === Math.round(totalAmount * 100)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-    setError(null)
+  const percentTotal = useMemo(
+    () =>
+      acceptedMembers.reduce((sum, m) => {
+        const v = Number.parseFloat((percentAmounts[m.user_id] ?? '0').replace(',', '.'))
+        return sum + (Number.isFinite(v) ? v : 0)
+      }, 0),
+    [percentAmounts, acceptedMembers],
+  )
+  const percentComplete = totalValid && Math.abs(percentTotal - 100) < 0.01
+  const percentRounded = Math.round(percentTotal * 100) / 100
 
-    if (!totalValid) {
-      setError('Introduce un importe total válido.')
-      return
-    }
-    if (!paidBy) {
-      setError('Indica quién ha pagado el ticket.')
-      return
-    }
-    if (splitMode === 'custom' && !customMatchesTotal) {
-      setError('Los importes personalizados deben sumar exactamente el total.')
-      return
-    }
-    if (acceptedMembers.length === 0) {
-      setError('No hay miembros aceptados en la lista para repartir el gasto.')
-      return
-    }
+  // El reparto está "completo" solo si suma exactamente el total (partes
+  // iguales siempre lo está, por construcción). Si no lo está, seguimos
+  // dejando guardar — se guarda como borrador en vez de bloquear a la
+  // persona con un error, para que no se pierda lo que ya ha escrito.
+  const splitComplete = splitMode === 'equal' ? true : splitMode === 'custom' ? customMatchesTotal : percentComplete
 
-    setSubmitting(true)
+  const shareRowsFor = (mode: SplitMode) =>
+    acceptedMembers.map((m) => {
+      let cents: number
+      if (mode === 'equal') {
+        cents = equalShares[m.user_id] ?? 0
+      } else if (mode === 'percent') {
+        const pct = Number.parseFloat((percentAmounts[m.user_id] ?? '0').replace(',', '.'))
+        cents = Math.round(Math.round(totalAmount * 100) * ((Number.isFinite(pct) ? pct : 0) / 100))
+      } else {
+        const v = Number.parseFloat((customAmounts[m.user_id] ?? '0').replace(',', '.'))
+        cents = Math.round((Number.isFinite(v) ? v : 0) * 100)
+      }
+      return { expense_id: '', user_id: m.user_id, amount: cents / 100 }
+    })
 
+  // Lógica de guardado compartida entre el botón "Guardar" y el cierre del
+  // formulario (Cerrar / clic fuera) cuando el reparto no está terminado.
+  const persistExpense = async (): Promise<string | null> => {
     let receiptPath: string | null = editing?.receipt_image_path ?? null
     if (file) {
       const ext = file.name.split('.').pop() || 'jpg'
@@ -136,14 +150,11 @@ export default function NewExpenseModal({
       const { error: uploadErr } = await supabase.storage.from('receipts').upload(path, file, {
         contentType: file.type || 'image/jpeg',
       })
-      if (uploadErr) {
-        setError(`No se pudo subir la foto del ticket: ${uploadErr.message}`)
-        setSubmitting(false)
-        return
-      }
+      if (uploadErr) return t('expenses.errorReceiptUpload', { message: uploadErr.message })
       receiptPath = path
     }
 
+    const isDraft = !splitComplete
     let expenseId: string
     if (isEditing) {
       const { error: updateErr } = await supabase
@@ -155,20 +166,13 @@ export default function NewExpenseModal({
           ocr_confidence: ocrConfidence,
           category,
           paid_by: paidBy,
+          is_draft: isDraft,
         })
         .eq('id', editing!.id)
-      if (updateErr) {
-        setError(updateErr.message)
-        setSubmitting(false)
-        return
-      }
+      if (updateErr) return updateErr.message
       expenseId = editing!.id
       const { error: delSharesErr } = await supabase.from('expense_shares').delete().eq('expense_id', expenseId)
-      if (delSharesErr) {
-        setError(delSharesErr.message)
-        setSubmitting(false)
-        return
-      }
+      if (delSharesErr) return delSharesErr.message
     } else {
       const { data: expense, error: expenseErr } = await supabase
         .from('expenses')
@@ -180,50 +184,92 @@ export default function NewExpenseModal({
           ocr_confidence: ocrConfidence,
           category,
           paid_by: paidBy,
-          created_by: user.id,
+          created_by: user!.id,
+          is_draft: isDraft,
         })
         .select()
         .single()
 
-      if (expenseErr || !expense) {
-        setError(expenseErr?.message ?? 'No se pudo registrar el gasto.')
-        setSubmitting(false)
-        return
-      }
+      if (expenseErr || !expense) return expenseErr?.message ?? t('expenses.errorGeneric')
       expenseId = expense.id
     }
 
-    const shareCentsById = splitMode === 'equal' ? equalShares : null
-    const shareRows = acceptedMembers.map((m) => {
-      const cents =
-        splitMode === 'equal'
-          ? shareCentsById![m.user_id]
-          : Math.round(Number.parseFloat((customAmounts[m.user_id] ?? '0').replace(',', '.')) * 100)
-      return { expense_id: expenseId, user_id: m.user_id, amount: cents / 100 }
-    })
-
+    const shareRows = shareRowsFor(splitMode).map((row) => ({ ...row, expense_id: expenseId }))
     const { error: sharesErr } = await supabase.from('expense_shares').insert(shareRows)
-    setSubmitting(false)
-    if (sharesErr) {
-      setError(sharesErr.message)
+    if (sharesErr) return sharesErr.message
+
+    localStorage.setItem(`lastCategory:${listId}`, category)
+    return null
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+    setError(null)
+
+    if (!totalValid) {
+      setError(t('expenses.errorTotalInvalid'))
       return
     }
-    localStorage.setItem(`lastCategory:${listId}`, category)
+    if (!paidBy) {
+      setError(t('expenses.errorNoPayer'))
+      return
+    }
+    if (acceptedMembers.length === 0) {
+      setError(t('expenses.errorNoMembers'))
+      return
+    }
+
+    setSubmitting(true)
+    const errorMessage = await persistExpense()
+    setSubmitting(false)
+    if (errorMessage) {
+      setError(errorMessage)
+      return
+    }
+    onCreated()
+  }
+
+  // Si cierras sin haber terminado, no queremos que se pierda lo que ya
+  // llevabas escrito: si hay al menos un importe y quién pagó, se guarda
+  // igual (como borrador si el reparto no cuadra). Si el formulario está
+  // prácticamente vacío, no hay nada que merezca la pena guardar y se
+  // cierra sin más.
+  const handleRequestClose = async () => {
+    if (submitting) return
+    if (!user || !totalValid || !paidBy || acceptedMembers.length === 0) {
+      onClose()
+      return
+    }
+    setSubmitting(true)
+    const errorMessage = await persistExpense()
+    setSubmitting(false)
+    if (errorMessage) {
+      // Mejor cerrar igualmente: no tiene sentido dejar a la persona
+      // atrapada en el formulario por un fallo de guardado del borrador.
+      onClose()
+      return
+    }
     onCreated()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={handleRequestClose}
+    >
       <div
         className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {isEditing ? t('expenses.edit') : t('expenses.newTitle')}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Foto del ticket {isEditing ? '(sustituir, opcional)' : '(opcional)'}
+              {t('expenses.receiptPhoto')} {isEditing ? t('expenses.receiptReplaceOptional') : t('expenses.receiptOptional')}
             </label>
             <input
               type="file"
@@ -233,25 +279,25 @@ export default function NewExpenseModal({
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-300 dark:file:bg-brand-950/40 dark:file:text-brand-400"
             />
             {!previewUrl && isEditing && editing?.receipt_image_path && (
-              <p className="mt-2 text-xs text-slate-400">Ya hay una foto de ticket guardada. Sube una nueva para sustituirla.</p>
+              <p className="mt-2 text-xs text-slate-400">{t('expenses.receiptSavedHint')}</p>
             )}
             {previewUrl && (
-              <img src={previewUrl} alt="Vista previa del ticket" className="mt-3 max-h-48 rounded-lg object-contain" />
+              <img src={previewUrl} alt={t('expenses.receiptPreviewAlt')} className="mt-3 max-h-48 rounded-lg object-contain" />
             )}
             {ocrRunning && (
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Leyendo el ticket… {ocrProgress}%</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                {t('expenses.ocrReading', { progress: ocrProgress })}
+              </p>
             )}
             {ocrChecked && !ocrRunning && (
               <p className={`mt-2 text-sm ${needsManualReview ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                {needsManualReview
-                  ? '⚠️ No hemos podido leer el importe con confianza. Revisa y corrige el total manualmente.'
-                  : '✓ Importe detectado automáticamente. Puedes corregirlo si no es correcto.'}
+                {needsManualReview ? t('expenses.ocrNeedsReview') : t('expenses.ocrDetected')}
               </p>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Importe total (€)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.totalAmount')}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -267,18 +313,18 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Descripción (opcional)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.description')}</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ej. Supermercado, cena…"
+              placeholder={t('expenses.descriptionPlaceholder')}
               className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Categoría</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.category')}</label>
             <div className="flex flex-wrap gap-2">
               {EXPENSE_CATEGORIES.map((c) => (
                 <button
@@ -298,7 +344,7 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">¿Quién ha pagado?</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.whoPaid')}</label>
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
@@ -306,15 +352,15 @@ export default function NewExpenseModal({
             >
               {acceptedMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
-                  {m.profile?.username ?? m.user_id} {m.user_id === user?.id ? '(tú)' : ''}
+                  {m.profile?.username ?? m.user_id} {m.user_id === user?.id ? t('expenses.you') : ''}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Reparto</label>
-            <div className="mb-3 flex gap-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.split')}</label>
+            <div className="mb-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setSplitMode('equal')}
@@ -324,7 +370,18 @@ export default function NewExpenseModal({
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
-                Partes iguales
+                {t('expenses.splitEqual')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSplitMode('percent')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                  splitMode === 'percent'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                }`}
+              >
+                {t('expenses.splitPercent')}
               </button>
               <button
                 type="button"
@@ -335,7 +392,7 @@ export default function NewExpenseModal({
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
-                Importes personalizados
+                {t('expenses.splitCustom')}
               </button>
             </div>
 
@@ -347,6 +404,27 @@ export default function NewExpenseModal({
                     <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                       {((equalShares[m.user_id] ?? 0) / 100).toFixed(2)} €
                     </span>
+                  ) : splitMode === 'percent' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={percentAmounts[m.user_id] ?? ''}
+                          onChange={(e) => setPercentAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))}
+                          placeholder="0"
+                          className="w-16 rounded-lg border px-2 py-1.5 pr-5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                        />
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                      </div>
+                      <span className="w-16 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400">
+                        {(() => {
+                          const pct = Number.parseFloat((percentAmounts[m.user_id] ?? '0').replace(',', '.'))
+                          const cents = Math.round(Math.round((totalValid ? totalAmount : 0) * 100) * ((Number.isFinite(pct) ? pct : 0) / 100))
+                          return `${(cents / 100).toFixed(2)} €`
+                        })()}
+                      </span>
+                    </div>
                   ) : (
                     <input
                       type="text"
@@ -363,9 +441,21 @@ export default function NewExpenseModal({
               ))}
             </div>
             {splitMode === 'custom' && totalValid && (
-              <p className={`mt-2 text-xs ${customMatchesTotal ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                Suma actual: {(customTotalCents / 100).toFixed(2)} € de {totalAmount.toFixed(2)} €
+              <p className={`mt-2 text-xs ${customMatchesTotal ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {t('expenses.sumCurrent', { sum: (customTotalCents / 100).toFixed(2), total: totalAmount.toFixed(2) })}
               </p>
+            )}
+            {splitMode === 'percent' && totalValid && (
+              <p className={`mt-2 text-xs ${percentComplete ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {percentComplete
+                  ? t('expenses.percentAssigned', { sum: percentRounded })
+                  : percentRounded < 100
+                    ? t('expenses.percentUnassigned', { pct: (Math.round((100 - percentRounded) * 100) / 100).toString() })
+                    : t('expenses.percentOver', { pct: (Math.round((percentRounded - 100) * 100) / 100).toString() })}
+              </p>
+            )}
+            {!splitComplete && (splitMode === 'custom' || splitMode === 'percent') && (
+              <p className="mt-2 text-xs text-slate-400">{t('expenses.draftHint')}</p>
             )}
           </div>
 
@@ -374,17 +464,17 @@ export default function NewExpenseModal({
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleRequestClose}
               className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Cancelar
+              {t('expenses.close')}
             </button>
             <button
               type="submit"
               disabled={submitting || ocrRunning}
               className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
-              {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Guardar gasto'}
+              {submitting ? t('common.saving') : isEditing ? t('expenses.saveChanges') : t('expenses.saveExpense')}
             </button>
           </div>
         </form>
