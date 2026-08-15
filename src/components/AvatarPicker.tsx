@@ -71,7 +71,7 @@ export default function AvatarPicker({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="grid grid-cols-5 gap-3">
             {Array.from({ length: AVATARS_PER_CATEGORY }, (_, i) => {
-              const url = `/avatars/${activeSlug}/${i + 1}.png`
+              const url = `/avatars/${activeSlug}-${i + 1}.png`
               const isSelected = selected === url
               return (
                 <button

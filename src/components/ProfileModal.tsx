@@ -7,6 +7,7 @@ import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
 import AvatarCropper from './AvatarCropper'
+import AvatarPicker from './AvatarPicker'
 import type { Language, Theme } from '../lib/types'
 
 const THEME_OPTIONS: { value: Theme; labelKey: TranslationKey }[] = [
@@ -82,6 +83,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [showDelete, setShowDelete] = useState(false)
   const [showMyExpenses, setShowMyExpenses] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
   const [newUsername, setNewUsername] = useState('')
   const [usernameSubmitting, setUsernameSubmitting] = useState(false)
@@ -130,6 +132,23 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       .from('profiles')
       .update({ avatar_url: publicData.publicUrl })
       .eq('id', user.id)
+
+    setUploading(false)
+    if (updateErr) {
+      setError(updateErr.message)
+      return
+    }
+
+    await refreshProfile()
+  }
+
+  const handlePickAvatar = async (url: string) => {
+    setShowAvatarPicker(false)
+    setError(null)
+    setPreviewUrl(url)
+    setUploading(true)
+
+    const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
 
     setUploading(false)
     if (updateErr) {
@@ -233,10 +252,20 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
             size={88}
             className="ring-2 ring-slate-100 ring-[var(--color-surface-border)]"
           />
-          <label className="cursor-pointer rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100">
-            {uploading ? t('profile.uploading') : t('profile.changePhoto')}
-            <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
-          </label>
+          <div className="flex gap-2">
+            <label className="cursor-pointer rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100">
+              {uploading ? t('profile.uploading') : t('profile.changePhoto')}
+              <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowAvatarPicker(true)}
+              disabled={uploading}
+              className="rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50"
+            >
+              {t('profile.chooseAvatar')}
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 space-y-1 text-center">
@@ -429,6 +458,13 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       {showMyExpenses && <MyExpensesModal onClose={() => setShowMyExpenses(false)} />}
       {cropFile && (
         <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />
+      )}
+      {showAvatarPicker && (
+        <AvatarPicker
+          currentUrl={profile.avatar_url}
+          onClose={() => setShowAvatarPicker(false)}
+          onSelect={handlePickAvatar}
+        />
       )}
     </div>
   )
