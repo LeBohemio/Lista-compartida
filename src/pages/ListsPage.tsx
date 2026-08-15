@@ -180,7 +180,7 @@ export default function ListsPage() {
 
   return (
     <div
-      className="min-h-screen bg-slate-50 pb-24 dark:bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-24 bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       <header className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
@@ -238,7 +238,7 @@ export default function ListsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => respondInvitation(inv.id, false)}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white dark:border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
+                      className="rounded-lg border px-3 py-1.5 text-sm text-slate-600 hover:bg-white border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
                     >
                       {t('lists.reject')}
                     </button>
@@ -274,7 +274,7 @@ export default function ListsPage() {
           {loading ? (
             <p className="text-sm text-slate-400">Cargando listas…</p>
           ) : activeLists.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-[var(--color-surface-border)]">
+            <div className="rounded-xl border border-dashed p-8 text-center border-[var(--color-surface-border)]">
               <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
               <button
                 onClick={() => setShowCreate(true)}
@@ -284,7 +284,7 @@ export default function ListsPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
+            <div className="overflow-hidden rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
               {reorder.displayItems.map((l) => (
                 <ListRow
                   key={l.id}
@@ -321,7 +321,7 @@ export default function ListsPage() {
               {showArchived ? '▾' : '▸'} {t('lists.completedSection')} ({archivedLists.length})
             </button>
             {showArchived && (
-              <div className="overflow-hidden rounded-xl bg-white opacity-70 shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
+              <div className="overflow-hidden rounded-xl opacity-70 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
                 {archivedLists.map((l) => (
                   <ListRow
                     key={l.id}
@@ -344,7 +344,7 @@ export default function ListsPage() {
 
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
         aria-label="Crear lista"
       >
         +
@@ -450,7 +450,7 @@ function ListRow({
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
       className={`w-full p-4 text-left transition ${inReorder ? 'touch-none select-none' : ''} ${
         dragging
-          ? 'relative rounded-xl bg-white shadow-lg ring-2 ring-brand-300 dark:bg-[var(--color-surface)]'
+          ? 'relative rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
           : 'hover:bg-slate-50 dark:hover:bg-white/5'
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}

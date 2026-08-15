@@ -20,7 +20,7 @@ export default function ContextMenu({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-2 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
+        className="w-full max-w-sm rounded-t-2xl p-2 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         {title && (

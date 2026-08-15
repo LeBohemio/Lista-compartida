@@ -21,6 +21,7 @@
   --color-surface: #25243d;
   --color-surface-alt: #1a1929;
   --color-surface-border: #383663;
+  --color-surface-line: rgba(56, 54, 99, 0.4);
 }
 
 html, body, #root {

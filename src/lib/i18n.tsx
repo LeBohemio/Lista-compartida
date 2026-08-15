@@ -155,6 +155,15 @@ const translations = {
     'profile.passwordUpdated': 'Contraseña actualizada.',
     'profile.emailConfirmSent':
       'Te hemos mandado un email de confirmación a la nueva dirección. Hasta que no lo confirmes, seguirás entrando con la actual.',
+    'chat.empty': 'Todavía no hay mensajes. ¡Escribe el primero!',
+    'chat.attachPhoto': 'Adjuntar foto',
+    'chat.placeholder': 'Escribe un mensaje…',
+    'chat.send': 'Enviar',
+    'chat.closeViewer': 'Cerrar',
+    'chat.photoExpanded': 'Foto ampliada',
+    'chat.photoAlt': 'Foto',
+    'chat.messageDeleted': 'Mensaje eliminado',
+    'chat.copied': 'Copiado al portapapeles',
   },
   en: {
     'nav.notes': 'Notes',
@@ -302,6 +311,15 @@ const translations = {
     'profile.passwordUpdated': 'Password updated.',
     'profile.emailConfirmSent':
       "We've sent a confirmation email to the new address. Until you confirm it, you'll keep signing in with the current one.",
+    'chat.empty': 'No messages yet. Write the first one!',
+    'chat.attachPhoto': 'Attach photo',
+    'chat.placeholder': 'Write a message…',
+    'chat.send': 'Send',
+    'chat.closeViewer': 'Close',
+    'chat.photoExpanded': 'Expanded photo',
+    'chat.photoAlt': 'Photo',
+    'chat.messageDeleted': 'Message deleted',
+    'chat.copied': 'Copied to clipboard',
   },
 } as const
 

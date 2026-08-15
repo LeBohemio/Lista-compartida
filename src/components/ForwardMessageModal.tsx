@@ -80,7 +80,7 @@ export default function ForwardMessageModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
+        className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Reenviar a…</h2>
@@ -98,7 +98,7 @@ export default function ForwardMessageModal({
                 key={l.id}
                 onClick={() => forwardTo(l.id)}
                 disabled={sendingTo !== null}
-                className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-[var(--color-surface-border)] dark:hover:bg-slate-700"
+                className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:hover:bg-slate-700"
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
                 <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
@@ -110,7 +110,7 @@ export default function ForwardMessageModal({
 
         <button
           onClick={onClose}
-          className="mt-4 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+          className="mt-4 w-full rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Cancelar
         </button>

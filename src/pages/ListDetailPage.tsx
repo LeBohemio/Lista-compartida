@@ -73,7 +73,7 @@ export default function ListDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[var(--color-surface-alt)]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
         <p className="text-slate-400">Cargando lista…</p>
       </div>
     )
@@ -81,7 +81,7 @@ export default function ListDetailPage() {
 
   if (error || !list) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-[var(--color-surface-alt)]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center bg-[var(--color-surface-alt)]">
         <p className="text-slate-600 dark:text-slate-300">No se pudo cargar la lista. Puede que ya no tengas acceso.</p>
         <button onClick={() => navigate('/lists')} className="text-brand-600 underline dark:text-brand-400">
           Volver a mis listas
@@ -92,7 +92,7 @@ export default function ListDetailPage() {
 
   if (!myMembership || myMembership.status !== 'accepted') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-[var(--color-surface-alt)]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center bg-[var(--color-surface-alt)]">
         <p className="text-slate-600 dark:text-slate-300">
           Tienes una invitación pendiente para "{list.name}". Acéptala desde tus listas.
         </p>
@@ -133,11 +133,11 @@ export default function ListDetailPage() {
 
   return (
     <div
-      className="min-h-screen bg-slate-50 pb-16 dark:bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-16 bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       <header
-        className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur dark:border-[var(--color-surface-border)] dark:from-[var(--color-surface)] dark:to-[var(--color-surface)]"
+        className="sticky top-0 z-10 border-b bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur border-[var(--color-surface-border)] dark:from-[var(--color-surface)] dark:to-[var(--color-surface)]"
         style={{ borderTopColor: listColor, borderTopWidth: 3 }}
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between">
@@ -191,7 +191,7 @@ export default function ListDetailPage() {
         </div>
 
         {showMembers && (
-          <div className="mx-auto mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm dark:bg-[var(--color-surface)]">
+          <div className="mx-auto mt-3 max-w-2xl rounded-lg p-3 text-sm bg-[var(--color-surface)]">
             <ul className="space-y-2">
               {members.map((m) => (
                 <li key={m.user_id} className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export default function ListDetailPage() {
           <button
             onClick={() => setTab('notas')}
             className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'notas' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-[var(--color-surface)] dark:text-slate-300'
+              tab === 'notas' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
             }`}
           >
             {t('nav.notes')}
@@ -237,7 +237,7 @@ export default function ListDetailPage() {
             <button
               onClick={() => setTab('gastos')}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                tab === 'gastos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-[var(--color-surface)] dark:text-slate-300'
+                tab === 'gastos' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
               }`}
             >
               {t('nav.expenses')}
@@ -245,7 +245,7 @@ export default function ListDetailPage() {
           ) : isOwner ? (
             <button
               onClick={enableExpenses}
-              className="flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 dark:border-[var(--color-surface-border)] dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
+              className="flex-1 rounded-lg border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 border-[var(--color-surface-border)] dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
             >
               Activar gastos
             </button>
@@ -253,7 +253,7 @@ export default function ListDetailPage() {
           <button
             onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'chat' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-[var(--color-surface)] dark:text-slate-300'
+              tab === 'chat' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
             }`}
           >
             {t('nav.chat')}
@@ -268,7 +268,7 @@ export default function ListDetailPage() {
 
       <main className="mx-auto max-w-2xl px-4 py-6">
         {isCompleted && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-600 dark:bg-[var(--color-surface)] dark:text-slate-300">
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 bg-[var(--color-surface)] dark:text-slate-300">
             <span>🔒 {t('lists.readOnlyBanner')}</span>
             {isOwner && (
               <button onClick={reactivateList} className="shrink-0 font-semibold text-brand-600 hover:underline dark:text-brand-400">

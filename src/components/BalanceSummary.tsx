@@ -71,7 +71,7 @@ export default function BalanceSummary({
   }
 
   return (
-    <div className="mb-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
+    <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Balance</h3>
         <button
@@ -119,7 +119,7 @@ export default function BalanceSummary({
       {suggestedDebts.length === 0 ? (
         <p className="text-sm text-slate-400">No hay deudas pendientes.</p>
       ) : (
-        <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-[var(--color-surface-border)]">
+        <div className="space-y-2 border-t border-slate-100 pt-3 border-[var(--color-surface-border)]">
           {suggestedDebts.map((d, idx) => {
             const canSettle = user?.id === d.from || user?.id === d.to
             return (

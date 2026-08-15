@@ -145,7 +145,7 @@ export default function ExpensesPanel({
       <BalanceSummary listId={listId} members={members} expenses={visibleExpenses} settlements={settlements} />
 
       {categoryTotals.length > 0 && (
-        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
+        <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Por categoría
           </h3>
@@ -153,7 +153,7 @@ export default function ExpensesPanel({
             {categoryTotals.map((c) => (
               <span
                 key={c.value}
-                className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-[var(--color-surface-alt)] dark:text-slate-300"
+                className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-600 bg-[var(--color-surface-alt)] dark:text-slate-300"
               >
                 {c.icon} {c.label}: {formatEuro(c.total)}
               </span>
@@ -172,7 +172,7 @@ export default function ExpensesPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar en el histórico…"
-          className="mb-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-100"
+          className="mb-3 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
         />
       )}
 
@@ -196,7 +196,7 @@ export default function ExpensesPanel({
         <div className="space-y-2">
           {filteredLedger.map((row) =>
             row.kind === 'expense' ? (
-              <div key={`e-${row.data.id}`} className="rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
+              <div key={`e-${row.data.id}`} className="rounded-lg shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
                 <div className="flex w-full items-center justify-between px-4 py-3">
                   <button onClick={() => toggleExpand(row.data)} className="flex flex-1 items-center gap-2 text-left">
                     <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
@@ -241,7 +241,7 @@ export default function ExpensesPanel({
                   </div>
                 </div>
                 {expandedId === row.data.id && (
-                  <div className="border-t border-slate-100 px-4 py-3 dark:border-[var(--color-surface-border)]">
+                  <div className="border-t border-slate-100 px-4 py-3 border-[var(--color-surface-border)]">
                     {row.data.receipt_image_path && (
                       <div className="mb-3">
                         {receiptUrl ? (

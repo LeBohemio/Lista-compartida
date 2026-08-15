@@ -83,27 +83,62 @@ export function shadesFromAccent(hex: string) {
   }
 }
 
+/** true si el color es lo bastante claro como para considerarse un fondo "claro". */
+function isLightColor(hex: string): boolean {
+  const [, , l] = rgbToHsl(...hexToRgb(hex))
+  return l >= 50
+}
+
+function hexToRgbaString(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 /**
- * Genera los tonos de "superficie" (fondo de tarjetas/modales, fondo de
- * página, bordes sutiles) para el tema oscuro, a partir del color de acento
- * — en vez del gris genérico de siempre, para que todo el modo oscuro
- * combine con el acento elegido.
+ * Genera los tonos de "superficie" (fondo de tarjetas/modales, bordes
+ * sutiles, líneas finas como las de una hoja pautada) a partir del color de
+ * acento — en vez del gris (o el ámbar fijo del bloc de notas) de siempre,
+ * para que todo combine con el acento elegido. Genera una rampa distinta
+ * según el fondo que realmente se vea sea claro u oscuro: pastel clarito
+ * sobre fondo claro, mate oscuro sobre fondo oscuro.
  */
-export function surfaceShadesFromAccent(hex: string) {
+export function surfaceShadesFromAccent(hex: string, isDark: boolean) {
+  if (isDark) {
+    const border = atLightness(hex, 30, 30)
+    return {
+      surface: atLightness(hex, 19, 26),
+      surfaceAlt: atLightness(hex, 13, 24),
+      surfaceBorder: border,
+      surfaceLine: hexToRgbaString(border, 0.4),
+    }
+  }
+  const border = atLightness(hex, 82, 35)
   return {
-    surface: atLightness(hex, 19, 26),
-    surfaceAlt: atLightness(hex, 13, 24),
-    surfaceBorder: atLightness(hex, 30, 30),
+    surface: atLightness(hex, 99, 22),
+    surfaceAlt: atLightness(hex, 96, 24),
+    surfaceBorder: border,
+    surfaceLine: hexToRgbaString(border, 0.55),
   }
 }
 
 const DEFAULT_ACCENT = '#4f46e5'
 
-/** Aplica el tema (claro/oscuro/sistema) y el color de acento al documento entero. */
-export function applyTheme(theme: Theme, accentColor: string | null) {
+/**
+ * Aplica el tema, el color de acento y el fondo al documento entero.
+ *
+ * La clase `dark` (de la que dependen todos los estilos `dark:*`) ya no la
+ * decide solo la preferencia de tema — la decide el fondo que realmente se
+ * ve: si hay un `backgroundColor` personalizado, manda su propia luminosidad;
+ * si no hay ninguno elegido, se usa el fondo por defecto del tema. Así, si
+ * alguien tiene el tema oscuro pero elige un fondo clarito (o al revés), la
+ * interfaz entera (tarjetas, texto, bordes) se ve acorde a lo que realmente
+ * tiene delante, no a un ajuste que ya no representa lo que ve.
+ */
+export function applyTheme(theme: Theme, accentColor: string | null, backgroundColor: string | null) {
   const root = document.documentElement
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const isDark = theme === 'dark' || (theme === 'system' && prefersDark)
+  const themeIsDark = theme === 'dark' || (theme === 'system' && prefersDark)
+  const isDark = backgroundColor ? !isLightColor(backgroundColor) : themeIsDark
   root.classList.toggle('dark', isDark)
 
   const effectiveAccent = accentColor || DEFAULT_ACCENT
@@ -114,8 +149,9 @@ export function applyTheme(theme: Theme, accentColor: string | null) {
   root.style.setProperty('--color-brand-600', shades[600])
   root.style.setProperty('--color-brand-700', shades[700])
 
-  const surf = surfaceShadesFromAccent(effectiveAccent)
+  const surf = surfaceShadesFromAccent(effectiveAccent, isDark)
   root.style.setProperty('--color-surface', surf.surface)
   root.style.setProperty('--color-surface-alt', surf.surfaceAlt)
   root.style.setProperty('--color-surface-border', surf.surfaceBorder)
+  root.style.setProperty('--color-surface-line', surf.surfaceLine)
 }

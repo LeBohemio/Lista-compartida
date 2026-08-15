@@ -165,7 +165,7 @@ export default function ChatPanel({
     <div>
       <div className="space-y-3 pb-24">
         {visibleMessages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">Todavía no hay mensajes. ¡Escribe el primero!</p>
+          <p className="py-8 text-center text-sm text-slate-400">{t('chat.empty')}</p>
         ) : (
           visibleMessages.map((m, idx) => {
             const isMine = m.sender_id === user?.id
@@ -186,7 +186,7 @@ export default function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)]/95">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur border-[var(--color-surface-border)] bg-[var(--color-surface-alt)]/95">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
           {readOnly ? (
@@ -199,8 +199,8 @@ export default function ChatPanel({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={sending}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
-                aria-label="Adjuntar foto"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
+                aria-label={t('chat.attachPhoto')}
               >
                 📷
               </button>
@@ -216,14 +216,14 @@ export default function ChatPanel({
                 type="text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Escribe un mensaje…"
-                className="flex-1 rounded-full border border-slate-300 px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-100"
+                placeholder={t('chat.placeholder')}
+                className="flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
               />
               <button
                 type="submit"
                 disabled={sending || !text.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
-                aria-label="Enviar"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow ring-2 ring-white/40 dark:shadow-black/40 dark:ring-white/15 hover:bg-brand-700 disabled:opacity-50"
+                aria-label={t('chat.send')}
               >
                 ➤
               </button>
@@ -232,19 +232,19 @@ export default function ChatPanel({
         </div>
       </div>
 
-      {lastPendingId && <UndoToast message="Mensaje eliminado" onUndo={() => undoDeleteMessage(lastPendingId)} />}
-      {copiedFeedback && <Toast message="Copiado al portapapeles" />}
+      {lastPendingId && <UndoToast message={t('chat.messageDeleted')} onUndo={() => undoDeleteMessage(lastPendingId)} />}
+      {copiedFeedback && <Toast message={t('chat.copied')} />}
 
       {menuTarget && (
         <ContextMenu
           onClose={() => setMenuTarget(null)}
           actions={[
             ...(menuTarget.content
-              ? [{ label: 'Copiar', icon: '📋', onSelect: () => copyMessage(menuTarget) }]
+              ? [{ label: t('menu.copy'), icon: '📋', onSelect: () => copyMessage(menuTarget) }]
               : []),
-            { label: 'Reenviar', icon: '↪️', onSelect: () => setForwardTarget(menuTarget) },
+            { label: t('menu.forward'), icon: '↪️', onSelect: () => setForwardTarget(menuTarget) },
             ...(menuTarget.sender_id === user?.id
-              ? [{ label: 'Eliminar', icon: '🗑', danger: true, onSelect: () => requestDeleteMessage(menuTarget.id) }]
+              ? [{ label: t('menu.delete'), icon: '🗑', danger: true, onSelect: () => requestDeleteMessage(menuTarget.id) }]
               : []),
           ]}
         />
@@ -266,8 +266,8 @@ export default function ChatPanel({
         >
           <button
             onClick={() => setViewerUrl(null)}
-            aria-label="Cerrar"
-            title="Cerrar"
+            aria-label={t('chat.closeViewer')}
+            title={t('chat.closeViewer')}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
           >
             ✕
@@ -275,7 +275,7 @@ export default function ChatPanel({
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <img
             src={viewerUrl}
-            alt="Foto ampliada"
+            alt={t('chat.photoExpanded')}
             className="max-h-full max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />
@@ -300,6 +300,7 @@ function MessageBubble({
   onLongPress: () => void
   onOpenImage: (url: string) => void
 }) {
+  const { t } = useLanguage()
   const longPress = useLongPress(onLongPress)
 
   return (
@@ -319,14 +320,14 @@ function MessageBubble({
           {...longPress}
           className={`select-none rounded-2xl px-3 py-2 text-sm shadow-sm ${
             isMine
-              ? 'rounded-br-sm bg-brand-600 text-white'
-              : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:text-slate-100 dark:ring-[var(--color-surface-border)]'
+              ? 'rounded-br-sm bg-brand-500 text-white ring-1 ring-black/10'
+              : 'rounded-bl-sm text-slate-800 ring-1 bg-[var(--color-surface)] dark:text-slate-100 ring-[var(--color-surface-border)]'
           }`}
         >
           {m.image_path && imageUrl && (
             <img
               src={imageUrl}
-              alt="Foto"
+              alt={t('chat.photoAlt')}
               className="mb-1 max-h-56 cursor-pointer rounded-lg object-contain"
               onClick={(e) => {
                 e.stopPropagation()

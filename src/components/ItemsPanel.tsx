@@ -224,7 +224,7 @@ export default function ItemsPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('notes.searchPlaceholder')}
-          className="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-100"
+          className="mb-4 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
         />
       )}
 
@@ -299,7 +299,7 @@ export default function ItemsPanel({
             ))}
 
             {doneItems.length > 0 && (
-              <div className="flex items-center justify-between bg-amber-900/[0.03] px-3 py-1.5 dark:bg-amber-100/[0.03]">
+              <div className="flex items-center justify-between bg-[var(--color-surface-alt)] px-3 py-1.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   {t('notes.doneSectionLabel')} ({doneItems.length})
                 </p>
@@ -348,7 +348,7 @@ export default function ItemsPanel({
           onClick={() => setShowAddSheet(true)}
           aria-label={t('notes.addTitle')}
           title={t('notes.addTitle')}
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
         >
           +
         </button>
@@ -396,22 +396,28 @@ export default function ItemsPanel({
   )
 }
 
-function NotepadCard({ children, muted }: { children: ReactNode; muted?: boolean }) {
+function NotepadCard({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-xl shadow-sm ring-1 ${
-        muted
-          ? 'bg-[#faf7ee] ring-amber-100/70 dark:bg-[#26221c] dark:ring-amber-950/30'
-          : 'bg-[#fffdf3] ring-amber-100 dark:bg-[#2a251e] dark:ring-amber-950/40'
-      }`}
+      className="relative overflow-hidden rounded-xl bg-[var(--color-surface)] shadow-sm ring-1 ring-[var(--color-surface-border)]"
       style={{
         backgroundImage:
-          'repeating-linear-gradient(to bottom, transparent, transparent 42px, rgba(180,150,90,0.16) 43px)',
+          'repeating-linear-gradient(to bottom, transparent, transparent 42px, var(--color-surface-line) 43px)',
         backgroundPosition: '0 4px',
       }}
     >
-      <div className="pointer-events-none absolute inset-y-0 left-9 hidden w-px bg-red-200/60 sm:block dark:bg-red-900/30" />
-      <div className="divide-y divide-amber-900/5 dark:divide-amber-100/5">{children}</div>
+      {/* margen izquierdo, como en una hoja pautada */}
+      <div className="pointer-events-none absolute inset-y-0 left-9 hidden w-px bg-[var(--color-surface-line)] sm:block" />
+      {/* dobladillo en la esquina superior derecha, como una hoja doblada */}
+      <div
+        className="pointer-events-none absolute right-0 top-0 h-4 w-4"
+        style={{
+          background: 'linear-gradient(135deg, transparent 50%, var(--color-surface-alt) 50%)',
+          boxShadow: '-1px 1px 3px rgba(0,0,0,0.18)',
+        }}
+        aria-hidden="true"
+      />
+      <div>{children}</div>
     </div>
   )
 }
@@ -449,7 +455,7 @@ function AddNoteSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
+        className="w-full max-w-md rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('notes.addTitle')}</h2>
@@ -477,7 +483,7 @@ function AddNoteSheet({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('notes.addPlaceholder')}
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
+            className="flex-1 rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
           />
           <button
             type="submit"
@@ -494,7 +500,7 @@ function AddNoteSheet({
               <button
                 key={s.id}
                 onClick={() => onSuggestion(s)}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                className="rounded-full border px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
               >
                 {s.content}
               </button>
@@ -504,7 +510,7 @@ function AddNoteSheet({
 
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+          className="mt-5 w-full rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           {t('common.done')}
         </button>
@@ -527,7 +533,7 @@ function DueDateSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
+        className="w-full max-w-sm rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Fecha límite</h2>
@@ -536,13 +542,13 @@ function DueDateSheet({
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
+          className="mb-5 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
         />
         <div className="flex gap-3">
           {item.due_date && (
             <button
               onClick={() => onSave(null)}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Quitar fecha
             </button>
@@ -631,7 +637,7 @@ function ItemRow({
       onPointerUp={inReorder ? onDragPointerUp : undefined}
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
       className={`px-3 py-2.5 sm:pl-11 ${inReorder ? 'touch-none select-none' : ''} ${
-        dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-amber-50/80 dark:bg-amber-950/20' : ''
+        dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}
     >
@@ -657,7 +663,7 @@ function ItemRow({
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => onSaveEdit(draft)}
-              className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
+              className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           ) : (
             <p

@@ -98,12 +98,12 @@ export default function AvatarCropper({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-[var(--color-surface)]">
+      <div className="w-full max-w-sm rounded-2xl p-6 shadow-xl bg-[var(--color-surface)]">
         <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Ajustar foto</h2>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Arrastra para moverla y usa el control para hacer zoom.</p>
 
         <div
-          className="relative mx-auto touch-none overflow-hidden rounded-full bg-slate-100 dark:bg-[var(--color-surface-alt)]"
+          className="relative mx-auto touch-none overflow-hidden rounded-full bg-[var(--color-surface-alt)]"
           style={{ width: CONTAINER_SIZE, height: CONTAINER_SIZE, cursor: 'grab' }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -145,7 +145,7 @@ export default function AvatarCropper({
         <div className="mt-5 flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancelar
           </button>

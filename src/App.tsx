@@ -14,17 +14,18 @@ function App() {
 
   useEffect(() => {
     const theme = profile?.theme ?? 'system'
-    applyTheme(theme, profile?.accent_color ?? null)
-    if (theme !== 'system') return
+    const backgroundColor = profile?.background_color ?? null
+    applyTheme(theme, profile?.accent_color ?? null, backgroundColor)
+    if (theme !== 'system' || backgroundColor) return
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme('system', profile?.accent_color ?? null)
+    const onChange = () => applyTheme('system', profile?.accent_color ?? null, backgroundColor)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [profile?.theme, profile?.accent_color])
+  }, [profile?.theme, profile?.accent_color, profile?.background_color])
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-screen items-center justify-center bg-slate-50 dark:bg-[var(--color-surface-alt)]">
+      <div className="flex h-full min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
         <p className="text-slate-500 dark:text-slate-400">Cargando…</p>
       </div>
     )
