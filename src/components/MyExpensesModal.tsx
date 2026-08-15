@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { formatEuro } from '../lib/balances'
+import { useLanguage } from '../lib/i18n'
 
 type ListRef = { name: string; color: string | null }
 type ExpenseRow = { id: string; list_id: string; total_amount: number; created_at: string; list: ListRef | null }
@@ -14,6 +15,7 @@ function monthKey(dateStr: string) {
 
 export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuth()
+  const { t, language } = useLanguage()
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [settlements, setSettlements] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +50,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   }, [monthOffset])
 
   const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`
-  const monthLabel = monthDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+  const monthLabel = monthDate.toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' })
 
   const monthExpenses = expenses.filter((e) => monthKey(e.created_at) === key)
   const monthSettlements = settlements.filter((s) => monthKey(s.created_at) === key)
@@ -75,19 +77,19 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
       >
         <button
           onClick={onClose}
-          aria-label="Cerrar"
-          title="Cerrar"
+          aria-label={t('common.close')}
+          title={t('common.close')}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
           ✕
         </button>
-        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">Mis gastos</h2>
+        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('myExpenses.title')}</h2>
 
         <div className="mb-5 flex items-center justify-between">
           <button
             onClick={() => setMonthOffset((o) => o + 1)}
             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-            aria-label="Mes anterior"
+            aria-label={t('myExpenses.prevMonth')}
           >
             ‹
           </button>
@@ -96,16 +98,16 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
             onClick={() => setMonthOffset((o) => Math.max(0, o - 1))}
             disabled={monthOffset === 0}
             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-            aria-label="Mes siguiente"
+            aria-label={t('myExpenses.nextMonth')}
           >
             ›
           </button>
         </div>
 
         {loading ? (
-          <p className="py-8 text-center text-sm text-slate-400">Cargando…</p>
+          <p className="py-8 text-center text-sm text-slate-400">{t('common.loading')}</p>
         ) : byList.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">No pagaste ningún gasto compartido este mes.</p>
+          <p className="py-8 text-center text-sm text-slate-400">{t('myExpenses.empty')}</p>
         ) : (
           <>
             <div className="mb-5 space-y-3">
@@ -136,13 +138,13 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 border-[var(--color-surface-border)] dark:text-slate-100">
-              <span>Total</span>
+              <span>{t('myExpenses.total')}</span>
               <span>{formatEuro(totalMonth)}</span>
             </div>
 
             {totalCollected > 0 && (
               <div className="mt-2 flex items-center justify-between text-sm text-green-600 dark:text-green-400">
-                <span>Cobrado</span>
+                <span>{t('myExpenses.collected')}</span>
                 <span className="font-medium">{formatEuro(totalCollected)}</span>
               </div>
             )}

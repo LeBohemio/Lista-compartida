@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { computeNetBalances, formatEuro, simplifyDebts } from '../lib/balances'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import type { Expense, ListMember, Settlement, SuggestedDebt } from '../lib/types'
 import SettleUpModal from './SettleUpModal'
 
@@ -16,6 +17,7 @@ export default function BalanceSummary({
   settlements: Settlement[]
 }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [settling, setSettling] = useState<SuggestedDebt | null>(null)
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
 
@@ -31,21 +33,25 @@ export default function BalanceSummary({
   const accepted = members.filter((m) => m.status === 'accepted')
 
   const buildShareText = () => {
-    const lines: string[] = ['📋 Balance de la lista', '']
+    const lines: string[] = [t('balance.shareHeader'), '']
     for (const m of accepted) {
       const balance = netBalances[m.user_id] ?? 0
       const name = m.profile?.username ?? m.user_id
       const status =
-        balance > 0.004 ? `le deben ${formatEuro(balance)}` : balance < -0.004 ? `debe ${formatEuro(-balance)}` : 'al día'
+        balance > 0.004
+          ? t('balance.owed', { amount: formatEuro(balance) })
+          : balance < -0.004
+            ? t('balance.owes', { amount: formatEuro(-balance) })
+            : t('balance.settled')
       lines.push(`• ${name}: ${status}`)
     }
     if (suggestedDebts.length > 0) {
-      lines.push('', 'Pagos pendientes:')
+      lines.push('', t('balance.pendingPayments'))
       for (const d of suggestedDebts) {
-        lines.push(`• ${profileById.get(d.from)} debe ${formatEuro(d.amount)} a ${profileById.get(d.to)}`)
+        lines.push(`• ${profileById.get(d.from)} ${t('balance.owesAmountTo', { amount: formatEuro(d.amount) })} ${profileById.get(d.to)}`)
       }
     } else {
-      lines.push('', 'No hay deudas pendientes.')
+      lines.push('', t('balance.noDebts'))
     }
     return lines.join('\n')
   }
@@ -54,7 +60,7 @@ export default function BalanceSummary({
     const text = buildShareText()
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Balance de la lista', text })
+        await navigator.share({ title: t('balance.shareTitle'), text })
       } catch {
         // el usuario canceló el share sheet, no hacemos nada
       }
@@ -62,10 +68,10 @@ export default function BalanceSummary({
     }
     try {
       await navigator.clipboard.writeText(text)
-      setShareFeedback('Copiado al portapapeles')
+      setShareFeedback(t('chat.copied'))
       setTimeout(() => setShareFeedback(null), 2500)
     } catch {
-      setShareFeedback('No se pudo copiar el balance')
+      setShareFeedback(t('balance.errorCopy'))
       setTimeout(() => setShareFeedback(null), 2500)
     }
   }
@@ -77,8 +83,8 @@ export default function BalanceSummary({
         <button
           onClick={shareBalance}
           className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-          aria-label="Compartir balance"
-          title="Compartir balance"
+          aria-label={t('balance.share')}
+          title={t('balance.share')}
         >
           📤
         </button>
@@ -98,7 +104,7 @@ export default function BalanceSummary({
             <div key={m.user_id} className="flex items-center justify-between text-sm">
               <span className="text-slate-700 dark:text-slate-200">
                 {m.profile?.username ?? m.user_id}
-                {isMe ? ' (tú)' : ''}
+                {isMe ? ` ${t('expenses.you')}` : ''}
               </span>
               <span
                 className={`font-medium ${
@@ -109,7 +115,11 @@ export default function BalanceSummary({
                       : 'text-slate-400'
                 }`}
               >
-                {balance > 0.004 ? `le deben ${formatEuro(balance)}` : balance < -0.004 ? `debe ${formatEuro(-balance)}` : 'al día'}
+                {balance > 0.004
+                  ? t('balance.owed', { amount: formatEuro(balance) })
+                  : balance < -0.004
+                    ? t('balance.owes', { amount: formatEuro(-balance) })
+                    : t('balance.settled')}
               </span>
             </div>
           )
@@ -117,7 +127,7 @@ export default function BalanceSummary({
       </div>
 
       {suggestedDebts.length === 0 ? (
-        <p className="text-sm text-slate-400">No hay deudas pendientes.</p>
+        <p className="text-sm text-slate-400">{t('balance.noDebts')}</p>
       ) : (
         <div className="space-y-2 border-t border-slate-100 pt-3 border-[var(--color-surface-border)]">
           {suggestedDebts.map((d, idx) => {
@@ -125,7 +135,8 @@ export default function BalanceSummary({
             return (
               <div key={idx} className="flex items-center justify-between text-sm">
                 <span className="text-slate-700 dark:text-slate-200">
-                  <strong className="text-red-500 dark:text-red-400">{profileById.get(d.from)}</strong> debe {formatEuro(d.amount)} a{' '}
+                  <strong className="text-red-500 dark:text-red-400">{profileById.get(d.from)}</strong>{' '}
+                  {t('balance.owesAmountTo', { amount: formatEuro(d.amount) })}{' '}
                   <strong className="text-green-600 dark:text-green-400">{profileById.get(d.to)}</strong>
                 </span>
                 {canSettle && (
@@ -133,7 +144,7 @@ export default function BalanceSummary({
                     onClick={() => setSettling(d)}
                     className="rounded-lg border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
                   >
-                    Marcar saldada
+                    {t('balance.markSettled')}
                   </button>
                 )}
               </div>

@@ -74,7 +74,7 @@ export default function ListDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-400">Cargando lista…</p>
+        <p className="text-slate-400">{t('list.loading')}</p>
       </div>
     )
   }
@@ -82,9 +82,9 @@ export default function ListDetailPage() {
   if (error || !list) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-600 dark:text-slate-300">No se pudo cargar la lista. Puede que ya no tengas acceso.</p>
+        <p className="text-slate-600 dark:text-slate-300">{t('list.errorLoad')}</p>
         <button onClick={() => navigate('/lists')} className="text-brand-600 underline dark:text-brand-400">
-          Volver a mis listas
+          {t('list.backToMyLists')}
         </button>
       </div>
     )
@@ -93,11 +93,9 @@ export default function ListDetailPage() {
   if (!myMembership || myMembership.status !== 'accepted') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-600 dark:text-slate-300">
-          Tienes una invitación pendiente para "{list.name}". Acéptala desde tus listas.
-        </p>
+        <p className="text-slate-600 dark:text-slate-300">{t('list.pendingInviteBody', { name: list.name })}</p>
         <button onClick={() => navigate('/lists')} className="text-brand-600 underline dark:text-brand-400">
-          Ir a mis listas
+          {t('list.goToMyLists')}
         </button>
       </div>
     )
@@ -158,8 +156,8 @@ export default function ListDetailPage() {
                   <button
                     onClick={() => setShowRename(true)}
                     className="text-xs text-slate-300 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
-                    aria-label="Editar lista"
-                    title="Editar lista"
+                    aria-label={t('list.editTitle')}
+                    title={t('list.editTitle')}
                   >
                     ✎
                   </button>
@@ -176,7 +174,7 @@ export default function ListDetailPage() {
                 )}
               </div>
               <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">
-                {acceptedMembers.length} miembro{acceptedMembers.length === 1 ? '' : 's'}
+                {acceptedMembers.length} {acceptedMembers.length === 1 ? t('list.member') : t('list.membersPlural')}
               </button>
             </div>
           </div>
@@ -185,7 +183,7 @@ export default function ListDetailPage() {
               onClick={() => setShowInvite(true)}
               className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
             >
-              + Invitar
+              {t('list.inviteButton')}
             </button>
           )}
         </div>
@@ -198,21 +196,21 @@ export default function ListDetailPage() {
                   <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                     <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
                     {m.profile?.username ?? m.user_id}
-                    {m.user_id === profile?.id ? ' (tú)' : ''}
-                    {m.role === 'owner' ? ' · creador' : ''}
+                    {m.user_id === profile?.id ? ` ${t('expenses.you')}` : ''}
+                    {m.role === 'owner' ? t('list.ownerSuffix') : ''}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                      {m.status === 'accepted' ? 'Activo' : 'Invitación pendiente'}
+                      {m.status === 'accepted' ? t('member.statusActive') : t('member.statusPending')}
                     </span>
                     {isOwner && m.role !== 'owner' && (
                       <button
                         onClick={() =>
-                          setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? 'este usuario' })
+                          setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? t('list.thisUser') })
                         }
                         className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
-                        aria-label="Eliminar miembro"
-                        title="Eliminar miembro"
+                        aria-label={t('list.removeMember')}
+                        title={t('list.removeMember')}
                       >
                         🗑
                       </button>
@@ -247,7 +245,7 @@ export default function ListDetailPage() {
               onClick={enableExpenses}
               className="flex-1 rounded-lg border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 border-[var(--color-surface-border)] dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
             >
-              Activar gastos
+              {t('list.enableExpensesShort')}
             </button>
           ) : null}
           <button
@@ -320,9 +318,9 @@ export default function ListDetailPage() {
 
       {confirmRemove && (
         <ConfirmDialog
-          title="Eliminar miembro"
-          message={`¿Eliminar a ${confirmRemove.username} de esta lista? Dejará de tener acceso a las notas, gastos y chat.`}
-          confirmLabel="Eliminar"
+          title={t('list.removeMember')}
+          message={t('list.removeMemberConfirm', { name: confirmRemove.username })}
+          confirmLabel={t('menu.delete')}
           danger
           onCancel={() => setConfirmRemove(null)}
           onConfirm={removeMember}

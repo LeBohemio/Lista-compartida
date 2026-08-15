@@ -102,8 +102,36 @@ export function useAuth() {
   return ctx
 }
 
+// Este contexto vive por encima de LanguageProvider (que a su vez depende de
+// useAuth), así que no podemos usar useLanguage()/t() aquí sin crear una
+// dependencia circular. Leemos el idioma guardado directamente de
+// localStorage — es el mismo valor que usa i18n.tsx como semilla inicial.
+function getAuthErrorLanguage(): 'en' | 'es' {
+  if (typeof window === 'undefined') return 'es'
+  const stored = window.localStorage.getItem('listas-en-comun-language')
+  return stored === 'en' ? 'en' : 'es'
+}
+
 function translateAuthError(message: string): string {
   const m = message.toLowerCase()
+  const lang = getAuthErrorLanguage()
+
+  if (lang === 'en') {
+    if (m.includes('already registered') || m.includes('already exists')) {
+      return 'An account with that email already exists.'
+    }
+    if (m.includes('invalid login credentials')) {
+      return 'Incorrect email or password.'
+    }
+    if (m.includes('password') && m.includes('least')) {
+      return 'Password must be at least 6 characters long.'
+    }
+    if (m.includes('email') && m.includes('invalid')) {
+      return 'That email is not valid.'
+    }
+    return message
+  }
+
   if (m.includes('already registered') || m.includes('already exists')) {
     return 'Ya existe una cuenta con ese email.'
   }

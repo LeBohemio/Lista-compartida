@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useLanguage } from '../lib/i18n'
 
 const CONTAINER_SIZE = 260
 const OUTPUT_SIZE = 480
@@ -12,6 +13,7 @@ export default function AvatarCropper({
   onCancel: () => void
   onConfirm: (blob: Blob) => void
 }) {
+  const { t } = useLanguage()
   const [imgUrl, setImgUrl] = useState<string | null>(null)
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
   const [scale, setScale] = useState(1)
@@ -99,8 +101,8 @@ export default function AvatarCropper({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-xl bg-[var(--color-surface)]">
-        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Ajustar foto</h2>
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Arrastra para moverla y usa el control para hacer zoom.</p>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('avatar.adjustTitle')}</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">{t('avatar.adjustHint')}</p>
 
         <div
           className="relative mx-auto touch-none overflow-hidden rounded-full bg-[var(--color-surface-alt)]"
@@ -147,13 +149,13 @@ export default function AvatarCropper({
             onClick={onCancel}
             className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
           >
-            Usar foto
+            {t('avatar.usePhoto')}
           </button>
         </div>
       </div>

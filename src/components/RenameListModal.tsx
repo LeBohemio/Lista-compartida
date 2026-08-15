@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { PALETTE } from '../lib/colors'
+import { useLanguage } from '../lib/i18n'
 
 export default function RenameListModal({
   listId,
@@ -15,6 +16,7 @@ export default function RenameListModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLanguage()
   const [name, setName] = useState(currentName)
   const [color, setColor] = useState<string | null>(currentColor)
   const [submitting, setSubmitting] = useState(false)
@@ -23,7 +25,7 @@ export default function RenameListModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
-      setError('Ponle un nombre a la lista.')
+      setError(t('list.nameRequired'))
       return
     }
     setSubmitting(true)
@@ -43,11 +45,11 @@ export default function RenameListModal({
         className="w-full max-w-md rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Editar lista</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('list.editTitle')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nombre</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('list.name')}</label>
             <input
               type="text"
               value={name}
@@ -80,14 +82,14 @@ export default function RenameListModal({
               onClick={onClose}
               className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
-              {submitting ? 'Guardando…' : 'Guardar'}
+              {submitting ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>

@@ -101,7 +101,7 @@ export default function ChatPanel({
       .upload(path, file, { contentType: file.type || 'image/jpeg' })
 
     if (uploadErr) {
-      setError(`No se pudo subir la foto: ${uploadErr.message}`)
+      setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
       setSending(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
       return

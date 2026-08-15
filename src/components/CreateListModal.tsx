@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { PALETTE, colorForName } from '../lib/colors'
+import { useLanguage } from '../lib/i18n'
 
 const TEMPLATES = [
   { label: '🛒 Compra', name: 'Compra' },
@@ -22,6 +23,7 @@ export default function CreateListModal({
   onCreated: (listId: string) => void
 }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [name, setName] = useState('')
   const [expensesEnabled, setExpensesEnabled] = useState(false)
   const [color, setColor] = useState<string | null>(null)
@@ -32,7 +34,7 @@ export default function CreateListModal({
     e.preventDefault()
     if (!user) return
     if (!name.trim()) {
-      setError('Ponle un nombre a la lista.')
+      setError(t('list.nameRequired'))
       return
     }
     setSubmitting(true)
@@ -49,7 +51,7 @@ export default function CreateListModal({
 
     if (rpcErr || !list) {
       setSubmitting(false)
-      setError(rpcErr?.message ?? 'No se pudo crear la lista.')
+      setError(rpcErr?.message ?? t('lists.createError'))
       return
     }
 
@@ -70,28 +72,28 @@ export default function CreateListModal({
       >
         <button
           onClick={onClose}
-          aria-label="Cerrar"
-          title="Cerrar"
+          aria-label={t('common.close')}
+          title={t('common.close')}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
           ✕
         </button>
-        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">Nueva lista</h2>
+        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('lists.createTitle')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nombre de la lista</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.nameFieldLabel')}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Escribe un nombre libre o elige una plantilla abajo"
+              placeholder={t('lists.namePlaceholder')}
               className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Plantillas sugeridas</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.templatesLabel')}</label>
             <div className="flex flex-wrap gap-2">
               {TEMPLATES.map((tpl) => (
                 <button
@@ -111,7 +113,7 @@ export default function CreateListModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Color (opcional)</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.colorOptional')}</label>
             <div className="flex flex-wrap gap-2">
               {PALETTE.map((c) => (
                 <button
@@ -134,11 +136,8 @@ export default function CreateListModal({
               className="mt-0.5 h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             <span>
-              <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Activar gastos compartidos</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">
-                Podrás subir tickets y repartir gastos entre los miembros. Si no lo activas ahora, podrás hacerlo
-                más adelante desde la lista.
-              </span>
+              <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.enableExpenses')}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">{t('lists.enableExpensesHint')}</span>
             </span>
           </label>
 
@@ -150,14 +149,14 @@ export default function CreateListModal({
               onClick={onClose}
               className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
-              {submitting ? 'Creando…' : 'Crear lista'}
+              {submitting ? t('lists.creating') : t('lists.createSubmit')}
             </button>
           </div>
         </form>

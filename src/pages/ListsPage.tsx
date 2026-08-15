@@ -110,7 +110,7 @@ export default function ListsPage() {
           next.delete(listId)
           return next
         })
-        setActionError(`No se pudo eliminar la lista: ${err.message}`)
+        setActionError(t('list.errorDelete', { message: err.message }))
         return
       }
     } else {
@@ -125,7 +125,7 @@ export default function ListsPage() {
           next.delete(listId)
           return next
         })
-        setActionError(`No se pudo salir de la lista: ${err.message}`)
+        setActionError(t('list.errorLeave', { message: err.message }))
         return
       }
     }
@@ -158,7 +158,7 @@ export default function ListsPage() {
     })
     const newList = rpcData as { id: string } | null
     if (rpcErr || !newList) {
-      setActionError(`No se pudo duplicar la lista: ${rpcErr?.message ?? 'error desconocido'}`)
+      setActionError(t('list.errorDuplicate', { message: rpcErr?.message ?? t('list.unknownError') }))
       return
     }
 
@@ -364,13 +364,13 @@ export default function ListsPage() {
 
       {confirmTarget && (
         <ConfirmDialog
-          title={confirmTarget.isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+          title={confirmTarget.isOwner ? t('list.deleteTitle') : t('list.leaveTitle')}
           message={
             confirmTarget.isOwner
               ? t('dialogs.deleteMessage', { name: confirmTarget.name })
-              : `¿Salir de la lista "${confirmTarget.name}"? Dejarás de verla, pero seguirá existiendo para el resto.`
+              : t('list.leaveConfirm', { name: confirmTarget.name })
           }
-          confirmLabel={confirmTarget.isOwner ? 'Eliminar' : 'Salir'}
+          confirmLabel={confirmTarget.isOwner ? t('menu.delete') : t('list.leaveButton')}
           danger={confirmTarget.isOwner}
           onCancel={() => setConfirmTarget(null)}
           onConfirm={confirmDeleteOrLeave}

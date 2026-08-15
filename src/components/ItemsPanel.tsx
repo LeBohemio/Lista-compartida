@@ -33,9 +33,12 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function formatDueDate(dateStr: string) {
+function formatDueDate(dateStr: string, language: 'es' | 'en' = 'es') {
   const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  return new Date(y, m - 1, d).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', {
+    day: 'numeric',
+    month: 'short',
+  })
 }
 
 function sortByPosition(a: Item, b: Item) {
@@ -355,13 +358,13 @@ export default function ItemsPanel({
       )}
 
       {lastPendingId && (
-        <UndoToast message="Nota eliminada" onUndo={() => undoDelete(lastPendingId)} />
+        <UndoToast message={t('notes.deletedToast')} onUndo={() => undoDelete(lastPendingId)} />
       )}
 
       {confirmEmpty && (
         <ConfirmDialog
-          title="Vaciar comprados"
-          message={`¿Eliminar definitivamente las ${doneItems.length} notas marcadas como hechas/compradas? Esta acción no se puede deshacer.`}
+          title={t('notes.emptyDone')}
+          message={t('notes.emptyDoneConfirm', { count: doneItems.length })}
           confirmLabel={t('menu.delete')}
           danger
           onCancel={() => setConfirmEmpty(false)}
@@ -469,15 +472,12 @@ function AddNoteSheet({
 
         {showHint && (
           <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-            <span className="flex-1">
-              💡 Truco: puedes escribir varias notas separadas por comas (ej. "Huevos, calamares, pan") y se
-              añaden todas a la vez.
-            </span>
+            <span className="flex-1">{t('notes.commaHint')}</span>
             <button
               onClick={dismissHint}
               className="shrink-0 whitespace-nowrap font-medium underline hover:no-underline"
             >
-              No volver a mostrar
+              {t('notes.commaHintDismiss')}
             </button>
           </div>
         )}
@@ -535,6 +535,7 @@ function DueDateSheet({
   onClose: () => void
   onSave: (date: string | null) => void
 }) {
+  const { t } = useLanguage()
   const [value, setValue] = useState(item.due_date ?? '')
 
   return (
@@ -543,7 +544,7 @@ function DueDateSheet({
         className="w-full max-w-sm rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Fecha límite</h2>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('menu.dueDate')}</h2>
         <p className="mb-4 truncate text-sm text-slate-500 dark:text-slate-400">{item.content}</p>
         <input
           type="date"
@@ -557,7 +558,7 @@ function DueDateSheet({
               onClick={() => onSave(null)}
               className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Quitar fecha
+              {t('notes.removeDueDate')}
             </button>
           )}
           <button
@@ -565,7 +566,7 @@ function DueDateSheet({
             disabled={!value}
             className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            Guardar
+            {t('common.save')}
           </button>
         </div>
       </div>
@@ -616,7 +617,7 @@ function ItemRow({
   onDelete: (id: string) => void
   onOpenDueDate: () => void
 }) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [draft, setDraft] = useState(item.content)
   const [showMenu, setShowMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
@@ -657,19 +658,24 @@ function ItemRow({
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}
     >
-      <div className="flex items-center gap-3">
-        {inReorder && (
-          <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true">
-            ⠿
-          </span>
-        )}
-        <input
-          type="checkbox"
-          checked={item.done}
-          disabled={readOnly || inReorder}
-          onChange={() => !readOnly && !inReorder && onToggle(item)}
-          className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500 disabled:opacity-60"
-        />
+      <div className="flex items-start gap-3">
+        {/* Casilla (y el asa ⠿) fijas a 40px de alto, para que queden a la
+            altura de la primera línea de la nota y no floten a medio camino
+            cuando el texto ocupa varias líneas. */}
+        <div className="flex h-10 shrink-0 items-center gap-3">
+          {inReorder && (
+            <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
+              ⠿
+            </span>
+          )}
+          <input
+            type="checkbox"
+            checked={item.done}
+            disabled={readOnly || inReorder}
+            onChange={() => !readOnly && !inReorder && onToggle(item)}
+            className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500 disabled:opacity-60"
+          />
+        </div>
         <div className="min-w-0 flex-1" {...(!editing && !inReorder ? longPress : {})}>
           {editing ? (
             <input
@@ -706,7 +712,7 @@ function ItemRow({
                       : 'text-slate-400'
                 }`}
               >
-                {t('notes.due')}: {formatDueDate(item.due_date)}
+                {t('notes.due')}: {formatDueDate(item.due_date, language)}
               </span>
             )}
           </div>

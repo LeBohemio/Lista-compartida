@@ -119,7 +119,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       .upload(path, blob, { contentType: 'image/jpeg' })
 
     if (uploadErr) {
-      setError(`No se pudo subir la foto: ${uploadErr.message}`)
+      setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
       setUploading(false)
       return
     }

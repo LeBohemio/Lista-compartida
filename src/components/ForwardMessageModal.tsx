@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { colorForList } from '../lib/colors'
+import { useLanguage } from '../lib/i18n'
 import type { List, Message } from '../lib/types'
 
 export default function ForwardMessageModal({
@@ -16,6 +17,7 @@ export default function ForwardMessageModal({
   onForwarded: () => void
 }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [lists, setLists] = useState<List[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingTo, setSendingTo] = useState<string | null>(null)
@@ -46,7 +48,7 @@ export default function ForwardMessageModal({
         .from('chat-images')
         .download(message.image_path)
       if (downloadErr || !blob) {
-        setError('No se pudo copiar la foto para reenviarla.')
+        setError(t('forward.errorCopyPhoto'))
         setSendingTo(null)
         return
       }
@@ -56,7 +58,7 @@ export default function ForwardMessageModal({
         .from('chat-images')
         .upload(newImagePath, blob, { contentType: blob.type || 'image/jpeg' })
       if (uploadErr) {
-        setError('No se pudo copiar la foto para reenviarla.')
+        setError(t('forward.errorCopyPhoto'))
         setSendingTo(null)
         return
       }
@@ -83,14 +85,14 @@ export default function ForwardMessageModal({
         className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Reenviar a…</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('forward.title')}</h2>
 
         {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="py-6 text-center text-sm text-slate-400">Cargando tus listas…</p>
+          <p className="py-6 text-center text-sm text-slate-400">{t('forward.loadingLists')}</p>
         ) : lists.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">No tienes otra lista a la que reenviar este mensaje.</p>
+          <p className="py-6 text-center text-sm text-slate-400">{t('forward.noOtherLists')}</p>
         ) : (
           <div className="space-y-2">
             {lists.map((l) => (
@@ -102,7 +104,7 @@ export default function ForwardMessageModal({
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
                 <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
-                {sendingTo === l.id && <span className="text-xs text-slate-400">Enviando…</span>}
+                {sendingTo === l.id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
               </button>
             ))}
           </div>
@@ -112,7 +114,7 @@ export default function ForwardMessageModal({
           onClick={onClose}
           className="mt-4 w-full rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          Cancelar
+          {t('common.cancel')}
         </button>
       </div>
     </div>
