@@ -7,9 +7,20 @@ import ConfirmDialog from './ConfirmDialog'
 import type { Item, ItemSuggestion } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
+const SEARCH_THRESHOLD = 8
 
 function normalize(text: string) {
   return text.trim().toLowerCase()
+}
+
+function todayISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDueDate(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
 export default function ItemsPanel({ listId, items, soloList }: { listId: string; items: Item[]; soloList: boolean }) {
@@ -19,12 +30,16 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [editingId, setEditingId] = useState<string | null>(null)
   const [confirmEmpty, setConfirmEmpty] = useState(false)
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
+  const [search, setSearch] = useState('')
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const [lastPendingId, setLastPendingId] = useState<string | null>(null)
 
-  const visibleItems = items.filter((i) => !pendingDeleteIds.has(i.id))
+  const notDeleted = items.filter((i) => !pendingDeleteIds.has(i.id))
+  const visibleItems = search.trim()
+    ? notDeleted.filter((i) => normalize(i.content).includes(normalize(search)))
+    : notDeleted
   const doneItems = visibleItems.filter((i) => i.done)
   const pendingItems = visibleItems.filter((i) => !i.done)
 
@@ -43,7 +58,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     fetchSuggestions()
   }, [fetchSuggestions])
 
-  const currentNormalized = useMemo(() => new Set(visibleItems.map((i) => normalize(i.content))), [visibleItems])
+  const currentNormalized = useMemo(() => new Set(notDeleted.map((i) => normalize(i.content))), [notDeleted])
   const visibleSuggestions = suggestions.filter((s) => !currentNormalized.has(s.normalized)).slice(0, 6)
 
   const createItem = async (rawContent: string) => {
@@ -79,6 +94,10 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     const trimmed = newContent.trim()
     if (!trimmed) return
     await supabase.from('items').update({ content: trimmed }).eq('id', itemId)
+  }
+
+  const setDueDate = async (itemId: string, dueDate: string | null) => {
+    await supabase.from('items').update({ due_date: dueDate }).eq('id', itemId)
   }
 
   const requestDelete = (itemId: string) => {
@@ -149,8 +168,20 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
         </div>
       )}
 
+      {items.length > SEARCH_THRESHOLD && (
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar en esta lista…"
+          className="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        />
+      )}
+
       {visibleItems.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">Todavía no hay notas en esta lista.</p>
+        <p className="py-8 text-center text-sm text-slate-400">
+          {search.trim() ? 'No hay notas que coincidan con la búsqueda.' : 'Todavía no hay notas en esta lista.'}
+        </p>
       ) : (
         <div className="space-y-4">
           {pendingItems.length > 0 && (
@@ -167,6 +198,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                     onCancelEdit={() => setEditingId(null)}
                     onToggle={toggleDone}
                     onDelete={requestDelete}
+                    onSetDueDate={setDueDate}
                   />
                 ))}
               </div>
@@ -196,6 +228,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                       onCancelEdit={() => setEditingId(null)}
                       onToggle={toggleDone}
                       onDelete={requestDelete}
+                      onSetDueDate={setDueDate}
                     />
                   ))}
                 </div>
@@ -232,6 +265,7 @@ function ItemRow({
   onCancelEdit,
   onToggle,
   onDelete,
+  onSetDueDate,
 }: {
   item: Item
   soloList: boolean
@@ -241,8 +275,10 @@ function ItemRow({
   onCancelEdit: () => void
   onToggle: (item: Item) => void
   onDelete: (id: string) => void
+  onSetDueDate: (id: string, dueDate: string | null) => void
 }) {
   const [draft, setDraft] = useState(item.content)
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   const startEdit = () => {
     setDraft(item.content)
@@ -254,58 +290,112 @@ function ItemRow({
     if (e.key === 'Escape') onCancelEdit()
   }
 
+  const overdue = !!item.due_date && !item.done && item.due_date < todayISO()
+  const dueToday = !!item.due_date && !item.done && item.due_date === todayISO()
+
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5">
-      <input
-        type="checkbox"
-        checked={item.done}
-        onChange={() => onToggle(item)}
-        className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500"
-      />
-      <div className="min-w-0 flex-1">
-        {editing ? (
-          <input
-            type="text"
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={() => onSaveEdit(draft)}
-            className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-slate-900 dark:text-slate-100"
-          />
-        ) : (
-          <p
-            onClick={startEdit}
-            className={`truncate text-sm ${item.done ? 'text-slate-400 line-through' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+    <div className="px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={item.done}
+          onChange={() => onToggle(item)}
+          className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500"
+        />
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <input
+              type="text"
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => onSaveEdit(draft)}
+              className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-slate-900 dark:text-slate-100"
+            />
+          ) : (
+            <p
+              onClick={startEdit}
+              className={`truncate text-sm ${item.done ? 'text-slate-400' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+            >
+              {item.content}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-x-2">
+            {!soloList && item.creator?.username && (
+              <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
+                <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />
+                Añadido por {item.creator.username}
+              </p>
+            )}
+            {item.due_date && (
+              <span
+                className={`text-xs ${
+                  overdue
+                    ? 'font-medium text-red-500 dark:text-red-400'
+                    : dueToday
+                      ? 'font-medium text-amber-600 dark:text-amber-400'
+                      : 'text-slate-400'
+                }`}
+              >
+                📅 {formatDueDate(item.due_date)}
+              </span>
+            )}
+          </div>
+        </div>
+        {!editing && (
+          <button
+            onClick={() => setShowDatePicker((s) => !s)}
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Fecha límite"
+            title="Fecha límite"
           >
-            {item.content}
-          </p>
+            📅
+          </button>
         )}
-        {!soloList && item.creator?.username && (
-          <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
-            <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />
-            Añadido por {item.creator.username}
-          </p>
+        {!editing && (
+          <button
+            onClick={startEdit}
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Editar"
+            title="Editar"
+          >
+            ✎
+          </button>
         )}
-      </div>
-      {!editing && (
         <button
-          onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-          aria-label="Editar"
-          title="Editar"
+          onClick={() => onDelete(item.id)}
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
+          aria-label="Eliminar"
+          title="Eliminar"
         >
-          ✎
+          🗑
         </button>
+      </div>
+      {showDatePicker && (
+        <div className="mt-2 flex items-center gap-2 pl-8">
+          <input
+            type="date"
+            defaultValue={item.due_date ?? ''}
+            onChange={(e) => {
+              onSetDueDate(item.id, e.target.value || null)
+              setShowDatePicker(false)
+            }}
+            className="rounded-lg border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          />
+          {item.due_date && (
+            <button
+              onClick={() => {
+                onSetDueDate(item.id, null)
+                setShowDatePicker(false)
+              }}
+              className="text-xs text-slate-400 hover:text-red-500"
+            >
+              Quitar fecha
+            </button>
+          )}
+        </div>
       )}
-      <button
-        onClick={() => onDelete(item.id)}
-        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
-        aria-label="Eliminar"
-        title="Eliminar"
-      >
-        🗑
-      </button>
     </div>
   )
 }

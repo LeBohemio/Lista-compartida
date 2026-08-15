@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { PALETTE } from '../lib/colors'
 import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
+import MyExpensesModal from './MyExpensesModal'
 import type { Theme } from '../lib/types'
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
@@ -18,6 +19,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
+  const [showMyExpenses, setShowMyExpenses] = useState(false)
 
   const [newEmail, setNewEmail] = useState('')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
@@ -150,6 +152,13 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
         {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
 
+        <button
+          onClick={() => setShowMyExpenses(true)}
+          className="mb-6 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          📊 Mis gastos
+        </button>
+
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Apariencia</p>
           <div className="flex gap-2">
@@ -259,6 +268,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} />}
+      {showMyExpenses && <MyExpensesModal onClose={() => setShowMyExpenses(false)} />}
     </div>
   )
 }

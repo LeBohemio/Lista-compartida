@@ -20,6 +20,7 @@ export type List = {
   expenses_enabled: boolean
   color: string | null
   archived_at: string | null
+  last_activity_at: string
   created_at: string
 }
 
@@ -29,6 +30,7 @@ export type ListMember = {
   role: MemberRole
   status: MemberStatus
   invited_identifier: string
+  pinned: boolean
   created_at: string
   responded_at: string | null
   last_read_message_at: string | null
@@ -45,6 +47,7 @@ export type Item = {
   list_id: string
   content: string
   done: boolean
+  due_date: string | null
   created_by: string | null
   created_at: string
   done_at: string | null

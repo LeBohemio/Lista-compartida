@@ -44,7 +44,11 @@ export default function NewExpenseModal({
   const [ocrChecked, setOcrChecked] = useState(false)
 
   const [description, setDescription] = useState(editing?.description ?? '')
-  const [category, setCategory] = useState<ExpenseCategory>(editing?.category ?? 'otros')
+  const [category, setCategory] = useState<ExpenseCategory>(() => {
+    if (editing) return editing.category
+    const stored = localStorage.getItem(`lastCategory:${listId}`) as ExpenseCategory | null
+    return stored && EXPENSE_CATEGORIES.some((c) => c.value === stored) ? stored : 'otros'
+  })
   const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
   const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
   const [splitMode, setSplitMode] = useState<SplitMode>(editing ? 'custom' : 'equal')
@@ -204,6 +208,7 @@ export default function NewExpenseModal({
       setError(sharesErr.message)
       return
     }
+    localStorage.setItem(`lastCategory:${listId}`, category)
     onCreated()
   }
 

@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent } from 'react'
+import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { formatEuro } from '../lib/balances'
@@ -7,9 +7,10 @@ import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
-import { categoryIcon } from '../lib/categories'
+import { EXPENSE_CATEGORIES, categoryIcon } from '../lib/categories'
 
 const UNDO_DELAY_MS = 5000
+const SEARCH_THRESHOLD = 8
 
 type LedgerRow =
   | { kind: 'expense'; date: string; data: Expense }
@@ -33,6 +34,7 @@ export default function ExpensesPanel({
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -40,10 +42,37 @@ export default function ExpensesPanel({
 
   const visibleExpenses = expenses.filter((e) => !pendingDeleteIds.has(e.id))
 
+  const categoryTotals = useMemo(() => {
+    const sums = new Map<string, number>()
+    for (const e of visibleExpenses) {
+      sums.set(e.category, (sums.get(e.category) ?? 0) + Number(e.total_amount))
+    }
+    return EXPENSE_CATEGORIES.map((c) => ({ ...c, total: sums.get(c.value) ?? 0 }))
+      .filter((c) => c.total > 0)
+      .sort((a, b) => b.total - a.total)
+  }, [visibleExpenses])
+
   const ledger: LedgerRow[] = [
     ...visibleExpenses.map((e) => ({ kind: 'expense' as const, date: e.created_at, data: e })),
     ...settlements.map((s) => ({ kind: 'settlement' as const, date: s.created_at, data: s })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  const filteredLedger = search.trim()
+    ? ledger.filter((row) => {
+        const q = search.trim().toLowerCase()
+        if (row.kind === 'expense') {
+          return (
+            (row.data.description ?? '').toLowerCase().includes(q) ||
+            (row.data.payer?.username ?? '').toLowerCase().includes(q)
+          )
+        }
+        return (
+          (row.data.note ?? '').toLowerCase().includes(q) ||
+          (row.data.from_profile?.username ?? '').toLowerCase().includes(q) ||
+          (row.data.to_profile?.username ?? '').toLowerCase().includes(q)
+        )
+      })
+    : ledger
 
   const toggleExpand = async (expense: Expense) => {
     if (expandedId === expense.id) {
@@ -103,13 +132,45 @@ export default function ExpensesPanel({
 
       <BalanceSummary listId={listId} members={members} expenses={visibleExpenses} settlements={settlements} />
 
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Histórico</h3>
+      {categoryTotals.length > 0 && (
+        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Por categoría
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {categoryTotals.map((c) => (
+              <span
+                key={c.value}
+                className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              >
+                {c.icon} {c.label}: {formatEuro(c.total)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {ledger.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">Todavía no hay gastos registrados.</p>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Histórico</h3>
+      </div>
+
+      {ledger.length > SEARCH_THRESHOLD && (
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar en el histórico…"
+          className="mb-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        />
+      )}
+
+      {filteredLedger.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">
+          {search.trim() ? 'No hay resultados para esa búsqueda.' : 'Todavía no hay gastos registrados.'}
+        </p>
       ) : (
         <div className="space-y-2">
-          {ledger.map((row) =>
+          {filteredLedger.map((row) =>
             row.kind === 'expense' ? (
               <div key={`e-${row.data.id}`} className="rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
                 <div className="flex w-full items-center justify-between px-4 py-3">

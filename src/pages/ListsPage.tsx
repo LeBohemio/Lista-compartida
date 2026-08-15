@@ -9,10 +9,11 @@ import Avatar from '../components/Avatar'
 import ProfileModal from '../components/ProfileModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { colorForList } from '../lib/colors'
+import type { ListWithMembership } from '../lib/types'
 
 export default function ListsPage() {
   const { profile } = useAuth()
-  const { lists, invitations, loading, error, refetch } = useLists()
+  const { lists, invitations, itemStats, memberAvatars, loading, error, refetch, togglePin } = useLists()
   const [showCreate, setShowCreate] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -66,42 +67,128 @@ export default function ListsPage() {
     refetch()
   }
 
+  const duplicateList = async (e: MouseEvent, l: ListWithMembership) => {
+    e.stopPropagation()
+    setActionError(null)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('create_list_with_owner', {
+      p_name: `${l.name} (copia)`,
+      p_expenses_enabled: l.expenses_enabled,
+    })
+    const newList = rpcData as { id: string } | null
+    if (rpcErr || !newList) {
+      setActionError(`No se pudo duplicar la lista: ${rpcErr?.message ?? 'error desconocido'}`)
+      return
+    }
+
+    await supabase.from('lists').update({ color: l.color }).eq('id', newList.id)
+
+    const { data: sourceItems } = await supabase.from('items').select('content').eq('list_id', l.id)
+    if (sourceItems && sourceItems.length > 0 && profile) {
+      const rows = sourceItems.map((it: { content: string }) => ({
+        list_id: newList.id,
+        content: it.content,
+        created_by: profile.id,
+      }))
+      await supabase.from('items').insert(rows)
+    }
+
+    refetch()
+    navigate(`/lists/${newList.id}`)
+  }
+
   const renderListRow = (l: (typeof lists)[number]) => {
     const isOwner = l.owner_id === profile?.id
+    const stats = itemStats[l.id]
+    const avatars = memberAvatars[l.id] ?? []
+    const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
+
     return (
       <div
         key={l.id}
         onClick={() => navigate(`/lists/${l.id}`)}
         role="button"
         tabIndex={0}
-        className="flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700"
+        className="w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700"
       >
-        <div className="flex items-center gap-3">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: colorForList(l) }}
-            aria-hidden="true"
-          />
-          <div>
-            <p className="font-medium text-slate-900 dark:text-slate-100">{l.name}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isOwner ? 'Creador' : 'Miembro'}
-              {l.expenses_enabled ? ' · Gastos activados' : ''}
-              {l.archived_at ? ' · Archivada' : ''}
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colorForList(l) }}
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-slate-900 dark:text-slate-100">{l.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isOwner ? 'Creador' : 'Miembro'}
+                {l.expenses_enabled ? ' · Gastos activados' : ''}
+                {l.archived_at ? ' · Archivada' : ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {avatars.length > 1 && (
+              <div className="mr-1 flex items-center">
+                {avatars.slice(0, 4).map((p, idx) => (
+                  <Avatar
+                    key={p.id}
+                    username={p.username}
+                    avatarUrl={p.avatar_url}
+                    size={22}
+                    className={`ring-2 ring-white dark:ring-slate-800 ${idx > 0 ? '-ml-2' : ''}`}
+                  />
+                ))}
+                {avatars.length > 4 && (
+                  <span className="-ml-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-slate-200 px-1 text-[10px] font-semibold text-slate-600 ring-2 ring-white dark:bg-slate-700 dark:text-slate-300 dark:ring-slate-800">
+                    +{avatars.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                togglePin(l.id, !l.membership.pinned)
+              }}
+              aria-label={l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista'}
+              title={l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista'}
+              className={`rounded-lg p-1.5 ${
+                l.membership.pinned
+                  ? 'text-amber-500'
+                  : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-700'
+              }`}
+            >
+              📌
+            </button>
+            <button
+              onClick={(e) => duplicateList(e, l)}
+              aria-label="Duplicar lista"
+              title="Duplicar lista"
+              className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-700"
+            >
+              ⧉
+            </button>
+            <button
+              onClick={(e) => requestDeleteOrLeave(e, l.id, l.name, isOwner)}
+              aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+              title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+              className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+            >
+              🗑
+            </button>
+            <span className="text-slate-300 dark:text-slate-600">›</span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => requestDeleteOrLeave(e, l.id, l.name, isOwner)}
-            aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
-            title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
-            className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
-          >
-            🗑
-          </button>
-          <span className="text-slate-300 dark:text-slate-600">›</span>
-        </div>
+        {progressPct !== null && (
+          <div className="mt-3 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+              <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="shrink-0 text-[11px] text-slate-400">
+              {stats!.done}/{stats!.total}
+            </span>
+          </div>
+        )}
       </div>
     )
   }

@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import type { ListWithMembership } from '../lib/types'
+import type { ListWithMembership, Profile } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+
+export type ItemStats = { done: number; total: number }
 
 /**
  * Carga las listas del usuario actual, separadas en:
- *  - lists: listas donde ya es miembro aceptado
+ *  - lists: listas donde ya es miembro aceptado (ordenadas: fijadas primero,
+ *    luego por actividad reciente)
  *  - invitations: invitaciones pendientes de aceptar/rechazar
- * Se suscribe a cambios en list_members para refrescar automáticamente.
+ * También trae, por lista, el progreso de notas (hechas/total) y los
+ * avatares de sus miembros, para pintarlos en la vista de "Mis listas".
+ * Se suscribe a cambios relevantes para refrescar automáticamente.
  */
 export function useLists() {
   const { user } = useAuth()
   const [lists, setLists] = useState<ListWithMembership[]>([])
   const [invitations, setInvitations] = useState<ListWithMembership[]>([])
+  const [itemStats, setItemStats] = useState<Record<string, ItemStats>>({})
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, Profile[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,8 +48,50 @@ export function useLists() {
       if (row.status === 'accepted') accepted.push(withMembership)
       else invited.push(withMembership)
     }
+
+    accepted.sort((a, b) => {
+      if (a.membership.pinned !== b.membership.pinned) return a.membership.pinned ? -1 : 1
+      return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+    })
+
     setLists(accepted)
     setInvitations(invited)
+
+    const listIds = accepted.map((l) => l.id)
+    if (listIds.length === 0) {
+      setItemStats({})
+      setMemberAvatars({})
+      setLoading(false)
+      return
+    }
+
+    const [itemsRes, membersRes] = await Promise.all([
+      supabase.from('items').select('list_id, done').in('list_id', listIds),
+      supabase
+        .from('list_members')
+        .select('list_id, user_id, profile:profiles!list_members_user_id_fkey(*)')
+        .in('list_id', listIds)
+        .eq('status', 'accepted'),
+    ])
+
+    const stats: Record<string, ItemStats> = {}
+    for (const row of (itemsRes.data as { list_id: string; done: boolean }[]) ?? []) {
+      const cur = stats[row.list_id] ?? { done: 0, total: 0 }
+      cur.total += 1
+      if (row.done) cur.done += 1
+      stats[row.list_id] = cur
+    }
+    setItemStats(stats)
+
+    const avatars: Record<string, Profile[]> = {}
+    for (const row of (membersRes.data as unknown as { list_id: string; profile: Profile }[]) ?? []) {
+      if (!row.profile) continue
+      const cur = avatars[row.list_id] ?? []
+      cur.push(row.profile)
+      avatars[row.list_id] = cur
+    }
+    setMemberAvatars(avatars)
+
     setLoading(false)
   }, [user])
 
@@ -61,6 +110,7 @@ export function useLists() {
         () => fetchLists(),
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lists' }, () => fetchLists())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => fetchLists())
       .subscribe()
 
     return () => {
@@ -68,5 +118,14 @@ export function useLists() {
     }
   }, [user, fetchLists])
 
-  return { lists, invitations, loading, error, refetch: fetchLists }
+  const togglePin = useCallback(
+    async (listId: string, pinned: boolean) => {
+      if (!user) return
+      await supabase.from('list_members').update({ pinned }).eq('list_id', listId).eq('user_id', user.id)
+      fetchLists()
+    },
+    [user, fetchLists],
+  )
+
+  return { lists, invitations, itemStats, memberAvatars, loading, error, refetch: fetchLists, togglePin }
 }

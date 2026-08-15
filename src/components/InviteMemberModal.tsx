@@ -14,6 +14,28 @@ export default function InviteMemberModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null)
+
+  const shareApp = async () => {
+    const text = '¡Únete a Listas en Común! Instala la app para que compartamos listas y gastos:'
+    const url = window.location.origin
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Listas en Común', text, url })
+      } catch {
+        // el usuario canceló el share sheet
+      }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`)
+      setShareFeedback('Copiado al portapapeles')
+      setTimeout(() => setShareFeedback(null), 2500)
+    } catch {
+      setShareFeedback('No se pudo copiar el enlace')
+      setTimeout(() => setShareFeedback(null), 2500)
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -73,6 +95,18 @@ export default function InviteMemberModal({
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           Introduce el email o el nombre de usuario de alguien ya registrado en la app.
         </p>
+
+        <div className="mb-4 rounded-lg border border-dashed border-slate-200 p-3 dark:border-slate-600">
+          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">¿Todavía no tiene la app? Invítale a instalarla primero.</p>
+          <button
+            type="button"
+            onClick={shareApp}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            📤 Compartir la app
+          </button>
+          {shareFeedback && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{shareFeedback}</p>}
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
