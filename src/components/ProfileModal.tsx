@@ -117,10 +117,18 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Tu perfil</h2>
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          title="Cerrar"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        >
+          ✕
+        </button>
+        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">Tu perfil</h2>
 
         <div className="mb-5 flex flex-col items-center gap-3">
           <Avatar

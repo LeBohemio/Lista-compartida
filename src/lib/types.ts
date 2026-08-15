@@ -105,6 +105,15 @@ export type SuggestedDebt = {
   amount: number
 }
 
+export type ItemSuggestion = {
+  id: string
+  list_id: string
+  content: string
+  normalized: string
+  use_count: number
+  updated_at: string
+}
+
 export type Message = {
   id: string
   list_id: string

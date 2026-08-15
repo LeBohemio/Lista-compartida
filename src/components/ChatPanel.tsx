@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
+import UndoToast from './UndoToast'
 import { colorForName } from '../lib/colors'
 import type { Message } from '../lib/types'
+
+const UNDO_DELAY_MS = 5000
 
 export default function ChatPanel({ listId, messages }: { listId: string; messages: Message[] }) {
   const { user } = useAuth()
@@ -14,9 +17,18 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [lastPendingId, setLastPendingId] = useState<string | null>(null)
+
+  const visibleMessages = useMemo(
+    () => messages.filter((m) => !pendingDeleteIds.has(m.id)),
+    [messages, pendingDeleteIds],
+  )
+
   const imagePaths = useMemo(
-    () => messages.filter((m) => m.image_path).map((m) => m.image_path as string),
-    [messages],
+    () => visibleMessages.filter((m) => m.image_path).map((m) => m.image_path as string),
+    [visibleMessages],
   )
 
   useEffect(() => {
@@ -40,7 +52,7 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  }, [visibleMessages.length])
 
   const sendText = async (e: FormEvent) => {
     e.preventDefault()
@@ -90,17 +102,47 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
     setText('')
   }
 
+  const requestDeleteMessage = (messageId: string) => {
+    setPendingDeleteIds((prev) => new Set(prev).add(messageId))
+    setLastPendingId(messageId)
+    const timer = setTimeout(async () => {
+      timersRef.current.delete(messageId)
+      await supabase.from('messages').delete().eq('id', messageId)
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev)
+        next.delete(messageId)
+        return next
+      })
+      setLastPendingId((cur) => (cur === messageId ? null : cur))
+    }, UNDO_DELAY_MS)
+    timersRef.current.set(messageId, timer)
+  }
+
+  const undoDeleteMessage = (messageId: string) => {
+    const timer = timersRef.current.get(messageId)
+    if (timer) {
+      clearTimeout(timer)
+      timersRef.current.delete(messageId)
+    }
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev)
+      next.delete(messageId)
+      return next
+    })
+    setLastPendingId((cur) => (cur === messageId ? null : cur))
+  }
+
   return (
     <div>
       <div className="space-y-3 pb-24">
-        {messages.length === 0 ? (
+        {visibleMessages.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">Todavía no hay mensajes. ¡Escribe el primero!</p>
         ) : (
-          messages.map((m, idx) => {
+          visibleMessages.map((m, idx) => {
             const isMine = m.sender_id === user?.id
-            const isFirstInGroup = idx === 0 || messages[idx - 1].sender_id !== m.sender_id
+            const isFirstInGroup = idx === 0 || visibleMessages[idx - 1].sender_id !== m.sender_id
             return (
-              <div key={m.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+              <div key={m.id} className={`group flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
                 {!isMine && (
                   <div className="w-7 shrink-0">
                     {isFirstInGroup && (
@@ -133,9 +175,21 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
                     )}
                     {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                   </div>
-                  <p className="mt-0.5 px-1 text-[10px] text-slate-400">
-                    {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                    <p className="text-[10px] text-slate-400">
+                      {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    {isMine && (
+                      <button
+                        onClick={() => requestDeleteMessage(m.id)}
+                        className="text-[10px] text-slate-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100 dark:text-slate-500"
+                        aria-label="Eliminar mensaje"
+                        title="Eliminar mensaje"
+                      >
+                        🗑
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -183,6 +237,8 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
           </form>
         </div>
       </div>
+
+      {lastPendingId && <UndoToast message="Mensaje eliminado" onUndo={() => undoDeleteMessage(lastPendingId)} />}
     </div>
   )
 }

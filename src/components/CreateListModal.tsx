@@ -8,6 +8,10 @@ const TEMPLATES = [
   { label: '🧹 Tareas de casa', name: 'Tareas de casa' },
   { label: '✈️ Viaje', name: 'Viaje' },
   { label: '🎁 Regalos', name: 'Regalos' },
+  { label: '🎂 Cumpleaños', name: 'Cumpleaños' },
+  { label: '🎉 Fiesta', name: 'Fiesta' },
+  { label: '💼 Trabajo', name: 'Trabajo' },
+  { label: '📦 Mudanza', name: 'Mudanza' },
 ]
 
 export default function CreateListModal({
@@ -61,10 +65,18 @@ export default function CreateListModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Nueva lista</h2>
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          title="Cerrar"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        >
+          ✕
+        </button>
+        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">Nueva lista</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

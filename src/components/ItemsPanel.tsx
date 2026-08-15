@@ -1,12 +1,16 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
-import type { Item } from '../lib/types'
+import type { Item, ItemSuggestion } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
+
+function normalize(text: string) {
+  return text.trim().toLowerCase()
+}
 
 export default function ItemsPanel({ listId, items, soloList }: { listId: string; items: Item[]; soloList: boolean }) {
   const { user } = useAuth()
@@ -14,6 +18,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [confirmEmpty, setConfirmEmpty] = useState(false)
+  const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -23,13 +28,43 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const doneItems = visibleItems.filter((i) => i.done)
   const pendingItems = visibleItems.filter((i) => !i.done)
 
+  const fetchSuggestions = useCallback(async () => {
+    const { data } = await supabase
+      .from('item_suggestions')
+      .select('*')
+      .eq('list_id', listId)
+      .order('use_count', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .limit(10)
+    setSuggestions((data as ItemSuggestion[]) ?? [])
+  }, [listId])
+
+  useEffect(() => {
+    fetchSuggestions()
+  }, [fetchSuggestions])
+
+  const currentNormalized = useMemo(() => new Set(visibleItems.map((i) => normalize(i.content))), [visibleItems])
+  const visibleSuggestions = suggestions.filter((s) => !currentNormalized.has(s.normalized)).slice(0, 6)
+
+  const createItem = async (rawContent: string) => {
+    const trimmed = rawContent.trim()
+    if (!trimmed || !user) return
+    await supabase.from('items').insert({ list_id: listId, content: trimmed, created_by: user.id })
+    await supabase.rpc('bump_item_suggestion', { p_list_id: listId, p_content: trimmed })
+    fetchSuggestions()
+  }
+
   const addItem = async (e: FormEvent) => {
     e.preventDefault()
-    if (!content.trim() || !user) return
+    if (!content.trim()) return
     setSubmitting(true)
-    await supabase.from('items').insert({ list_id: listId, content: content.trim(), created_by: user.id })
+    await createItem(content)
     setContent('')
     setSubmitting(false)
+  }
+
+  const addSuggestion = async (suggestion: ItemSuggestion) => {
+    await createItem(suggestion.content)
   }
 
   const toggleDone = async (item: Item) => {
@@ -83,12 +118,12 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
 
   return (
     <div>
-      <form onSubmit={addItem} className="mb-4 flex gap-2">
+      <form onSubmit={addItem} className="mb-3 flex gap-2">
         <input
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Añadir ítem…"
+          placeholder="Añadir nota…"
           className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
         <button
@@ -100,26 +135,46 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
         </button>
       </form>
 
-      {visibleItems.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">Todavía no hay ítems en esta lista.</p>
-      ) : (
-        <div className="space-y-2">
-          {pendingItems.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              soloList={soloList}
-              editing={editingId === item.id}
-              onStartEdit={() => setEditingId(item.id)}
-              onSaveEdit={(val) => saveEdit(item.id, val)}
-              onCancelEdit={() => setEditingId(null)}
-              onToggle={toggleDone}
-              onDelete={requestDelete}
-            />
+      {visibleSuggestions.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {visibleSuggestions.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => addSuggestion(s)}
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+            >
+              {s.content}
+            </button>
           ))}
+        </div>
+      )}
+
+      {visibleItems.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Todavía no hay notas en esta lista.</p>
+      ) : (
+        <div className="space-y-4">
+          {pendingItems.length > 0 && (
+            <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                {pendingItems.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    soloList={soloList}
+                    editing={editingId === item.id}
+                    onStartEdit={() => setEditingId(item.id)}
+                    onSaveEdit={(val) => saveEdit(item.id, val)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onToggle={toggleDone}
+                    onDelete={requestDelete}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {doneItems.length > 0 && (
-            <div className="pt-4">
+            <div>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Hechos / comprados ({doneItems.length})
@@ -128,32 +183,36 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                   🗑 Vaciar comprados
                 </button>
               </div>
-              {doneItems.map((item) => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  soloList={soloList}
-                  editing={editingId === item.id}
-                  onStartEdit={() => setEditingId(item.id)}
-                  onSaveEdit={(val) => saveEdit(item.id, val)}
-                  onCancelEdit={() => setEditingId(null)}
-                  onToggle={toggleDone}
-                  onDelete={requestDelete}
-                />
-              ))}
+              <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {doneItems.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      soloList={soloList}
+                      editing={editingId === item.id}
+                      onStartEdit={() => setEditingId(item.id)}
+                      onSaveEdit={(val) => saveEdit(item.id, val)}
+                      onCancelEdit={() => setEditingId(null)}
+                      onToggle={toggleDone}
+                      onDelete={requestDelete}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
       )}
 
       {lastPendingId && (
-        <UndoToast message="Ítem eliminado" onUndo={() => undoDelete(lastPendingId)} />
+        <UndoToast message="Nota eliminada" onUndo={() => undoDelete(lastPendingId)} />
       )}
 
       {confirmEmpty && (
         <ConfirmDialog
           title="Vaciar comprados"
-          message={`¿Eliminar definitivamente los ${doneItems.length} ítems marcados como hechos/comprados? Esta acción no se puede deshacer.`}
+          message={`¿Eliminar definitivamente las ${doneItems.length} notas marcadas como hechas/compradas? Esta acción no se puede deshacer.`}
           confirmLabel="Eliminar"
           danger
           onCancel={() => setConfirmEmpty(false)}
@@ -196,7 +255,7 @@ function ItemRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="flex items-center gap-3 px-3 py-2.5">
       <input
         type="checkbox"
         checked={item.done}
