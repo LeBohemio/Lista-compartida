@@ -204,6 +204,7 @@ export default function ListsPage() {
               avatarUrl={profile?.avatar_url}
               size={38}
               className="ring-2 ring-white/70 hover:ring-white"
+              enlargeOnClick={false}
             />
             {invitations.length > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
@@ -490,6 +491,7 @@ function ListRow({
                   avatarUrl={p.avatar_url}
                   size={22}
                   className={`ring-2 ring-white dark:ring-slate-800 ${idx > 0 ? '-ml-2' : ''}`}
+                  enlargeOnClick={false}
                 />
               ))}
               {avatars.length > 4 && (

@@ -7,6 +7,7 @@ const AVATAR_CATEGORIES: { slug: string; labelKey: TranslationKey }[] = [
   { slug: 'minimalista', labelKey: 'avatarPicker.minimalista' },
   { slug: 'ilustracion', labelKey: 'avatarPicker.ilustracion' },
   { slug: 'realista', labelKey: 'avatarPicker.realista' },
+  { slug: 'monos-divertidos', labelKey: 'avatarPicker.monosDivertidos' },
   { slug: 'animales', labelKey: 'avatarPicker.animales' },
   { slug: 'pixel-art', labelKey: 'avatarPicker.pixelArt' },
   { slug: 'pixel-art-animales', labelKey: 'avatarPicker.pixelArtAnimales' },

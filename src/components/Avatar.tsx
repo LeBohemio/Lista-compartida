@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { colorForName } from '../lib/colors'
+import { useLanguage } from '../lib/i18n'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -12,22 +15,70 @@ export default function Avatar({
   avatarUrl,
   size = 32,
   className = '',
+  enlargeOnClick = true,
 }: {
   username: string
   avatarUrl?: string | null
   size?: number
   className?: string
+  /** Al pulsar la foto se abre una vista ampliada a pantalla completa. Desactívalo
+   *  cuando el avatar ya viva dentro de otro elemento clicable (un botón que abre
+   *  el perfil, una fila que abre una lista, etc.) para no pisar esa acción. */
+  enlargeOnClick?: boolean
 }) {
+  const { t } = useLanguage()
+  const [showFull, setShowFull] = useState(false)
+
   if (avatarUrl) {
     return (
-      <img
-        src={avatarUrl}
-        alt={username}
-        width={size}
-        height={size}
-        className={`shrink-0 rounded-full object-cover ${className}`}
-        style={{ width: size, height: size }}
-      />
+      <>
+        <img
+          src={avatarUrl}
+          alt={username}
+          width={size}
+          height={size}
+          className={`shrink-0 rounded-full object-cover ${enlargeOnClick ? 'cursor-pointer' : ''} ${className}`}
+          style={{ width: size, height: size }}
+          onClick={
+            enlargeOnClick
+              ? (e) => {
+                  e.stopPropagation()
+                  setShowFull(true)
+                }
+              : undefined
+          }
+        />
+        {showFull &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-4"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowFull(false)
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowFull(false)
+                }}
+                aria-label={t('common.close')}
+                title={t('common.close')}
+                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+              >
+                ✕
+              </button>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <img
+                src={avatarUrl}
+                alt={username}
+                className="max-h-[85vh] max-w-full rounded-2xl object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>,
+            document.body,
+          )}
+      </>
     )
   }
 
