@@ -401,9 +401,16 @@ function NotepadCard({ children }: { children: ReactNode }) {
     <div
       className="relative overflow-hidden rounded-xl bg-[var(--color-surface)] shadow-sm ring-1 ring-[var(--color-surface-border)]"
       style={{
+        // 40px = la altura real de una fila sencilla (2.5 de padding arriba
+        // y abajo + una línea de texto), para que la rayita caiga justo en
+        // el borde entre una nota y la siguiente en el caso más común. Con
+        // notas de dos líneas, fecha límite o el nombre de quien la añadió
+        // la fila mide más, así que a partir de ahí puede desajustarse un
+        // poco — es un patrón decorativo, no algo pensado para encajar a la
+        // perfección con cualquier alto de fila.
         backgroundImage:
-          'repeating-linear-gradient(to bottom, transparent, transparent 42px, var(--color-surface-line) 43px)',
-        backgroundPosition: '0 4px',
+          'repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--color-surface-line) 40px)',
+        backgroundPosition: '0 0',
       }}
     >
       {/* margen izquierdo, como en una hoja pautada */}
@@ -668,7 +675,7 @@ function ItemRow({
           ) : (
             <p
               onClick={readOnly || inReorder ? undefined : startEdit}
-              className={`truncate text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+              className={`break-words text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
             >
               {item.content}
             </p>

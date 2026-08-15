@@ -61,7 +61,17 @@ const DARK_ACCENT_PALETTE = [
   '#4c1d95', // violet oscuro
   '#134e4a', // teal oscuro
 ]
-const ALL_ACCENT_COLORS = [...PALETTE, ...DARK_ACCENT_PALETTE]
+// El naranja/ámbar de PALETTE se queda tal cual, y añadimos un amarillo
+// aparte (no está en la paleta compartida de avatares para no reordenar
+// los colores que ya tiene asignados cada persona) justo al lado del
+// naranja, para que quien lo busque lo encuentre cerca.
+const YELLOW_ACCENT = '#eab308'
+const amberIndex = PALETTE.indexOf('#f59e0b')
+const LIGHT_ACCENT_COLORS =
+  amberIndex === -1
+    ? [...PALETTE, YELLOW_ACCENT]
+    : [...PALETTE.slice(0, amberIndex + 1), YELLOW_ACCENT, ...PALETTE.slice(amberIndex + 1)]
+const ALL_ACCENT_COLORS = [...LIGHT_ACCENT_COLORS, ...DARK_ACCENT_PALETTE]
 
 export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const { user, profile, refreshProfile, signOut } = useAuth()

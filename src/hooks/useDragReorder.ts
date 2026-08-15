@@ -26,6 +26,15 @@ export function useDragReorder<T>({
   const rowRefs = useRef<Map<string, HTMLElement>>(new Map())
   const baseOrderRef = useRef<T[]>(items)
   const prevRectsRef = useRef<Map<string, DOMRect>>(new Map())
+  // Posiciones "reales" (de reposo) de cada fila, para decidir a qué sitio
+  // se mueve la que arrastras. Solo se actualizan justo después de un
+  // cambio de orden real (antes de animar) — nunca se leen en caliente
+  // durante la animación FLIP, porque mientras una fila todavía se está
+  // desplazando hacia su sitio, su posición pintada en pantalla no es la
+  // definitiva, y comparar contra eso hacía que la fila arrastrada
+  // "vibrara" (el objetivo cambiaba de un frame a otro sin que te hubieras
+  // movido).
+  const settledRectsRef = useRef<Map<string, DOMRect>>(new Map())
   const dragStartYRef = useRef(0)
   const draggingIdRef = useRef<string | null>(null)
 
@@ -50,7 +59,9 @@ export function useDragReorder<T>({
       setDraggingId(id)
       draggingIdRef.current = id
       dragStartYRef.current = e.clientY
-      prevRectsRef.current = captureRects()
+      const startRects = captureRects()
+      prevRectsRef.current = startRects
+      settledRectsRef.current = startRects
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       const el = rowRefs.current.get(id)
       if (el) {
@@ -83,9 +94,10 @@ export function useDragReorder<T>({
       let targetIndex = draggedIndex
       for (let i = 0; i < order.length; i++) {
         if (i === draggedIndex) continue
-        const el = rowRefs.current.get(getId(order[i]))
-        if (!el) continue
-        const rect = el.getBoundingClientRect()
+        // Posición de reposo, no la posición pintada ahora mismo (que
+        // puede estar a mitad de la animación FLIP).
+        const rect = settledRectsRef.current.get(getId(order[i]))
+        if (!rect) continue
         const mid = rect.top + rect.height / 2
         if (currentY > mid) targetIndex = i
       }
@@ -114,9 +126,14 @@ export function useDragReorder<T>({
     if (prevRects.size === 0) return
     rowRefs.current.forEach((el, id) => {
       if (id === draggingIdRef.current) return
+      const next = el.getBoundingClientRect()
+      // Esta SÍ es la posición de reposo (recién calculada por el layout,
+      // todavía sin el transform de la animación aplicado) — la guardamos
+      // para que el próximo movimiento del puntero compare contra el sitio
+      // real, no contra un fotograma a medio animar.
+      settledRectsRef.current.set(id, next)
       const prev = prevRects.get(id)
       if (!prev) return
-      const next = el.getBoundingClientRect()
       const deltaY = prev.top - next.top
       if (Math.abs(deltaY) < 0.5) return
       el.style.transition = 'none'

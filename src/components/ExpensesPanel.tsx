@@ -147,7 +147,7 @@ export default function ExpensesPanel({
       {categoryTotals.length > 0 && (
         <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Por categoría
+            {t('expenses.byCategory')}
           </h3>
           <div className="flex flex-wrap gap-2">
             {categoryTotals.map((c) => (
@@ -163,7 +163,7 @@ export default function ExpensesPanel({
       )}
 
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Histórico</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('expenses.historic')}</h3>
       </div>
 
       {ledger.length > SEARCH_THRESHOLD && (
@@ -171,23 +171,23 @@ export default function ExpensesPanel({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar en el histórico…"
+          placeholder={t('expenses.searchPlaceholder')}
           className="mb-3 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
         />
       )}
 
       {filteredLedger.length === 0 ? (
         search.trim() ? (
-          <p className="py-8 text-center text-sm text-slate-400">No hay resultados para esa búsqueda.</p>
+          <p className="py-8 text-center text-sm text-slate-400">{t('expenses.emptySearch')}</p>
         ) : (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-slate-400">Aún no hay gastos por aquí. ¡Anota el primero!</p>
+            <p className="mb-4 text-sm text-slate-400">{t('expenses.empty')}</p>
             {!readOnly && (
               <button
                 onClick={() => setShowNew(true)}
                 className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
               >
-                ➕ Añadir tu primer gasto
+                {t('expenses.addFirst')}
               </button>
             )}
           </div>
@@ -203,8 +203,8 @@ export default function ExpensesPanel({
                     <div>
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                         <span className="mr-1">{categoryIcon(row.data.category)}</span>
-                        {row.data.description || 'Ticket'}
-                        {!soloList ? ` · pagado por ${row.data.payer?.username ?? '—'}` : ''}
+                        {row.data.description || t('expenses.ticket')}
+                        {!soloList ? ` · ${t('expenses.paidBy', { name: row.data.payer?.username ?? '—' })}` : ''}
                       </p>
                       <p className="text-xs text-slate-400">
                         {new Date(row.data.created_at).toLocaleString('es-ES')}
@@ -222,8 +222,8 @@ export default function ExpensesPanel({
                               setEditingExpense(row.data)
                             }}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                            aria-label="Editar gasto"
-                            title="Editar gasto"
+                            aria-label={t('expenses.edit')}
+                            title={t('expenses.edit')}
                           >
                             ✎
                           </button>
@@ -231,8 +231,8 @@ export default function ExpensesPanel({
                         <button
                           onClick={(e) => requestDelete(e, row.data.id)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
-                          aria-label="Eliminar gasto"
-                          title="Eliminar gasto"
+                          aria-label={t('expenses.delete')}
+                          title={t('expenses.delete')}
                         >
                           🗑
                         </button>
@@ -245,13 +245,13 @@ export default function ExpensesPanel({
                     {row.data.receipt_image_path && (
                       <div className="mb-3">
                         {receiptUrl ? (
-                          <img src={receiptUrl} alt="Ticket" className="max-h-64 rounded-lg object-contain" />
+                          <img src={receiptUrl} alt={t('expenses.ticket')} className="max-h-64 rounded-lg object-contain" />
                         ) : (
-                          <p className="text-xs text-slate-400">Cargando imagen…</p>
+                          <p className="text-xs text-slate-400">{t('expenses.loadingImage')}</p>
                         )}
                       </div>
                     )}
-                    <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Reparto:</p>
+                    <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{t('expenses.breakdown')}</p>
                     <div className="space-y-1">
                       {(row.data.shares ?? []).map((s) => (
                         <div key={s.id} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
@@ -270,7 +270,11 @@ export default function ExpensesPanel({
               >
                 <div>
                   <p className="text-sm text-green-800 dark:text-green-400">
-                    ✓ {row.data.from_profile?.username ?? '—'} pagó a {row.data.to_profile?.username ?? '—'}
+                    ✓{' '}
+                    {t('expenses.settledMessage', {
+                      from: row.data.from_profile?.username ?? '—',
+                      to: row.data.to_profile?.username ?? '—',
+                    })}
                     {row.data.note ? ` · ${row.data.note}` : ''}
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-500">{new Date(row.data.created_at).toLocaleString('es-ES')}</p>
@@ -301,7 +305,7 @@ export default function ExpensesPanel({
         />
       )}
 
-      {lastPendingId && <UndoToast message="Gasto eliminado" onUndo={() => undoDelete(lastPendingId)} />}
+      {lastPendingId && <UndoToast message={t('expenses.deleted')} onUndo={() => undoDelete(lastPendingId)} />}
     </div>
   )
 }
