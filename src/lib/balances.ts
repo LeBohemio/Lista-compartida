@@ -81,3 +81,23 @@ export function simplifyDebts(netBalances: NetBalance): SuggestedDebt[] {
 export function formatEuro(amount: number): string {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 }
+
+/**
+ * Reparte `totalCents` entre `userIds` a partes iguales, en céntimos, sin
+ * perder ni un céntimo por redondeo: el cociente entero va para todos, y el
+ * resto (que siempre es menor que el número de personas) se reparte de uno
+ * en uno entre las primeras personas de la lista. La suma de lo repartido
+ * siempre coincide exactamente con `totalCents`.
+ */
+export function splitEqually(totalCents: number, userIds: string[]): Record<string, number> {
+  const n = userIds.length
+  if (n === 0) return {}
+  const base = Math.floor(totalCents / n)
+  let remainder = totalCents - base * n
+  const result: Record<string, number> = {}
+  for (const id of userIds) {
+    result[id] = base + (remainder > 0 ? 1 : 0)
+    if (remainder > 0) remainder--
+  }
+  return result
+}

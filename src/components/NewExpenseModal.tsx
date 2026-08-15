@@ -4,21 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
+import { splitEqually } from '../lib/balances'
 import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom' | 'percent'
-
-function splitEqually(totalCents: number, userIds: string[]): Record<string, number> {
-  const n = userIds.length
-  const base = Math.floor(totalCents / n)
-  let remainder = totalCents - base * n
-  const result: Record<string, number> = {}
-  for (const id of userIds) {
-    result[id] = base + (remainder > 0 ? 1 : 0)
-    if (remainder > 0) remainder--
-  }
-  return result
-}
 
 export default function NewExpenseModal({
   listId,
