@@ -1,12 +1,13 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { PALETTE } from '../lib/colors'
 import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
 import AvatarCropper from './AvatarCropper'
-import type { Theme } from '../lib/types'
+import type { Language, Theme } from '../lib/types'
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'light', label: '☀️ Claro' },
@@ -14,14 +15,36 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'system', label: '📱 Del móvil' },
 ]
 
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
+  { value: 'es', label: '🇪🇸 Español' },
+  { value: 'en', label: '🇬🇧 English' },
+]
+
+// Fondos suaves, pensados para no competir con el color de acento de
+// botones/burbujas. `null` representa "usar el fondo por defecto de la app".
+const BACKGROUND_OPTIONS: { value: string | null; label: string; swatch: string }[] = [
+  { value: null, label: 'Por defecto', swatch: '#f1f5f9' },
+  { value: '#fdf6ec', label: 'Cálido', swatch: '#fdf6ec' },
+  { value: '#eef4ff', label: 'Azulado', swatch: '#eef4ff' },
+  { value: '#eefaf1', label: 'Verdoso', swatch: '#eefaf1' },
+  { value: '#fdf0f6', label: 'Rosado', swatch: '#fdf0f6' },
+  { value: '#f4f0ff', label: 'Lila', swatch: '#f4f0ff' },
+  { value: '#fffbea', label: 'Amarillo suave', swatch: '#fffbea' },
+]
+
 export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const { user, profile, refreshProfile, signOut } = useAuth()
+  const { language, setLanguage, t } = useLanguage()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [showMyExpenses, setShowMyExpenses] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
+
+  const [newUsername, setNewUsername] = useState('')
+  const [usernameSubmitting, setUsernameSubmitting] = useState(false)
+  const [usernameMessage, setUsernameMessage] = useState<string | null>(null)
 
   const [newEmail, setNewEmail] = useState('')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
@@ -86,6 +109,28 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
     await refreshProfile()
   }
 
+  const setBackgroundColor = async (color: string | null) => {
+    await supabase.from('profiles').update({ background_color: color }).eq('id', user.id)
+    await refreshProfile()
+  }
+
+  const handleChangeUsername = async (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = newUsername.trim()
+    if (!trimmed || trimmed === profile.username) return
+    setUsernameSubmitting(true)
+    setUsernameMessage(null)
+    const { error: err } = await supabase.from('profiles').update({ username: trimmed }).eq('id', user.id)
+    setUsernameSubmitting(false)
+    if (err) {
+      setUsernameMessage(err.message)
+      return
+    }
+    await refreshProfile()
+    setUsernameMessage('Nombre de usuario actualizado.')
+    setNewUsername('')
+  }
+
   const handleChangeEmail = async (e: FormEvent) => {
     e.preventDefault()
     if (!newEmail.trim()) return
@@ -138,7 +183,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
         >
           ✕
         </button>
-        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">Tu perfil</h2>
+        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('profile.title')}</h2>
 
         <div className="mb-5 flex flex-col items-center gap-3">
           <Avatar
@@ -164,23 +209,23 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           onClick={() => setShowMyExpenses(true)}
           className="mb-6 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          📊 Mis gastos
+          {t('profile.myExpenses')}
         </button>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Apariencia</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.appearance')}</p>
           <div className="flex gap-2">
-            {THEME_OPTIONS.map((t) => (
+            {THEME_OPTIONS.map((opt) => (
               <button
-                key={t.value}
-                onClick={() => setTheme(t.value)}
+                key={opt.value}
+                onClick={() => setTheme(opt.value)}
                 className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
-                  profile.theme === t.value
+                  profile.theme === opt.value
                     ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
                     : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
                 }`}
               >
-                {t.label}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -201,6 +246,70 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
+          <div>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Color de fondo</p>
+            <div className="flex flex-wrap gap-2">
+              {BACKGROUND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setBackgroundColor(opt.value)}
+                  aria-label={opt.label}
+                  title={opt.label}
+                  className="relative h-8 w-8 rounded-full border border-slate-200 transition dark:border-slate-600"
+                  style={{
+                    backgroundColor: opt.swatch,
+                    boxShadow:
+                      profile.background_color === opt.value ? '0 0 0 2px white, 0 0 0 4px #4f46e5' : 'none',
+                  }}
+                >
+                  {opt.value === null && (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
+                      ✕
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.language')}</p>
+            <div className="flex gap-2">
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLanguage(opt.value)}
+                  className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
+                    language === opt.value
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                      : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cambiar nombre de usuario</p>
+          <form onSubmit={handleChangeUsername} className="space-y-2">
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder={profile.username}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+            {usernameMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{usernameMessage}</p>}
+            <button
+              type="submit"
+              disabled={usernameSubmitting || !newUsername.trim()}
+              className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              {usernameSubmitting ? 'Guardando…' : 'Actualizar nombre de usuario'}
+            </button>
+          </form>
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
@@ -257,13 +366,13 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            Cerrar
+            {t('common.close')}
           </button>
           <button
             onClick={() => signOut()}
             className="flex-1 rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
           >
-            Cerrar sesión
+            {t('profile.signOut')}
           </button>
         </div>
 
@@ -271,7 +380,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           onClick={() => setShowDelete(true)}
           className="mt-4 w-full text-center text-xs text-red-400 hover:text-red-600"
         >
-          Eliminar cuenta
+          {t('profile.deleteAccount')}
         </button>
       </div>
 

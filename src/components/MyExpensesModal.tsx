@@ -136,7 +136,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:text-slate-100">
-              <span>Total pagado por ti</span>
+              <span>Total</span>
               <span>{formatEuro(totalMonth)}</span>
             </div>
 

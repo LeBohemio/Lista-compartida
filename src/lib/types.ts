@@ -1,4 +1,5 @@
 export type Theme = 'light' | 'dark' | 'system'
+export type Language = 'es' | 'en'
 
 export type Profile = {
   id: string
@@ -7,6 +8,8 @@ export type Profile = {
   avatar_url: string | null
   theme: Theme
   accent_color: string | null
+  background_color: string | null
+  language: Language
   created_at: string
 }
 
@@ -31,6 +34,7 @@ export type ListMember = {
   status: MemberStatus
   invited_identifier: string
   pinned: boolean
+  position: number | null
   created_at: string
   responded_at: string | null
   last_read_message_at: string | null
@@ -48,6 +52,7 @@ export type Item = {
   content: string
   done: boolean
   due_date: string | null
+  position: number | null
   created_by: string | null
   created_at: string
   done_at: string | null

@@ -1,8 +1,10 @@
-import { useMemo, useState, type MouseEvent } from 'react'
+import { useMemo, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { useLists, type ItemStats } from '../hooks/useLists'
 import { useLongPress } from '../hooks/useLongPress'
+import { useDragReorder } from '../hooks/useDragReorder'
 import { supabase } from '../lib/supabaseClient'
 import CreateListModal from '../components/CreateListModal'
 import Logo from '../components/Logo'
@@ -15,16 +17,31 @@ import type { ListWithMembership, Profile } from '../lib/types'
 
 export default function ListsPage() {
   const { profile } = useAuth()
-  const { lists, invitations, itemStats, memberAvatars, loading, error, refetch, togglePin } = useLists()
+  const { t } = useLanguage()
+  const { lists, invitations, itemStats, memberAvatars, loading, error, refetch, togglePin, reorderLists } =
+    useLists()
   const [showCreate, setShowCreate] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
 
-  const activeLists = useMemo(() => lists.filter((l) => !l.archived_at), [lists])
-  const archivedLists = useMemo(() => lists.filter((l) => l.archived_at), [lists])
+  const activeLists = useMemo(
+    () => lists.filter((l) => !l.archived_at && !pendingDeleteIds.has(l.id)),
+    [lists, pendingDeleteIds],
+  )
+  const archivedLists = useMemo(
+    () => lists.filter((l) => l.archived_at && !pendingDeleteIds.has(l.id)),
+    [lists, pendingDeleteIds],
+  )
+
+  const reorder = useDragReorder<ListWithMembership>({
+    items: activeLists,
+    getId: (l) => l.id,
+    onCommit: (ordered) => reorderLists(ordered.map((l) => l.id)),
+  })
 
   const respondInvitation = async (listId: string, accept: boolean) => {
     if (accept) {
@@ -49,9 +66,18 @@ export default function ListsPage() {
     if (!confirmTarget) return
     const { listId, isOwner } = confirmTarget
     setConfirmTarget(null)
+    // La quitamos de la vista al instante, sin esperar a la respuesta del
+    // servidor ni a que llegue el evento de tiempo real — así no hace
+    // falta refrescar la página para verla desaparecer.
+    setPendingDeleteIds((prev) => new Set(prev).add(listId))
     if (isOwner) {
       const { error: err } = await supabase.from('lists').delete().eq('id', listId)
       if (err) {
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          next.delete(listId)
+          return next
+        })
         setActionError(`No se pudo eliminar la lista: ${err.message}`)
         return
       }
@@ -62,6 +88,11 @@ export default function ListsPage() {
         .eq('list_id', listId)
         .eq('user_id', profile!.id)
       if (err) {
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          next.delete(listId)
+          return next
+        })
         setActionError(`No se pudo salir de la lista: ${err.message}`)
         return
       }
@@ -98,7 +129,10 @@ export default function ListsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24 dark:bg-slate-900">
+    <div
+      className="min-h-screen bg-slate-50 pb-24 dark:bg-slate-900"
+      style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+    >
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -133,7 +167,7 @@ export default function ListsPage() {
         {invitations.length > 0 && (
           <section className="mb-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Invitaciones pendientes
+              {t('lists.invitationsTitle')}
             </h2>
             <div className="space-y-3">
               {invitations.map((inv) => (
@@ -150,13 +184,13 @@ export default function ListsPage() {
                       onClick={() => respondInvitation(inv.id, false)}
                       className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                     >
-                      Rechazar
+                      {t('lists.reject')}
                     </button>
                     <button
                       onClick={() => respondInvitation(inv.id, true)}
                       className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
                     >
-                      Aceptar
+                      {t('lists.accept')}
                     </button>
                   </div>
                 </div>
@@ -168,7 +202,7 @@ export default function ListsPage() {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Mis listas
+              {t('lists.title')}
             </h2>
           </div>
 
@@ -176,23 +210,28 @@ export default function ListsPage() {
             <p className="text-sm text-slate-400">Cargando listas…</p>
           ) : activeLists.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-600">
-              <p className="mb-4 text-slate-500 dark:text-slate-400">Todavía no tienes ninguna lista.</p>
+              <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
               <button
                 onClick={() => setShowCreate(true)}
                 className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
               >
-                Crear tu primera lista
+                {t('lists.create')}
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              {activeLists.map((l) => (
+              {reorder.displayItems.map((l) => (
                 <ListRow
                   key={l.id}
                   list={l}
                   isOwner={l.owner_id === profile?.id}
                   stats={itemStats[l.id]}
                   avatars={memberAvatars[l.id] ?? []}
+                  dragging={reorder.draggingId === l.id}
+                  onRowRef={(el) => reorder.registerRow(l.id, el)}
+                  onDragPointerDown={reorder.handlePointerDown(l.id)}
+                  onDragPointerMove={reorder.handlePointerMove}
+                  onDragPointerUp={reorder.handlePointerUp}
                   onOpen={() => navigate(`/lists/${l.id}`)}
                   onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                   onDuplicate={() => duplicateList(l)}
@@ -275,6 +314,11 @@ function ListRow({
   isOwner,
   stats,
   avatars,
+  dragging,
+  onRowRef,
+  onDragPointerDown,
+  onDragPointerMove,
+  onDragPointerUp,
   onOpen,
   onTogglePin,
   onDuplicate,
@@ -284,6 +328,11 @@ function ListRow({
   isOwner: boolean
   stats?: ItemStats
   avatars: Profile[]
+  dragging?: boolean
+  onRowRef?: (el: HTMLElement | null) => void
+  onDragPointerDown?: (e: ReactPointerEvent) => void
+  onDragPointerMove?: (e: ReactPointerEvent) => void
+  onDragPointerUp?: (e: ReactPointerEvent) => void
   onOpen: () => void
   onTogglePin: () => void
   onDuplicate: () => void
@@ -295,17 +344,34 @@ function ListRow({
 
   return (
     <div
+      ref={onRowRef}
       onClick={onOpen}
       role="button"
       tabIndex={0}
-      className="w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700"
+      className={`w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:shadow-md hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700 ${
+        dragging ? 'relative z-10 ring-2 ring-brand-300' : ''
+      }`}
       {...longPress}
     >
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
+          {onDragPointerDown && (
+            <button
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={onDragPointerDown}
+              onPointerMove={onDragPointerMove}
+              onPointerUp={onDragPointerUp}
+              aria-label="Arrastrar para reordenar"
+              title="Arrastrar para reordenar"
+              className="hidden shrink-0 touch-none select-none text-slate-300 hover:text-slate-500 sm:block dark:text-slate-600 dark:hover:text-slate-400"
+              style={{ cursor: 'grab' }}
+            >
+              ⠿
+            </button>
+          )}
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: colorForList(l) }}
+            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-800"
+            style={{ backgroundColor: colorForList(l), boxShadow: `0 0 0 1px ${colorForList(l)}55` }}
             aria-hidden="true"
           />
           <div className="min-w-0">

@@ -51,6 +51,11 @@ export function useLists() {
 
     accepted.sort((a, b) => {
       if (a.membership.pinned !== b.membership.pinned) return a.membership.pinned ? -1 : 1
+      const pa = a.membership.position
+      const pb = b.membership.position
+      if (pa != null && pb != null && pa !== pb) return pa - pb
+      if (pa != null && pb == null) return -1
+      if (pa == null && pb != null) return 1
       return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
     })
 
@@ -127,5 +132,28 @@ export function useLists() {
     [user, fetchLists],
   )
 
-  return { lists, invitations, itemStats, memberAvatars, loading, error, refetch: fetchLists, togglePin }
+  const reorderLists = useCallback(
+    async (orderedListIds: string[]) => {
+      if (!user) return
+      await Promise.all(
+        orderedListIds.map((listId, idx) =>
+          supabase.from('list_members').update({ position: idx }).eq('list_id', listId).eq('user_id', user.id),
+        ),
+      )
+      fetchLists()
+    },
+    [user, fetchLists],
+  )
+
+  return {
+    lists,
+    invitations,
+    itemStats,
+    memberAvatars,
+    loading,
+    error,
+    refetch: fetchLists,
+    togglePin,
+    reorderLists,
+  }
 }

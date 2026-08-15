@@ -1,7 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLongPress } from '../hooks/useLongPress'
+import { useDragReorder } from '../hooks/useDragReorder'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
@@ -25,6 +37,13 @@ function formatDueDate(dateStr: string) {
   return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
+function sortByPosition(a: Item, b: Item) {
+  const pa = a.position ?? Number.MAX_SAFE_INTEGER
+  const pb = b.position ?? Number.MAX_SAFE_INTEGER
+  if (pa !== pb) return pa - pb
+  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+}
+
 export default function ItemsPanel({ listId, items, soloList }: { listId: string; items: Item[]; soloList: boolean }) {
   const { user } = useAuth()
   const [content, setContent] = useState('')
@@ -34,6 +53,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [confirmEmpty, setConfirmEmpty] = useState(false)
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
   const [search, setSearch] = useState('')
+  const [showAddSheet, setShowAddSheet] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
@@ -44,8 +64,24 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const visibleItems = search.trim()
     ? notDeleted.filter((i) => normalize(i.content).includes(normalize(search)))
     : notDeleted
-  const doneItems = visibleItems.filter((i) => i.done)
-  const pendingItems = visibleItems.filter((i) => !i.done)
+  const searching = search.trim().length > 0
+  const doneItems = useMemo(() => visibleItems.filter((i) => i.done).sort(sortByPosition), [visibleItems])
+  const pendingItems = useMemo(() => visibleItems.filter((i) => !i.done).sort(sortByPosition), [visibleItems])
+
+  const persistOrder = async (ordered: Item[]) => {
+    await Promise.all(ordered.map((it, idx) => supabase.from('items').update({ position: idx }).eq('id', it.id)))
+  }
+
+  const pendingReorder = useDragReorder<Item>({
+    items: pendingItems,
+    getId: (i) => i.id,
+    onCommit: persistOrder,
+  })
+  const doneReorder = useDragReorder<Item>({
+    items: doneItems,
+    getId: (i) => i.id,
+    onCommit: persistOrder,
+  })
 
   const fetchSuggestions = useCallback(async () => {
     const { data } = await supabase
@@ -80,6 +116,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     await createItem(content)
     setContent('')
     setSubmitting(false)
+    inputRef.current?.focus()
   }
 
   const addSuggestion = async (suggestion: ItemSuggestion) => {
@@ -149,38 +186,6 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
 
   return (
     <div>
-      <form onSubmit={addItem} className="mb-3 flex gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Añadir nota…"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
-        <button
-          type="submit"
-          disabled={submitting || !content.trim()}
-          className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-        >
-          Añadir
-        </button>
-      </form>
-
-      {visibleSuggestions.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {visibleSuggestions.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => addSuggestion(s)}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
-            >
-              {s.content}
-            </button>
-          ))}
-        </div>
-      )}
-
       {items.length > SEARCH_THRESHOLD && (
         <input
           type="text"
@@ -192,13 +197,13 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
       )}
 
       {visibleItems.length === 0 ? (
-        search.trim() ? (
+        searching ? (
           <p className="py-8 text-center text-sm text-slate-400">No hay notas que coincidan con la búsqueda.</p>
         ) : (
           <div className="py-8 text-center">
             <p className="mb-4 text-sm text-slate-400">Todavía no hay notas en esta lista.</p>
             <button
-              onClick={() => inputRef.current?.focus()}
+              onClick={() => setShowAddSheet(true)}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
             >
               ➕ Añadir tu primera nota
@@ -206,7 +211,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
           </div>
         )
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-24">
           {pendingItems.length > 0 && (
             <div>
               <div className="mb-2 flex justify-end">
@@ -217,24 +222,28 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                   ✓ Marcar todas como hechas
                 </button>
               </div>
-              <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {pendingItems.map((item) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      soloList={soloList}
-                      editing={editingId === item.id}
-                      onStartEdit={() => setEditingId(item.id)}
-                      onSaveEdit={(val) => saveEdit(item.id, val)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onToggle={toggleDone}
-                      onDelete={requestDelete}
-                      onOpenDueDate={() => setDueDateTarget(item)}
-                    />
-                  ))}
-                </div>
-              </div>
+              <NotepadCard>
+                {pendingReorder.displayItems.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    soloList={soloList}
+                    editing={editingId === item.id}
+                    dragging={pendingReorder.draggingId === item.id}
+                    draggable={!searching}
+                    onRowRef={(el) => pendingReorder.registerRow(item.id, el)}
+                    onDragPointerDown={pendingReorder.handlePointerDown(item.id)}
+                    onDragPointerMove={pendingReorder.handlePointerMove}
+                    onDragPointerUp={pendingReorder.handlePointerUp}
+                    onStartEdit={() => setEditingId(item.id)}
+                    onSaveEdit={(val) => saveEdit(item.id, val)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onToggle={toggleDone}
+                    onDelete={requestDelete}
+                    onOpenDueDate={() => setDueDateTarget(item)}
+                  />
+                ))}
+              </NotepadCard>
             </div>
           )}
 
@@ -248,28 +257,41 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                   🗑 Vaciar comprados
                 </button>
               </div>
-              <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {doneItems.map((item) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      soloList={soloList}
-                      editing={editingId === item.id}
-                      onStartEdit={() => setEditingId(item.id)}
-                      onSaveEdit={(val) => saveEdit(item.id, val)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onToggle={toggleDone}
-                      onDelete={requestDelete}
-                      onOpenDueDate={() => setDueDateTarget(item)}
-                    />
-                  ))}
-                </div>
-              </div>
+              <NotepadCard muted>
+                {doneReorder.displayItems.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    soloList={soloList}
+                    editing={editingId === item.id}
+                    dragging={doneReorder.draggingId === item.id}
+                    draggable={!searching}
+                    onRowRef={(el) => doneReorder.registerRow(item.id, el)}
+                    onDragPointerDown={doneReorder.handlePointerDown(item.id)}
+                    onDragPointerMove={doneReorder.handlePointerMove}
+                    onDragPointerUp={doneReorder.handlePointerUp}
+                    onStartEdit={() => setEditingId(item.id)}
+                    onSaveEdit={(val) => saveEdit(item.id, val)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onToggle={toggleDone}
+                    onDelete={requestDelete}
+                    onOpenDueDate={() => setDueDateTarget(item)}
+                  />
+                ))}
+              </NotepadCard>
             </div>
           )}
         </div>
       )}
+
+      <button
+        onClick={() => setShowAddSheet(true)}
+        aria-label="Añadir nota"
+        title="Añadir nota"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
+      >
+        +
+      </button>
 
       {lastPendingId && (
         <UndoToast message="Nota eliminada" onUndo={() => undoDelete(lastPendingId)} />
@@ -296,6 +318,109 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
           }}
         />
       )}
+
+      {showAddSheet && (
+        <AddNoteSheet
+          content={content}
+          setContent={setContent}
+          submitting={submitting}
+          inputRef={inputRef}
+          suggestions={visibleSuggestions}
+          onSubmit={addItem}
+          onSuggestion={addSuggestion}
+          onClose={() => setShowAddSheet(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function NotepadCard({ children, muted }: { children: ReactNode; muted?: boolean }) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-xl shadow-sm ring-1 ${
+        muted
+          ? 'bg-[#faf7ee] ring-amber-100/70 dark:bg-[#26221c] dark:ring-amber-950/30'
+          : 'bg-[#fffdf3] ring-amber-100 dark:bg-[#2a251e] dark:ring-amber-950/40'
+      }`}
+      style={{
+        backgroundImage:
+          'repeating-linear-gradient(to bottom, transparent, transparent 42px, rgba(180,150,90,0.16) 43px)',
+        backgroundPosition: '0 4px',
+      }}
+    >
+      <div className="pointer-events-none absolute inset-y-0 left-9 hidden w-px bg-red-200/60 sm:block dark:bg-red-900/30" />
+      <div className="divide-y divide-amber-900/5 dark:divide-amber-100/5">{children}</div>
+    </div>
+  )
+}
+
+function AddNoteSheet({
+  content,
+  setContent,
+  submitting,
+  inputRef,
+  suggestions,
+  onSubmit,
+  onSuggestion,
+  onClose,
+}: {
+  content: string
+  setContent: (v: string) => void
+  submitting: boolean
+  inputRef: RefObject<HTMLInputElement | null>
+  suggestions: ItemSuggestion[]
+  onSubmit: (e: FormEvent) => void
+  onSuggestion: (s: ItemSuggestion) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Añadir nota</h2>
+        <form onSubmit={onSubmit} className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            autoFocus
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Añadir nota…"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <button
+            type="submit"
+            disabled={submitting || !content.trim()}
+            className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            Añadir
+          </button>
+        </form>
+
+        {suggestions.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onSuggestion(s)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+              >
+                {s.content}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Listo
+        </button>
+      </div>
     </div>
   )
 }
@@ -351,6 +476,12 @@ function ItemRow({
   item,
   soloList,
   editing,
+  dragging,
+  draggable,
+  onRowRef,
+  onDragPointerDown,
+  onDragPointerMove,
+  onDragPointerUp,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
@@ -361,6 +492,12 @@ function ItemRow({
   item: Item
   soloList: boolean
   editing: boolean
+  dragging: boolean
+  draggable: boolean
+  onRowRef: (el: HTMLElement | null) => void
+  onDragPointerDown: (e: ReactPointerEvent) => void
+  onDragPointerMove: (e: ReactPointerEvent) => void
+  onDragPointerUp: (e: ReactPointerEvent) => void
   onStartEdit: () => void
   onSaveEdit: (value: string) => void
   onCancelEdit: () => void
@@ -386,8 +523,24 @@ function ItemRow({
   const dueToday = !!item.due_date && !item.done && item.due_date === todayISO()
 
   return (
-    <div className="px-3 py-2.5">
+    <div
+      ref={onRowRef}
+      className={`px-3 py-2.5 sm:pl-11 ${dragging ? 'relative z-10 bg-amber-50/80 dark:bg-amber-950/20' : ''}`}
+    >
       <div className="flex items-center gap-3">
+        {draggable && (
+          <button
+            onPointerDown={onDragPointerDown}
+            onPointerMove={onDragPointerMove}
+            onPointerUp={onDragPointerUp}
+            aria-label="Arrastrar para reordenar"
+            title="Arrastrar para reordenar"
+            className="hidden shrink-0 touch-none select-none px-0.5 py-1 text-slate-300 hover:text-slate-500 sm:block dark:text-slate-600 dark:hover:text-slate-400"
+            style={{ cursor: 'grab' }}
+          >
+            ⠿
+          </button>
+        )}
         <input
           type="checkbox"
           checked={item.done}
@@ -408,7 +561,7 @@ function ItemRow({
           ) : (
             <p
               onClick={startEdit}
-              className={`truncate text-sm ${item.done ? 'text-slate-400' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+              className={`truncate text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
             >
               {item.content}
             </p>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { useListData } from '../hooks/useListData'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
@@ -17,6 +18,7 @@ type Tab = 'notas' | 'gastos' | 'chat'
 export default function ListDetailPage() {
   const { listId } = useParams<{ listId: string }>()
   const { user, profile } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const {
     list,
@@ -117,7 +119,10 @@ export default function ListDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16 dark:bg-slate-900">
+    <div
+      className="min-h-screen bg-slate-50 pb-16 dark:bg-slate-900"
+      style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+    >
       <header
         className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur dark:border-slate-700 dark:from-slate-800 dark:to-slate-800"
         style={{ borderTopColor: listColor, borderTopWidth: 3 }}
@@ -203,7 +208,7 @@ export default function ListDetailPage() {
               tab === 'notas' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
-            Notas
+            {t('nav.notes')}
           </button>
           {list.expenses_enabled ? (
             <button
@@ -212,7 +217,7 @@ export default function ListDetailPage() {
                 tab === 'gastos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
               }`}
             >
-              Gastos
+              {t('nav.expenses')}
             </button>
           ) : isOwner ? (
             <button
@@ -228,7 +233,7 @@ export default function ListDetailPage() {
               tab === 'chat' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
-            Chat
+            {t('nav.chat')}
             {unreadCount > 0 && tab !== 'chat' && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
                 {unreadCount > 9 ? '9+' : unreadCount}

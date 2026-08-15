@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { formatEuro } from '../lib/balances'
 import type { Expense, ListMember, Settlement } from '../lib/types'
 import NewExpenseModal from './NewExpenseModal'
@@ -30,6 +31,7 @@ export default function ExpensesPanel({
   soloList: boolean
 }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [showNew, setShowNew] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -126,7 +128,7 @@ export default function ExpensesPanel({
           onClick={() => setShowNew(true)}
           className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
         >
-          + Nuevo gasto
+          {t('expenses.new')}
         </button>
       </div>
 
@@ -169,7 +171,7 @@ export default function ExpensesPanel({
           <p className="py-8 text-center text-sm text-slate-400">No hay resultados para esa búsqueda.</p>
         ) : (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-slate-400">Todavía no hay gastos registrados.</p>
+            <p className="mb-4 text-sm text-slate-400">Aún no hay gastos por aquí. ¡Anota el primero!</p>
             <button
               onClick={() => setShowNew(true)}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"

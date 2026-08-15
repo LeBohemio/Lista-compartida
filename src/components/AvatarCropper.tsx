@@ -27,9 +27,16 @@ export default function AvatarCropper({
 
   if (!imgUrl) return null
 
+  // Tamaño "base" (sin zoom): cubre el círculo entero manteniendo la
+  // proporción original de la foto. A partir de aquí el zoom se aplica
+  // SIEMPRE con un único factor de escala (transform: scale), nunca
+  // recalculando ancho y alto por separado — así la imagen nunca se puede
+  // deformar, solo agrandar de forma uniforme.
   const baseScale = naturalSize ? Math.max(CONTAINER_SIZE / naturalSize.w, CONTAINER_SIZE / naturalSize.h) : 1
-  const displayedW = naturalSize ? naturalSize.w * baseScale * scale : 0
-  const displayedH = naturalSize ? naturalSize.h * baseScale * scale : 0
+  const baseW = naturalSize ? naturalSize.w * baseScale : 0
+  const baseH = naturalSize ? naturalSize.h * baseScale : 0
+  const displayedW = baseW * scale
+  const displayedH = baseH * scale
   const maxOffsetX = Math.max(0, (displayedW - CONTAINER_SIZE) / 2)
   const maxOffsetY = Math.max(0, (displayedH - CONTAINER_SIZE) / 2)
 
@@ -109,12 +116,14 @@ export default function AvatarCropper({
             src={imgUrl}
             onLoad={handleImgLoad}
             draggable={false}
-            className="pointer-events-none absolute select-none"
+            className="pointer-events-none absolute max-w-none select-none"
             style={{
-              width: displayedW || undefined,
-              height: displayedH || undefined,
-              left: CONTAINER_SIZE / 2 - displayedW / 2 + offset.x,
-              top: CONTAINER_SIZE / 2 - displayedH / 2 + offset.y,
+              width: baseW || undefined,
+              height: baseH || undefined,
+              left: CONTAINER_SIZE / 2 - baseW / 2 + offset.x,
+              top: CONTAINER_SIZE / 2 - baseH / 2 + offset.y,
+              transform: `scale(${scale})`,
+              transformOrigin: 'center',
             }}
           />
         </div>
