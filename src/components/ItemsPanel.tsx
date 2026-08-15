@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
 import { useDragReorder } from '../hooks/useDragReorder'
 import Avatar from './Avatar'
@@ -46,6 +47,7 @@ function sortByPosition(a: Item, b: Item) {
 
 export default function ItemsPanel({ listId, items, soloList }: { listId: string; items: Item[]; soloList: boolean }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -54,6 +56,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
   const [search, setSearch] = useState('')
   const [showAddSheet, setShowAddSheet] = useState(false)
+  const [reorderMode, setReorderMode] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
@@ -82,6 +85,17 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     getId: (i) => i.id,
     onCommit: persistOrder,
   })
+
+  const applySort = async (criterion: 'date' | 'alpha') => {
+    const sortFn = (a: Item, b: Item) =>
+      criterion === 'alpha'
+        ? a.content.localeCompare(b.content, 'es')
+        : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    await Promise.all([
+      persistOrder([...pendingItems].sort(sortFn)),
+      persistOrder([...doneItems].sort(sortFn)),
+    ])
+  }
 
   const fetchSuggestions = useCallback(async () => {
     const { data } = await supabase
@@ -113,7 +127,15 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     e.preventDefault()
     if (!content.trim()) return
     setSubmitting(true)
-    await createItem(content)
+    // Si escribes varias separadas por comas ("Huevos, calamares, pan"),
+    // se añaden como notas independientes en vez de una sola con comas.
+    const parts = content
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+    for (const part of parts) {
+      await createItem(part)
+    }
     setContent('')
     setSubmitting(false)
     inputRef.current?.focus()
@@ -191,22 +213,31 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar en esta lista…"
+          placeholder={t('notes.searchPlaceholder')}
           className="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       )}
 
+      {reorderMode && (
+        <div className="mb-3 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+          <span>⠿ {t('reorder.bannerHint')}</span>
+          <button onClick={() => setReorderMode(false)} className="font-semibold hover:underline">
+            {t('reorder.done')}
+          </button>
+        </div>
+      )}
+
       {visibleItems.length === 0 ? (
         searching ? (
-          <p className="py-8 text-center text-sm text-slate-400">No hay notas que coincidan con la búsqueda.</p>
+          <p className="py-8 text-center text-sm text-slate-400">{t('notes.emptySearch')}</p>
         ) : (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-slate-400">Todavía no hay notas en esta lista.</p>
+            <p className="mb-4 text-sm text-slate-400">{t('notes.empty')}</p>
             <button
               onClick={() => setShowAddSheet(true)}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
             >
-              ➕ Añadir tu primera nota
+              {t('notes.addFirst')}
             </button>
           </div>
         )
@@ -219,7 +250,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                   onClick={markAllDone}
                   className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
                 >
-                  ✓ Marcar todas como hechas
+                  {t('notes.markAllDone')}
                 </button>
               </div>
               <NotepadCard>
@@ -231,10 +262,14 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                     editing={editingId === item.id}
                     dragging={pendingReorder.draggingId === item.id}
                     draggable={!searching}
+                    reorderMode={reorderMode}
                     onRowRef={(el) => pendingReorder.registerRow(item.id, el)}
                     onDragPointerDown={pendingReorder.handlePointerDown(item.id)}
                     onDragPointerMove={pendingReorder.handlePointerMove}
                     onDragPointerUp={pendingReorder.handlePointerUp}
+                    onSortDate={() => applySort('date')}
+                    onSortAlpha={() => applySort('alpha')}
+                    onEnterCustomOrder={() => setReorderMode(true)}
                     onStartEdit={() => setEditingId(item.id)}
                     onSaveEdit={(val) => saveEdit(item.id, val)}
                     onCancelEdit={() => setEditingId(null)}
@@ -254,7 +289,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                   Hechos / comprados ({doneItems.length})
                 </p>
                 <button onClick={() => setConfirmEmpty(true)} className="text-xs font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                  🗑 Vaciar comprados
+                  {t('notes.emptyDone')}
                 </button>
               </div>
               <NotepadCard muted>
@@ -266,10 +301,14 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                     editing={editingId === item.id}
                     dragging={doneReorder.draggingId === item.id}
                     draggable={!searching}
+                    reorderMode={reorderMode}
                     onRowRef={(el) => doneReorder.registerRow(item.id, el)}
                     onDragPointerDown={doneReorder.handlePointerDown(item.id)}
                     onDragPointerMove={doneReorder.handlePointerMove}
                     onDragPointerUp={doneReorder.handlePointerUp}
+                    onSortDate={() => applySort('date')}
+                    onSortAlpha={() => applySort('alpha')}
+                    onEnterCustomOrder={() => setReorderMode(true)}
                     onStartEdit={() => setEditingId(item.id)}
                     onSaveEdit={(val) => saveEdit(item.id, val)}
                     onCancelEdit={() => setEditingId(null)}
@@ -286,8 +325,8 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
 
       <button
         onClick={() => setShowAddSheet(true)}
-        aria-label="Añadir nota"
-        title="Añadir nota"
+        aria-label={t('notes.addTitle')}
+        title={t('notes.addTitle')}
         className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
       >
         +
@@ -301,7 +340,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
         <ConfirmDialog
           title="Vaciar comprados"
           message={`¿Eliminar definitivamente las ${doneItems.length} notas marcadas como hechas/compradas? Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
+          confirmLabel={t('menu.delete')}
           danger
           onCancel={() => setConfirmEmpty(false)}
           onConfirm={emptyDone}
@@ -355,6 +394,8 @@ function NotepadCard({ children, muted }: { children: ReactNode; muted?: boolean
   )
 }
 
+const COMMA_HINT_KEY = 'listas-en-comun-comma-hint-dismissed'
+
 function AddNoteSheet({
   content,
   setContent,
@@ -374,13 +415,38 @@ function AddNoteSheet({
   onSuggestion: (s: ItemSuggestion) => void
   onClose: () => void
 }) {
+  const { t } = useLanguage()
+  const [showHint, setShowHint] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(COMMA_HINT_KEY) !== '1',
+  )
+  const dismissHint = () => {
+    setShowHint(false)
+    window.localStorage.setItem(COMMA_HINT_KEY, '1')
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Añadir nota</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('notes.addTitle')}</h2>
+
+        {showHint && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <span className="flex-1">
+              💡 Truco: puedes escribir varias notas separadas por comas (ej. "Huevos, calamares, pan") y se
+              añaden todas a la vez.
+            </span>
+            <button
+              onClick={dismissHint}
+              className="shrink-0 whitespace-nowrap font-medium underline hover:no-underline"
+            >
+              No volver a mostrar
+            </button>
+          </div>
+        )}
+
         <form onSubmit={onSubmit} className="flex gap-2">
           <input
             ref={inputRef}
@@ -388,7 +454,7 @@ function AddNoteSheet({
             autoFocus
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Añadir nota…"
+            placeholder={t('notes.addPlaceholder')}
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
           <button
@@ -396,7 +462,7 @@ function AddNoteSheet({
             disabled={submitting || !content.trim()}
             className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            Añadir
+            {t('common.add')}
           </button>
         </form>
 
@@ -418,7 +484,7 @@ function AddNoteSheet({
           onClick={onClose}
           className="mt-5 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          Listo
+          {t('common.done')}
         </button>
       </div>
     </div>
@@ -478,10 +544,14 @@ function ItemRow({
   editing,
   dragging,
   draggable,
+  reorderMode,
   onRowRef,
   onDragPointerDown,
   onDragPointerMove,
   onDragPointerUp,
+  onSortDate,
+  onSortAlpha,
+  onEnterCustomOrder,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
@@ -494,10 +564,14 @@ function ItemRow({
   editing: boolean
   dragging: boolean
   draggable: boolean
+  reorderMode?: boolean
   onRowRef: (el: HTMLElement | null) => void
   onDragPointerDown: (e: ReactPointerEvent) => void
   onDragPointerMove: (e: ReactPointerEvent) => void
   onDragPointerUp: (e: ReactPointerEvent) => void
+  onSortDate?: () => void
+  onSortAlpha?: () => void
+  onEnterCustomOrder?: () => void
   onStartEdit: () => void
   onSaveEdit: (value: string) => void
   onCancelEdit: () => void
@@ -505,8 +579,10 @@ function ItemRow({
   onDelete: (id: string) => void
   onOpenDueDate: () => void
 }) {
+  const { t } = useLanguage()
   const [draft, setDraft] = useState(item.content)
   const [showMenu, setShowMenu] = useState(false)
+  const [showSortMenu, setShowSortMenu] = useState(false)
   const longPress = useLongPress(() => setShowMenu(true))
 
   const startEdit = () => {
@@ -528,14 +604,14 @@ function ItemRow({
       className={`px-3 py-2.5 sm:pl-11 ${dragging ? 'relative z-10 bg-amber-50/80 dark:bg-amber-950/20' : ''}`}
     >
       <div className="flex items-center gap-3">
-        {draggable && (
+        {draggable && reorderMode && (
           <button
             onPointerDown={onDragPointerDown}
             onPointerMove={onDragPointerMove}
             onPointerUp={onDragPointerUp}
-            aria-label="Arrastrar para reordenar"
-            title="Arrastrar para reordenar"
-            className="hidden shrink-0 touch-none select-none px-0.5 py-1 text-slate-300 hover:text-slate-500 sm:block dark:text-slate-600 dark:hover:text-slate-400"
+            aria-label={t('lists.dragHandle')}
+            title={t('lists.dragHandle')}
+            className="shrink-0 touch-none select-none px-0.5 py-1 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
             style={{ cursor: 'grab' }}
           >
             ⠿
@@ -570,7 +646,7 @@ function ItemRow({
             {!soloList && item.creator?.username && (
               <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
                 <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />
-                Añadido por {item.creator.username}
+                {t('notes.addedBy')} {item.creator.username}
               </p>
             )}
             {item.due_date && (
@@ -583,7 +659,7 @@ function ItemRow({
                       : 'text-slate-400'
                 }`}
               >
-                Vence: {formatDueDate(item.due_date)}
+                {t('notes.due')}: {formatDueDate(item.due_date)}
               </span>
             )}
           </div>
@@ -594,9 +670,24 @@ function ItemRow({
         <ContextMenu
           onClose={() => setShowMenu(false)}
           actions={[
-            { label: 'Editar', icon: '✎', onSelect: startEdit },
-            { label: 'Fecha límite', icon: '📅', onSelect: onOpenDueDate },
-            { label: 'Eliminar', icon: '🗑', danger: true, onSelect: () => onDelete(item.id) },
+            { label: t('menu.editNote'), icon: '✎', onSelect: startEdit },
+            { label: t('menu.dueDate'), icon: '📅', onSelect: onOpenDueDate },
+            ...(onSortDate && onSortAlpha && onEnterCustomOrder
+              ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
+              : []),
+            { label: t('menu.delete'), icon: '🗑', danger: true, onSelect: () => onDelete(item.id) },
+          ]}
+        />
+      )}
+
+      {showSortMenu && onSortDate && onSortAlpha && onEnterCustomOrder && (
+        <ContextMenu
+          title={t('menu.reorder')}
+          onClose={() => setShowSortMenu(false)}
+          actions={[
+            { label: t('reorder.byDate'), icon: '🕓', onSelect: onSortDate },
+            { label: t('reorder.alpha'), icon: '🔤', onSelect: onSortAlpha },
+            { label: t('reorder.custom'), icon: '⠿', onSelect: onEnterCustomOrder },
           ]}
         />
       )}

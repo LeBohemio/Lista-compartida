@@ -26,6 +26,7 @@ export default function ListsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
+  const [reorderMode, setReorderMode] = useState(false)
   const navigate = useNavigate()
 
   const activeLists = useMemo(
@@ -42,6 +43,15 @@ export default function ListsPage() {
     getId: (l) => l.id,
     onCommit: (ordered) => reorderLists(ordered.map((l) => l.id)),
   })
+
+  const applySortLists = async (criterion: 'date' | 'alpha') => {
+    const sorted = [...activeLists].sort((a, b) =>
+      criterion === 'alpha'
+        ? a.name.localeCompare(b.name, 'es')
+        : new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime(),
+    )
+    await reorderLists(sorted.map((l) => l.id))
+  }
 
   const respondInvitation = async (listId: string, accept: boolean) => {
     if (accept) {
@@ -206,6 +216,15 @@ export default function ListsPage() {
             </h2>
           </div>
 
+          {reorderMode && (
+            <div className="mb-3 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+              <span>⠿ {t('reorder.bannerHint')}</span>
+              <button onClick={() => setReorderMode(false)} className="font-semibold hover:underline">
+                {t('reorder.done')}
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <p className="text-sm text-slate-400">Cargando listas…</p>
           ) : activeLists.length === 0 ? (
@@ -228,10 +247,14 @@ export default function ListsPage() {
                   stats={itemStats[l.id]}
                   avatars={memberAvatars[l.id] ?? []}
                   dragging={reorder.draggingId === l.id}
+                  reorderMode={reorderMode}
                   onRowRef={(el) => reorder.registerRow(l.id, el)}
                   onDragPointerDown={reorder.handlePointerDown(l.id)}
                   onDragPointerMove={reorder.handlePointerMove}
                   onDragPointerUp={reorder.handlePointerUp}
+                  onSortDate={() => applySortLists('date')}
+                  onSortAlpha={() => applySortLists('alpha')}
+                  onEnterCustomOrder={() => setReorderMode(true)}
                   onOpen={() => navigate(`/lists/${l.id}`)}
                   onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                   onDuplicate={() => duplicateList(l)}
@@ -315,10 +338,14 @@ function ListRow({
   stats,
   avatars,
   dragging,
+  reorderMode,
   onRowRef,
   onDragPointerDown,
   onDragPointerMove,
   onDragPointerUp,
+  onSortDate,
+  onSortAlpha,
+  onEnterCustomOrder,
   onOpen,
   onTogglePin,
   onDuplicate,
@@ -329,16 +356,22 @@ function ListRow({
   stats?: ItemStats
   avatars: Profile[]
   dragging?: boolean
+  reorderMode?: boolean
   onRowRef?: (el: HTMLElement | null) => void
   onDragPointerDown?: (e: ReactPointerEvent) => void
   onDragPointerMove?: (e: ReactPointerEvent) => void
   onDragPointerUp?: (e: ReactPointerEvent) => void
+  onSortDate?: () => void
+  onSortAlpha?: () => void
+  onEnterCustomOrder?: () => void
   onOpen: () => void
   onTogglePin: () => void
   onDuplicate: () => void
   onDeleteRequest: (e: MouseEvent) => void
 }) {
+  const { t } = useLanguage()
   const [showMenu, setShowMenu] = useState(false)
+  const [showSortMenu, setShowSortMenu] = useState(false)
   const longPress = useLongPress(() => setShowMenu(true))
   const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
 
@@ -355,15 +388,15 @@ function ListRow({
     >
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          {onDragPointerDown && (
+          {reorderMode && onDragPointerDown && (
             <button
               onClick={(e) => e.stopPropagation()}
               onPointerDown={onDragPointerDown}
               onPointerMove={onDragPointerMove}
               onPointerUp={onDragPointerUp}
-              aria-label="Arrastrar para reordenar"
-              title="Arrastrar para reordenar"
-              className="hidden shrink-0 touch-none select-none text-slate-300 hover:text-slate-500 sm:block dark:text-slate-600 dark:hover:text-slate-400"
+              aria-label={t('lists.dragHandle')}
+              title={t('lists.dragHandle')}
+              className="shrink-0 touch-none select-none px-0.5 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
               style={{ cursor: 'grab' }}
             >
               ⠿
@@ -380,9 +413,9 @@ function ListRow({
               {l.name}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isOwner ? 'Creador' : 'Miembro'}
-              {l.expenses_enabled ? ' · Gastos activados' : ''}
-              {l.archived_at ? ' · Archivada' : ''}
+              {isOwner ? t('lists.owner') : t('lists.member')}
+              {l.expenses_enabled ? ` · ${t('lists.expensesOn')}` : ''}
+              {l.archived_at ? ` · ${t('lists.archived')}` : ''}
             </p>
           </div>
         </div>
@@ -407,8 +440,8 @@ function ListRow({
           )}
           <button
             onClick={onDeleteRequest}
-            aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
-            title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+            aria-label={isOwner ? t('lists.deleteList') : t('lists.leaveList')}
+            title={isOwner ? t('lists.deleteList') : t('lists.leaveList')}
             className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
           >
             🗑
@@ -432,13 +465,28 @@ function ListRow({
           title={l.name}
           onClose={() => setShowMenu(false)}
           actions={[
-            { label: 'Abrir', icon: '📂', onSelect: onOpen },
+            { label: t('menu.open'), icon: '📂', onSelect: onOpen },
             {
-              label: l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista',
+              label: l.membership.pinned ? t('menu.unpin') : t('menu.pin'),
               icon: '📌',
               onSelect: onTogglePin,
             },
-            { label: 'Duplicar', icon: '⧉', onSelect: onDuplicate },
+            { label: t('menu.duplicate'), icon: '⧉', onSelect: onDuplicate },
+            ...(onSortDate && onSortAlpha && onEnterCustomOrder
+              ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
+              : []),
+          ]}
+        />
+      )}
+
+      {showSortMenu && onSortDate && onSortAlpha && onEnterCustomOrder && (
+        <ContextMenu
+          title={t('menu.reorder')}
+          onClose={() => setShowSortMenu(false)}
+          actions={[
+            { label: t('reorder.byDate'), icon: '🕓', onSelect: onSortDate },
+            { label: t('reorder.alpha'), icon: '🔤', onSelect: onSortAlpha },
+            { label: t('reorder.custom'), icon: '⠿', onSelect: onEnterCustomOrder },
           ]}
         />
       )}

@@ -1,3 +1,5 @@
+import { useLanguage } from '../lib/i18n'
+
 export type ContextMenuAction = {
   label: string
   icon?: string
@@ -14,6 +16,7 @@ export default function ContextMenu({
   actions: ContextMenuAction[]
   onClose: () => void
 }) {
+  const { t } = useLanguage()
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
@@ -46,7 +49,7 @@ export default function ContextMenu({
           onClick={onClose}
           className="mt-1 w-full rounded-xl px-4 py-3 text-center text-sm font-medium text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700"
         >
-          Cancelar
+          {t('menu.cancel')}
         </button>
       </div>
     </div>
