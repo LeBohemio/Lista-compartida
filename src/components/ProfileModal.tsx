@@ -5,6 +5,7 @@ import { PALETTE } from '../lib/colors'
 import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
+import AvatarCropper from './AvatarCropper'
 import type { Theme } from '../lib/types'
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
@@ -20,6 +21,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [showMyExpenses, setShowMyExpenses] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
 
   const [newEmail, setNewEmail] = useState('')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
@@ -32,19 +34,25 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
   if (!user || !profile) return null
 
-  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
     setError(null)
-    setPreviewUrl(URL.createObjectURL(file))
+    setCropFile(file)
+  }
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null)
+    setError(null)
+    setPreviewUrl(URL.createObjectURL(blob))
     setUploading(true)
 
-    const ext = file.name.split('.').pop() || 'jpg'
-    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
 
     const { error: uploadErr } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { contentType: file.type || 'image/jpeg' })
+      .upload(path, blob, { contentType: 'image/jpeg' })
 
     if (uploadErr) {
       setError(`No se pudo subir la foto: ${uploadErr.message}`)
@@ -269,6 +277,9 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
       {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} />}
       {showMyExpenses && <MyExpensesModal onClose={() => setShowMyExpenses(false)} />}
+      {cropFile && (
+        <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />
+      )}
     </div>
   )
 }

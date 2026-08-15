@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLongPress } from '../hooks/useLongPress'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
+import ContextMenu from './ContextMenu'
 import type { Item, ItemSuggestion } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
@@ -28,9 +30,11 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [dueDateTarget, setDueDateTarget] = useState<Item | null>(null)
   const [confirmEmpty, setConfirmEmpty] = useState(false)
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
   const [search, setSearch] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -135,10 +139,19 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
     await supabase.from('items').delete().eq('list_id', listId).eq('done', true)
   }
 
+  const markAllDone = async () => {
+    await supabase
+      .from('items')
+      .update({ done: true, done_at: new Date().toISOString() })
+      .eq('list_id', listId)
+      .eq('done', false)
+  }
+
   return (
     <div>
       <form onSubmit={addItem} className="mb-3 flex gap-2">
         <input
+          ref={inputRef}
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -179,28 +192,48 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
       )}
 
       {visibleItems.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">
-          {search.trim() ? 'No hay notas que coincidan con la búsqueda.' : 'Todavía no hay notas en esta lista.'}
-        </p>
+        search.trim() ? (
+          <p className="py-8 text-center text-sm text-slate-400">No hay notas que coincidan con la búsqueda.</p>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="mb-4 text-sm text-slate-400">Todavía no hay notas en esta lista.</p>
+            <button
+              onClick={() => inputRef.current?.focus()}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              ➕ Añadir tu primera nota
+            </button>
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           {pendingItems.length > 0 && (
-            <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-              <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                {pendingItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    soloList={soloList}
-                    editing={editingId === item.id}
-                    onStartEdit={() => setEditingId(item.id)}
-                    onSaveEdit={(val) => saveEdit(item.id, val)}
-                    onCancelEdit={() => setEditingId(null)}
-                    onToggle={toggleDone}
-                    onDelete={requestDelete}
-                    onSetDueDate={setDueDate}
-                  />
-                ))}
+            <div>
+              <div className="mb-2 flex justify-end">
+                <button
+                  onClick={markAllDone}
+                  className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                >
+                  ✓ Marcar todas como hechas
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {pendingItems.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      soloList={soloList}
+                      editing={editingId === item.id}
+                      onStartEdit={() => setEditingId(item.id)}
+                      onSaveEdit={(val) => saveEdit(item.id, val)}
+                      onCancelEdit={() => setEditingId(null)}
+                      onToggle={toggleDone}
+                      onDelete={requestDelete}
+                      onOpenDueDate={() => setDueDateTarget(item)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -228,7 +261,7 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                       onCancelEdit={() => setEditingId(null)}
                       onToggle={toggleDone}
                       onDelete={requestDelete}
-                      onSetDueDate={setDueDate}
+                      onOpenDueDate={() => setDueDateTarget(item)}
                     />
                   ))}
                 </div>
@@ -252,6 +285,64 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
           onConfirm={emptyDone}
         />
       )}
+
+      {dueDateTarget && (
+        <DueDateSheet
+          item={dueDateTarget}
+          onClose={() => setDueDateTarget(null)}
+          onSave={(date) => {
+            setDueDate(dueDateTarget.id, date)
+            setDueDateTarget(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function DueDateSheet({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: Item
+  onClose: () => void
+  onSave: (date: string | null) => void
+}) {
+  const [value, setValue] = useState(item.due_date ?? '')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Fecha límite</h2>
+        <p className="mb-4 truncate text-sm text-slate-500 dark:text-slate-400">{item.content}</p>
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+        />
+        <div className="flex gap-3">
+          {item.due_date && (
+            <button
+              onClick={() => onSave(null)}
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Quitar fecha
+            </button>
+          )}
+          <button
+            onClick={() => onSave(value || null)}
+            disabled={!value}
+            className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -265,7 +356,7 @@ function ItemRow({
   onCancelEdit,
   onToggle,
   onDelete,
-  onSetDueDate,
+  onOpenDueDate,
 }: {
   item: Item
   soloList: boolean
@@ -275,10 +366,11 @@ function ItemRow({
   onCancelEdit: () => void
   onToggle: (item: Item) => void
   onDelete: (id: string) => void
-  onSetDueDate: (id: string, dueDate: string | null) => void
+  onOpenDueDate: () => void
 }) {
   const [draft, setDraft] = useState(item.content)
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const longPress = useLongPress(() => setShowMenu(true))
 
   const startEdit = () => {
     setDraft(item.content)
@@ -302,7 +394,7 @@ function ItemRow({
           onChange={() => onToggle(item)}
           className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500"
         />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" {...(!editing ? longPress : {})}>
           {editing ? (
             <input
               type="text"
@@ -338,63 +430,22 @@ function ItemRow({
                       : 'text-slate-400'
                 }`}
               >
-                📅 {formatDueDate(item.due_date)}
+                Vence: {formatDueDate(item.due_date)}
               </span>
             )}
           </div>
         </div>
-        {!editing && (
-          <button
-            onClick={() => setShowDatePicker((s) => !s)}
-            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-            aria-label="Fecha límite"
-            title="Fecha límite"
-          >
-            📅
-          </button>
-        )}
-        {!editing && (
-          <button
-            onClick={startEdit}
-            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-            aria-label="Editar"
-            title="Editar"
-          >
-            ✎
-          </button>
-        )}
-        <button
-          onClick={() => onDelete(item.id)}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
-          aria-label="Eliminar"
-          title="Eliminar"
-        >
-          🗑
-        </button>
       </div>
-      {showDatePicker && (
-        <div className="mt-2 flex items-center gap-2 pl-8">
-          <input
-            type="date"
-            defaultValue={item.due_date ?? ''}
-            onChange={(e) => {
-              onSetDueDate(item.id, e.target.value || null)
-              setShowDatePicker(false)
-            }}
-            className="rounded-lg border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          />
-          {item.due_date && (
-            <button
-              onClick={() => {
-                onSetDueDate(item.id, null)
-                setShowDatePicker(false)
-              }}
-              className="text-xs text-slate-400 hover:text-red-500"
-            >
-              Quitar fecha
-            </button>
-          )}
-        </div>
+
+      {showMenu && (
+        <ContextMenu
+          onClose={() => setShowMenu(false)}
+          actions={[
+            { label: 'Editar', icon: '✎', onSelect: startEdit },
+            { label: 'Fecha límite', icon: '📅', onSelect: onOpenDueDate },
+            { label: 'Eliminar', icon: '🗑', danger: true, onSelect: () => onDelete(item.id) },
+          ]}
+        />
       )}
     </div>
   )

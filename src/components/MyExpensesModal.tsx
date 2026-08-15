@@ -108,19 +108,31 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           <p className="py-8 text-center text-sm text-slate-400">No pagaste ningún gasto compartido este mes.</p>
         ) : (
           <>
-            <div className="mb-4 space-y-2">
-              {byList.map((row) => (
-                <div key={row.name} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: row.color ?? '#94a3b8' }}
-                    />
-                    {row.name}
-                  </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-100">{formatEuro(row.total)}</span>
-                </div>
-              ))}
+            <div className="mb-5 space-y-3">
+              {byList.map((row) => {
+                const pct = byList[0].total > 0 ? Math.max(4, Math.round((row.total / byList[0].total) * 100)) : 0
+                return (
+                  <div key={row.name}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: row.color ?? '#94a3b8' }}
+                          aria-hidden="true"
+                        />
+                        {row.name}
+                      </span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">{formatEuro(row.total)}</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: row.color ?? '#94a3b8' }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:text-slate-100">

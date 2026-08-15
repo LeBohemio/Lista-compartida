@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../context/AuthContext'
+import { colorForList } from '../lib/colors'
+import type { List, Message } from '../lib/types'
+
+export default function ForwardMessageModal({
+  message,
+  currentListId,
+  onClose,
+  onForwarded,
+}: {
+  message: Message
+  currentListId: string
+  onClose: () => void
+  onForwarded: () => void
+}) {
+  const { user } = useAuth()
+  const [lists, setLists] = useState<List[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sendingTo, setSendingTo] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('list_members')
+      .select('list:lists(*)')
+      .eq('user_id', user.id)
+      .eq('status', 'accepted')
+      .then(({ data }) => {
+        const all = ((data as unknown as { list: List }[]) ?? []).map((r) => r.list).filter(Boolean)
+        setLists(all.filter((l) => l.id !== currentListId))
+        setLoading(false)
+      })
+  }, [user, currentListId])
+
+  const forwardTo = async (targetListId: string) => {
+    if (!user) return
+    setSendingTo(targetListId)
+    setError(null)
+
+    let newImagePath: string | null = null
+    if (message.image_path) {
+      const { data: blob, error: downloadErr } = await supabase.storage
+        .from('chat-images')
+        .download(message.image_path)
+      if (downloadErr || !blob) {
+        setError('No se pudo copiar la foto para reenviarla.')
+        setSendingTo(null)
+        return
+      }
+      const ext = message.image_path.split('.').pop() || 'jpg'
+      newImagePath = `${targetListId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('chat-images')
+        .upload(newImagePath, blob, { contentType: blob.type || 'image/jpeg' })
+      if (uploadErr) {
+        setError('No se pudo copiar la foto para reenviarla.')
+        setSendingTo(null)
+        return
+      }
+    }
+
+    const { error: insertErr } = await supabase.from('messages').insert({
+      list_id: targetListId,
+      sender_id: user.id,
+      content: message.content,
+      image_path: newImagePath,
+    })
+
+    setSendingTo(null)
+    if (insertErr) {
+      setError(insertErr.message)
+      return
+    }
+    onForwarded()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      <div
+        className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Reenviar a…</h2>
+
+        {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
+
+        {loading ? (
+          <p className="py-6 text-center text-sm text-slate-400">Cargando tus listas…</p>
+        ) : lists.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-400">No tienes otra lista a la que reenviar este mensaje.</p>
+        ) : (
+          <div className="space-y-2">
+            {lists.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => forwardTo(l.id)}
+                disabled={sendingTo !== null}
+                className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-700"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
+                <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
+                {sendingTo === l.id && <span className="text-xs text-slate-400">Enviando…</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-4 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}

@@ -165,9 +165,19 @@ export default function ExpensesPanel({
       )}
 
       {filteredLedger.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">
-          {search.trim() ? 'No hay resultados para esa búsqueda.' : 'Todavía no hay gastos registrados.'}
-        </p>
+        search.trim() ? (
+          <p className="py-8 text-center text-sm text-slate-400">No hay resultados para esa búsqueda.</p>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="mb-4 text-sm text-slate-400">Todavía no hay gastos registrados.</p>
+            <button
+              onClick={() => setShowNew(true)}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              ➕ Añadir tu primer gasto
+            </button>
+          </div>
+        )
       ) : (
         <div className="space-y-2">
           {filteredLedger.map((row) =>

@@ -1,0 +1,153 @@
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+
+const CONTAINER_SIZE = 260
+const OUTPUT_SIZE = 480
+
+export default function AvatarCropper({
+  file,
+  onCancel,
+  onConfirm,
+}: {
+  file: File
+  onCancel: () => void
+  onConfirm: (blob: Blob) => void
+}) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null)
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
+  const [scale, setScale] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file)
+    setImgUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  if (!imgUrl) return null
+
+  const baseScale = naturalSize ? Math.max(CONTAINER_SIZE / naturalSize.w, CONTAINER_SIZE / naturalSize.h) : 1
+  const displayedW = naturalSize ? naturalSize.w * baseScale * scale : 0
+  const displayedH = naturalSize ? naturalSize.h * baseScale * scale : 0
+  const maxOffsetX = Math.max(0, (displayedW - CONTAINER_SIZE) / 2)
+  const maxOffsetY = Math.max(0, (displayedH - CONTAINER_SIZE) / 2)
+
+  const clamp = (val: { x: number; y: number }) => ({
+    x: Math.min(maxOffsetX, Math.max(-maxOffsetX, val.x)),
+    y: Math.min(maxOffsetY, Math.max(-maxOffsetY, val.y)),
+  })
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: offset.x, origY: offset.y }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (!dragRef.current) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    setOffset(clamp({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy }))
+  }
+
+  const onPointerUp = () => {
+    dragRef.current = null
+  }
+
+  const handleImgLoad = () => {
+    const el = imgRef.current
+    if (!el) return
+    setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
+  }
+
+  const handleConfirm = () => {
+    if (!naturalSize) return
+    const canvas = document.createElement('canvas')
+    canvas.width = OUTPUT_SIZE
+    canvas.height = OUTPUT_SIZE
+    const ctx = canvas.getContext('2d')
+    if (!ctx || !imgRef.current) return
+
+    const ratio = OUTPUT_SIZE / CONTAINER_SIZE
+    ctx.beginPath()
+    ctx.arc(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.clip()
+
+    const drawW = displayedW * ratio
+    const drawH = displayedH * ratio
+    const drawX = (CONTAINER_SIZE / 2 - displayedW / 2 + offset.x) * ratio
+    const drawY = (CONTAINER_SIZE / 2 - displayedH / 2 + offset.y) * ratio
+
+    ctx.drawImage(imgRef.current, drawX, drawY, drawW, drawH)
+    canvas.toBlob(
+      (blob) => {
+        if (blob) onConfirm(blob)
+      },
+      'image/jpeg',
+      0.92,
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800">
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Ajustar foto</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Arrastra para moverla y usa el control para hacer zoom.</p>
+
+        <div
+          className="relative mx-auto touch-none overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900"
+          style={{ width: CONTAINER_SIZE, height: CONTAINER_SIZE, cursor: 'grab' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+        >
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <img
+            ref={imgRef}
+            src={imgUrl}
+            onLoad={handleImgLoad}
+            draggable={false}
+            className="pointer-events-none absolute select-none"
+            style={{
+              width: displayedW || undefined,
+              height: displayedH || undefined,
+              left: CONTAINER_SIZE / 2 - displayedW / 2 + offset.x,
+              top: CONTAINER_SIZE / 2 - displayedH / 2 + offset.y,
+            }}
+          />
+        </div>
+
+        <input
+          type="range"
+          min={1}
+          max={3}
+          step={0.01}
+          value={scale}
+          onChange={(e) => {
+            const next = Number(e.target.value)
+            setScale(next)
+            setOffset((prev) => clamp(prev))
+          }}
+          className="mt-5 w-full accent-brand-600"
+        />
+
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
+          >
+            Usar foto
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

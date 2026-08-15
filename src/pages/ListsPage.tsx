@@ -1,15 +1,17 @@
 import { useMemo, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useLists } from '../hooks/useLists'
+import { useLists, type ItemStats } from '../hooks/useLists'
+import { useLongPress } from '../hooks/useLongPress'
 import { supabase } from '../lib/supabaseClient'
 import CreateListModal from '../components/CreateListModal'
 import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
 import ProfileModal from '../components/ProfileModal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ContextMenu from '../components/ContextMenu'
 import { colorForList } from '../lib/colors'
-import type { ListWithMembership } from '../lib/types'
+import type { ListWithMembership, Profile } from '../lib/types'
 
 export default function ListsPage() {
   const { profile } = useAuth()
@@ -67,8 +69,7 @@ export default function ListsPage() {
     refetch()
   }
 
-  const duplicateList = async (e: MouseEvent, l: ListWithMembership) => {
-    e.stopPropagation()
+  const duplicateList = async (l: ListWithMembership) => {
     setActionError(null)
     const { data: rpcData, error: rpcErr } = await supabase.rpc('create_list_with_owner', {
       p_name: `${l.name} (copia)`,
@@ -94,103 +95,6 @@ export default function ListsPage() {
 
     refetch()
     navigate(`/lists/${newList.id}`)
-  }
-
-  const renderListRow = (l: (typeof lists)[number]) => {
-    const isOwner = l.owner_id === profile?.id
-    const stats = itemStats[l.id]
-    const avatars = memberAvatars[l.id] ?? []
-    const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
-
-    return (
-      <div
-        key={l.id}
-        onClick={() => navigate(`/lists/${l.id}`)}
-        role="button"
-        tabIndex={0}
-        className="w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: colorForList(l) }}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900 dark:text-slate-100">{l.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isOwner ? 'Creador' : 'Miembro'}
-                {l.expenses_enabled ? ' · Gastos activados' : ''}
-                {l.archived_at ? ' · Archivada' : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {avatars.length > 1 && (
-              <div className="mr-1 flex items-center">
-                {avatars.slice(0, 4).map((p, idx) => (
-                  <Avatar
-                    key={p.id}
-                    username={p.username}
-                    avatarUrl={p.avatar_url}
-                    size={22}
-                    className={`ring-2 ring-white dark:ring-slate-800 ${idx > 0 ? '-ml-2' : ''}`}
-                  />
-                ))}
-                {avatars.length > 4 && (
-                  <span className="-ml-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-slate-200 px-1 text-[10px] font-semibold text-slate-600 ring-2 ring-white dark:bg-slate-700 dark:text-slate-300 dark:ring-slate-800">
-                    +{avatars.length - 4}
-                  </span>
-                )}
-              </div>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                togglePin(l.id, !l.membership.pinned)
-              }}
-              aria-label={l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista'}
-              title={l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista'}
-              className={`rounded-lg p-1.5 ${
-                l.membership.pinned
-                  ? 'text-amber-500'
-                  : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-700'
-              }`}
-            >
-              📌
-            </button>
-            <button
-              onClick={(e) => duplicateList(e, l)}
-              aria-label="Duplicar lista"
-              title="Duplicar lista"
-              className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-700"
-            >
-              ⧉
-            </button>
-            <button
-              onClick={(e) => requestDeleteOrLeave(e, l.id, l.name, isOwner)}
-              aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
-              title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
-              className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
-            >
-              🗑
-            </button>
-            <span className="text-slate-300 dark:text-slate-600">›</span>
-          </div>
-        </div>
-        {progressPct !== null && (
-          <div className="mt-3 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-              <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${progressPct}%` }} />
-            </div>
-            <span className="shrink-0 text-[11px] text-slate-400">
-              {stats!.done}/{stats!.total}
-            </span>
-          </div>
-        )}
-      </div>
-    )
   }
 
   return (
@@ -281,7 +185,21 @@ export default function ListsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">{activeLists.map(renderListRow)}</div>
+            <div className="space-y-3">
+              {activeLists.map((l) => (
+                <ListRow
+                  key={l.id}
+                  list={l}
+                  isOwner={l.owner_id === profile?.id}
+                  stats={itemStats[l.id]}
+                  avatars={memberAvatars[l.id] ?? []}
+                  onOpen={() => navigate(`/lists/${l.id}`)}
+                  onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
+                  onDuplicate={() => duplicateList(l)}
+                  onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                />
+              ))}
+            </div>
           )}
         </section>
 
@@ -293,7 +211,23 @@ export default function ListsPage() {
             >
               {showArchived ? '▾' : '▸'} Archivadas ({archivedLists.length})
             </button>
-            {showArchived && <div className="space-y-3 opacity-70">{archivedLists.map(renderListRow)}</div>}
+            {showArchived && (
+              <div className="space-y-3 opacity-70">
+                {archivedLists.map((l) => (
+                  <ListRow
+                    key={l.id}
+                    list={l}
+                    isOwner={l.owner_id === profile?.id}
+                    stats={itemStats[l.id]}
+                    avatars={memberAvatars[l.id] ?? []}
+                    onOpen={() => navigate(`/lists/${l.id}`)}
+                    onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
+                    onDuplicate={() => duplicateList(l)}
+                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
       </main>
@@ -330,6 +264,116 @@ export default function ListsPage() {
           danger={confirmTarget.isOwner}
           onCancel={() => setConfirmTarget(null)}
           onConfirm={confirmDeleteOrLeave}
+        />
+      )}
+    </div>
+  )
+}
+
+function ListRow({
+  list: l,
+  isOwner,
+  stats,
+  avatars,
+  onOpen,
+  onTogglePin,
+  onDuplicate,
+  onDeleteRequest,
+}: {
+  list: ListWithMembership
+  isOwner: boolean
+  stats?: ItemStats
+  avatars: Profile[]
+  onOpen: () => void
+  onTogglePin: () => void
+  onDuplicate: () => void
+  onDeleteRequest: (e: MouseEvent) => void
+}) {
+  const [showMenu, setShowMenu] = useState(false)
+  const longPress = useLongPress(() => setShowMenu(true))
+  const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
+
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      className="w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700"
+      {...longPress}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: colorForList(l) }}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <p className="truncate font-medium text-slate-900 dark:text-slate-100">
+              {l.membership.pinned && <span className="mr-1">📌</span>}
+              {l.name}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isOwner ? 'Creador' : 'Miembro'}
+              {l.expenses_enabled ? ' · Gastos activados' : ''}
+              {l.archived_at ? ' · Archivada' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {avatars.length > 1 && (
+            <div className="mr-1 flex items-center">
+              {avatars.slice(0, 4).map((p, idx) => (
+                <Avatar
+                  key={p.id}
+                  username={p.username}
+                  avatarUrl={p.avatar_url}
+                  size={22}
+                  className={`ring-2 ring-white dark:ring-slate-800 ${idx > 0 ? '-ml-2' : ''}`}
+                />
+              ))}
+              {avatars.length > 4 && (
+                <span className="-ml-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-slate-200 px-1 text-[10px] font-semibold text-slate-600 ring-2 ring-white dark:bg-slate-700 dark:text-slate-300 dark:ring-slate-800">
+                  +{avatars.length - 4}
+                </span>
+              )}
+            </div>
+          )}
+          <button
+            onClick={onDeleteRequest}
+            aria-label={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+            title={isOwner ? 'Eliminar lista' : 'Salir de la lista'}
+            className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+          >
+            🗑
+          </button>
+          <span className="text-slate-300 dark:text-slate-600">›</span>
+        </div>
+      </div>
+      {progressPct !== null && (
+        <div className="mt-3 flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+            <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+          <span className="shrink-0 text-[11px] text-slate-400">
+            {stats!.done}/{stats!.total}
+          </span>
+        </div>
+      )}
+
+      {showMenu && (
+        <ContextMenu
+          title={l.name}
+          onClose={() => setShowMenu(false)}
+          actions={[
+            { label: 'Abrir', icon: '📂', onSelect: onOpen },
+            {
+              label: l.membership.pinned ? 'Quitar de fijadas' : 'Fijar lista',
+              icon: '📌',
+              onSelect: onTogglePin,
+            },
+            { label: 'Duplicar', icon: '⧉', onSelect: onDuplicate },
+          ]}
         />
       )}
     </div>

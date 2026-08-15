@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLongPress } from '../hooks/useLongPress'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
+import Toast from './Toast'
+import ContextMenu from './ContextMenu'
+import ForwardMessageModal from './ForwardMessageModal'
 import { colorForName } from '../lib/colors'
 import type { Message } from '../lib/types'
 
@@ -20,6 +24,9 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const [lastPendingId, setLastPendingId] = useState<string | null>(null)
+  const [menuTarget, setMenuTarget] = useState<Message | null>(null)
+  const [forwardTarget, setForwardTarget] = useState<Message | null>(null)
+  const [copiedFeedback, setCopiedFeedback] = useState(false)
 
   const visibleMessages = useMemo(
     () => messages.filter((m) => !pendingDeleteIds.has(m.id)),
@@ -132,6 +139,17 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
     setLastPendingId((cur) => (cur === messageId ? null : cur))
   }
 
+  const copyMessage = async (m: Message) => {
+    if (!m.content) return
+    try {
+      await navigator.clipboard.writeText(m.content)
+      setCopiedFeedback(true)
+      setTimeout(() => setCopiedFeedback(false), 1800)
+    } catch {
+      // silencioso
+    }
+  }
+
   return (
     <div>
       <div className="space-y-3 pb-24">
@@ -142,56 +160,14 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
             const isMine = m.sender_id === user?.id
             const isFirstInGroup = idx === 0 || visibleMessages[idx - 1].sender_id !== m.sender_id
             return (
-              <div key={m.id} className={`group flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-                {!isMine && (
-                  <div className="w-7 shrink-0">
-                    {isFirstInGroup && (
-                      <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />
-                    )}
-                  </div>
-                )}
-                <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                  {!isMine && isFirstInGroup && (
-                    <p
-                      className="mb-0.5 px-1 text-xs font-medium"
-                      style={{ color: colorForName(m.sender?.username ?? '?') }}
-                    >
-                      {m.sender?.username ?? '—'}
-                    </p>
-                  )}
-                  <div
-                    className={`rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                      isMine
-                        ? 'rounded-br-sm bg-brand-600 text-white'
-                        : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700'
-                    }`}
-                  >
-                    {m.image_path && (
-                      <img
-                        src={imageUrls[m.image_path]}
-                        alt="Foto"
-                        className="mb-1 max-h-56 rounded-lg object-contain"
-                      />
-                    )}
-                    {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 px-1">
-                    <p className="text-[10px] text-slate-400">
-                      {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    {isMine && (
-                      <button
-                        onClick={() => requestDeleteMessage(m.id)}
-                        className="text-[10px] text-slate-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100 dark:text-slate-500"
-                        aria-label="Eliminar mensaje"
-                        title="Eliminar mensaje"
-                      >
-                        🗑
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <MessageBubble
+                key={m.id}
+                message={m}
+                isMine={isMine}
+                isFirstInGroup={isFirstInGroup}
+                imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
+                onLongPress={() => setMenuTarget(m)}
+              />
             )
           })
         )}
@@ -239,6 +215,78 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
       </div>
 
       {lastPendingId && <UndoToast message="Mensaje eliminado" onUndo={() => undoDeleteMessage(lastPendingId)} />}
+      {copiedFeedback && <Toast message="Copiado al portapapeles" />}
+
+      {menuTarget && (
+        <ContextMenu
+          onClose={() => setMenuTarget(null)}
+          actions={[
+            ...(menuTarget.content
+              ? [{ label: 'Copiar', icon: '📋', onSelect: () => copyMessage(menuTarget) }]
+              : []),
+            { label: 'Reenviar', icon: '↪️', onSelect: () => setForwardTarget(menuTarget) },
+            ...(menuTarget.sender_id === user?.id
+              ? [{ label: 'Eliminar', icon: '🗑', danger: true, onSelect: () => requestDeleteMessage(menuTarget.id) }]
+              : []),
+          ]}
+        />
+      )}
+
+      {forwardTarget && (
+        <ForwardMessageModal
+          message={forwardTarget}
+          currentListId={listId}
+          onClose={() => setForwardTarget(null)}
+          onForwarded={() => setForwardTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function MessageBubble({
+  message: m,
+  isMine,
+  isFirstInGroup,
+  imageUrl,
+  onLongPress,
+}: {
+  message: Message
+  isMine: boolean
+  isFirstInGroup: boolean
+  imageUrl?: string
+  onLongPress: () => void
+}) {
+  const longPress = useLongPress(onLongPress)
+
+  return (
+    <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+      {!isMine && (
+        <div className="w-7 shrink-0">
+          {isFirstInGroup && <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />}
+        </div>
+      )}
+      <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
+        {!isMine && isFirstInGroup && (
+          <p className="mb-0.5 px-1 text-xs font-medium" style={{ color: colorForName(m.sender?.username ?? '?') }}>
+            {m.sender?.username ?? '—'}
+          </p>
+        )}
+        <div
+          {...longPress}
+          className={`select-none rounded-2xl px-3 py-2 text-sm shadow-sm ${
+            isMine
+              ? 'rounded-br-sm bg-brand-600 text-white'
+              : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700'
+          }`}
+        >
+          {m.image_path && <img src={imageUrl} alt="Foto" className="mb-1 max-h-56 rounded-lg object-contain" />}
+          {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
+        </div>
+        <p className="mt-0.5 px-1 text-[10px] text-slate-400">
+          {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useListData } from '../hooks/useListData'
@@ -53,6 +53,20 @@ export default function ListDetailPage() {
       .then(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, messages.length, user, listId])
+
+  // Vibración sutil cuando llega un mensaje nuevo de otra persona mientras no
+  // estás mirando la pestaña de chat, para enterarte sin tener que comprobarlo.
+  const prevMessageCountRef = useRef(messages.length)
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      const newOnes = messages.slice(prevMessageCountRef.current)
+      const fromOthers = newOnes.some((m) => m.sender_id !== user?.id)
+      if (fromOthers && tab !== 'chat' && navigator.vibrate) {
+        navigator.vibrate(60)
+      }
+    }
+    prevMessageCountRef.current = messages.length
+  }, [messages, tab, user])
 
   if (loading) {
     return (

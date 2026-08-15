@@ -96,24 +96,13 @@ export default function InviteMemberModal({
           Introduce el email o el nombre de usuario de alguien ya registrado en la app.
         </p>
 
-        <div className="mb-4 rounded-lg border border-dashed border-slate-200 p-3 dark:border-slate-600">
-          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">¿Todavía no tiene la app? Invítale a instalarla primero.</p>
-          <button
-            type="button"
-            onClick={shareApp}
-            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            📤 Compartir la app
-          </button>
-          {shareFeedback && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{shareFeedback}</p>}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             placeholder="email@ejemplo.com o usuario"
+            autoFocus
             className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
 
@@ -137,6 +126,13 @@ export default function InviteMemberModal({
             </button>
           </div>
         </form>
+
+        <div className="mt-4 text-center">
+          <button type="button" onClick={shareApp} className="text-xs text-slate-400 underline hover:text-slate-600 dark:hover:text-slate-300">
+            ¿Aún no tiene la app? Compártesela
+          </button>
+          {shareFeedback && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{shareFeedback}</p>}
+        </div>
       </div>
     </div>
   )
