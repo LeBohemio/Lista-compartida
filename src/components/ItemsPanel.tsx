@@ -104,6 +104,12 @@ export default function ItemsPanel({
     getId: (i) => i.id,
     onCommit: persistOrder,
   })
+  // Mientras se arrastra una nota, la tarjeta deja de recortar lo que se
+  // sale de su marco (ver NotepadCard) — si no, en cuanto la nota se
+  // arrastraba más arriba/abajo/a los lados del propio recuadro, se volvía
+  // invisible de golpe aunque siguiera seguiendo al dedo por dentro, dando
+  // la sensación de que el arrastre se quedaba "pillado" ahí.
+  const isDraggingItem = !!(pendingReorder.draggingId || doneReorder.draggingId)
 
   const applySort = async (criterion: 'date' | 'alpha') => {
     const sortFn = (a: Item, b: Item) =>
@@ -280,7 +286,7 @@ export default function ItemsPanel({
             </div>
           )}
 
-          <NotepadCard>
+          <NotepadCard isDragging={isDraggingItem}>
             {pendingReorder.displayItems.map((item) => (
               <ItemRow
                 key={item.id}
@@ -426,10 +432,12 @@ export default function ItemsPanel({
   )
 }
 
-function NotepadCard({ children }: { children: ReactNode }) {
+function NotepadCard({ children, isDragging }: { children: ReactNode; isDragging?: boolean }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl bg-[var(--color-surface)] shadow-sm ring-1 ring-[var(--color-surface-border)]"
+      className={`relative rounded-xl bg-[var(--color-surface)] shadow-sm ring-1 ring-[var(--color-surface-border)] ${
+        isDragging ? 'overflow-visible' : 'overflow-hidden'
+      }`}
       style={{
         // 40px = la altura real de una fila sencilla (2.5 de padding arriba
         // y abajo + una línea de texto), para que la rayita caiga justo en

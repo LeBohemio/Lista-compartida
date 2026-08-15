@@ -1,4 +1,12 @@
-import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 
 /**
  * Reordenar una lista arrastrando desde un asa dedicada (el icono ⠿ que se
@@ -94,13 +102,58 @@ export function useDragReorder<T>({
   // fotograma como mucho.
   const rafIdRef = useRef<number | null>(null)
   const pendingYRef = useRef<number | null>(null)
+  // Auto-scroll: si arrastras cerca del borde de arriba o de abajo de la
+  // PANTALLA (no de la tarjeta — el dedo no puede salir de la pantalla, así
+  // que ese es el límite real con el que hay que trabajar), la página se
+  // desplaza sola en esa dirección mientras sigas ahí, para poder llegar a
+  // filas que no estaban a la vista al empezar a arrastrar (el primer o
+  // último puesto de una lista larga, por ejemplo). Corre en su propio bucle
+  // de fotogramas, independiente del de computeTarget, mientras dure el
+  // arrastre. autoScrollTickRef existe para poder arrancar este bucle desde
+  // beginDrag (antes en el archivo) sin que beginDrag tenga que depender de
+  // la función computeTarget, que se define más abajo.
+  const autoScrollFrameRef = useRef<number | null>(null)
+  const autoScrollTickRef = useRef<() => void>(() => {})
+  const scheduleAutoScrollFrame = useCallback(() => {
+    autoScrollFrameRef.current = requestAnimationFrame(() => {
+      autoScrollTickRef.current()
+    })
+  }, [])
+  // Justo al soltar, `items` (la lista tal cual llega de fuera) todavía no
+  // se ha enterado del nuevo orden — el guardado en el servidor es async, y
+  // hasta que no llega la confirmación (o el aviso en tiempo real), sigue
+  // reflejando el orden de ANTES de soltar. Si en ese momento dejamos de
+  // mostrar el orden que acabamos de calcular, la nota "vuelve" un instante
+  // a su sitio viejo y da la sensación de que no se ha colocado — aunque por
+  // detrás sí se haya guardado bien. Aquí guardamos solo los IDS en el orden
+  // que acabamos de confirmar, y mientras ese mismo conjunto de elementos
+  // siga existiendo (nadie ha añadido/borrado nada mientras tanto),
+  // reordenamos los datos frescos de `items` según esos IDs — así se ve al
+  // momento y además se mantiene al día con cualquier otro cambio (marcar
+  // como hecha, editar el texto...) que llegue de fuera mientras tanto.
+  const optimisticOrderIdsRef = useRef<string[] | null>(null)
 
   const registerRow = useCallback((id: string, el: HTMLElement | null) => {
     if (el) rowRefs.current.set(id, el)
     else rowRefs.current.delete(id)
   }, [])
 
-  const displayItems = dragOrder ?? items
+  const displayItems = useMemo(() => {
+    if (dragOrder) return dragOrder
+    const optimisticIds = optimisticOrderIdsRef.current
+    if (!optimisticIds || optimisticIds.length !== items.length) return items
+    const byId = new Map(items.map((it) => [getId(it), it]))
+    const reordered: T[] = []
+    for (const id of optimisticIds) {
+      const it = byId.get(id)
+      // Si algún id ya no existe en los datos frescos (se borró, o el
+      // conjunto ha cambiado de cualquier otra forma), el orden optimista ya
+      // no vale — mejor fiarse del que trae el servidor.
+      if (!it) return items
+      reordered.push(it)
+    }
+    return reordered
+  }, [dragOrder, items, getId])
 
   const captureRects = useCallback(() => {
     const map = new Map<string, DOMRect>()
@@ -110,8 +163,8 @@ export function useDragReorder<T>({
 
   const beginDrag = useCallback(
     (id: string, startY: number, startX: number, target: HTMLElement, pointerId: number) => {
-      baseOrderRef.current = items
-      setDragOrder(items)
+      baseOrderRef.current = displayItems
+      setDragOrder(displayItems)
       setDraggingId(id)
       draggingIdRef.current = id
       dragStartYRef.current = startY
@@ -139,8 +192,10 @@ export function useDragReorder<T>({
         el.style.zIndex = '30'
         el.style.willChange = 'transform'
       }
+      if (autoScrollFrameRef.current != null) cancelAnimationFrame(autoScrollFrameRef.current)
+      scheduleAutoScrollFrame()
     },
-    [items, captureRects],
+    [displayItems, captureRects, scheduleAutoScrollFrame],
   )
 
   // El asa (el icono ⠿) ya lleva touch-action: none puesto de forma
@@ -228,6 +283,45 @@ export function useDragReorder<T>({
     },
     [getId, captureRects],
   )
+
+  // Franja (en píxeles, medida desde el borde de la pantalla, no de la
+  // tarjeta) dentro de la cual se activa el auto-scroll, y velocidad máxima
+  // a la que se desplaza cuando el dedo está pegado del todo al borde
+  // (cuanto más cerca del borde, más rápido — no es una velocidad fija).
+  const AUTO_SCROLL_EDGE_PX = 70
+  const AUTO_SCROLL_MAX_SPEED_PX = 16
+
+  const autoScrollTick = useCallback(() => {
+    if (!draggingIdRef.current) return
+    const y = lastPointerYRef.current
+    const viewportHeight = window.innerHeight
+    let delta = 0
+    if (y < AUTO_SCROLL_EDGE_PX) {
+      const depth = AUTO_SCROLL_EDGE_PX - Math.max(y, 0)
+      delta = -Math.ceil((depth / AUTO_SCROLL_EDGE_PX) * AUTO_SCROLL_MAX_SPEED_PX)
+    } else if (y > viewportHeight - AUTO_SCROLL_EDGE_PX) {
+      const depth = y - (viewportHeight - AUTO_SCROLL_EDGE_PX)
+      delta = Math.ceil((depth / AUTO_SCROLL_EDGE_PX) * AUTO_SCROLL_MAX_SPEED_PX)
+    }
+    if (delta !== 0) {
+      const before = window.scrollY
+      window.scrollBy(0, delta)
+      // Si de verdad se ha movido la página (puede que ya estuviéramos en el
+      // principio o el final del todo, y entonces no hay nada que hacer),
+      // las posiciones "de reposo" que teníamos guardadas de las demás filas
+      // ya no valen — todas se han desplazado en pantalla el mismo tanto que
+      // la página. Las volvemos a medir y aprovechamos para comprobar otra
+      // vez si toca cambiar de sitio, para que el reordenar siga avanzando
+      // fila a fila mientras dura el scroll automático, no solo cuando el
+      // dedo se mueve de verdad.
+      if (window.scrollY !== before) {
+        settledRectsRef.current = captureRects()
+        computeTarget(y)
+      }
+    }
+    scheduleAutoScrollFrame()
+  }, [captureRects, computeTarget, scheduleAutoScrollFrame])
+  autoScrollTickRef.current = autoScrollTick
 
   const flushPointerMove = useCallback(() => {
     rafIdRef.current = null
@@ -333,6 +427,10 @@ export function useDragReorder<T>({
   const handlePointerUp = useCallback(() => {
     const draggingId = draggingIdRef.current
     if (!draggingId) return
+    if (autoScrollFrameRef.current != null) {
+      cancelAnimationFrame(autoScrollFrameRef.current)
+      autoScrollFrameRef.current = null
+    }
     if (rafIdRef.current != null) {
       cancelAnimationFrame(rafIdRef.current)
       rafIdRef.current = null
@@ -357,9 +455,25 @@ export function useDragReorder<T>({
     draggingIdRef.current = null
     setDraggingId(null)
     const finalOrder = baseOrderRef.current
+    // Guardamos ya el orden que acabamos de soltar como "optimista" (ver el
+    // comentario junto a optimisticOrderIdsRef) para que displayItems lo
+    // siga mostrando sin parpadeo mientras el guardado en el servidor
+    // termina de confirmarse por detrás.
+    optimisticOrderIdsRef.current = finalOrder.map(getId)
     setDragOrder(null)
     onCommit(finalOrder)
-  }, [onCommit, computeTarget])
+  }, [onCommit, computeTarget, getId])
+
+  // Por si el componente desaparece de golpe a mitad de un arrastre (por
+  // ejemplo, si sales de la lista sin soltar el dedo primero): sin esto, los
+  // dos bucles de fotogramas (el del auto-scroll y el del reordenar)
+  // seguirían corriendo de fondo para siempre.
+  useEffect(() => {
+    return () => {
+      if (autoScrollFrameRef.current != null) cancelAnimationFrame(autoScrollFrameRef.current)
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current)
+    }
+  }, [])
 
   return {
     displayItems,
