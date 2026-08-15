@@ -61,6 +61,22 @@ export function useDragReorder<T>({
   const currentOffsetRef = useRef(0)
   const dragNaturalTopRef = useRef(0)
   const lastPointerYRef = useRef(0)
+  // El dedo real nunca se mueve en línea recta: aunque la intención sea
+  // "bajar", el punto tocado tiembla unos pocos píxeles a los lados y hacia
+  // arriba/abajo continuamente. Sin nada que lo compense, ese temblor hacía
+  // que el índice objetivo oscilara justo alrededor de la frontera entre dos
+  // filas muchas veces por segundo, y cada oscilación disparaba
+  // captureRects() — una lectura de layout forzada sobre todas las filas —
+  // sintiéndose como que el arrastre "se atasca" (ver computeTarget, más
+  // abajo, y su margen de histéresis).
+  // Las notificaciones de puntero en pantallas táctiles pueden llegar mucho
+  // más rápido que los fotogramas que el navegador realmente pinta
+  // (especialmente si el dedo tiembla). Procesar cada una en el momento
+  // hace un trabajo redundante; en su lugar nos quedamos solo con la
+  // posición más reciente y hacemos el trabajo pesado una vez por
+  // fotograma como mucho.
+  const rafIdRef = useRef<number | null>(null)
+  const pendingYRef = useRef<number | null>(null)
 
   const registerRow = useCallback((id: string, el: HTMLElement | null) => {
     if (el) rowRefs.current.set(id, el)
@@ -88,6 +104,11 @@ export function useDragReorder<T>({
       prevRectsRef.current = startRects
       settledRectsRef.current = startRects
       dragNaturalTopRef.current = startRects.get(id)?.top ?? 0
+      if (rafIdRef.current != null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      pendingYRef.current = null
       try {
         target.setPointerCapture(pointerId)
       } catch {
@@ -116,6 +137,86 @@ export function useDragReorder<T>({
     [beginDrag],
   )
 
+  // Un margen (en píxeles) que hay que cruzar CLARAMENTE, más allá de la
+  // frontera entre dos filas, antes de aceptar que el sitio de destino ha
+  // cambiado. Sin esto, un dedo real (que nunca se mueve en línea recta
+  // perfecta) hace que el punto tocado tiemble justo alrededor de esa
+  // frontera, y cada temblor contaba como "cambio de sitio" — disparando en
+  // bucle el recálculo pesado (captureRects) que viene después. Con el
+  // margen, hace falta pasarse claramente para que cuente, así que un
+  // simple temblor ya no dispara nada.
+  const SWAP_MARGIN_PX = 10
+
+  const computeTarget = useCallback(
+    (currentY: number) => {
+      const draggingId = draggingIdRef.current
+      if (!draggingId) return
+
+      // Avanza como mucho una fila cada vez que hace falta, comparando
+      // siempre solo contra la fila justo por encima y la fila justo por
+      // debajo del sitio estable actual — nunca "salta" directamente a un
+      // índice lejano. Esto es justo lo que faltaba antes: comparar contra
+      // TODAS las filas de golpe con un margen podía, si el dedo temblaba
+      // justo tras cruzar una frontera, hacer que el sitio calculado
+      // retrocediera de un salto varias filas en vez de solo una — eso era
+      // lo que se sentía como que el arrastre "se atascaba". El bucle de
+      // abajo, en cambio, solo permite retroceder o avanzar de vecino en
+      // vecino, así que como mucho se equivoca en una fila, nunca varias.
+      // (Si el dedo se mueve muy rápido en un único fotograma, el bucle
+      // simplemente da varios pasos seguidos, uno por fila cruzada.)
+      let guard = 0
+      while (guard++ < 200) {
+        const order = baseOrderRef.current
+        const draggedIndex = order.findIndex((it) => getId(it) === draggingId)
+        if (draggedIndex === -1) return
+
+        let swapWith = -1
+        const belowIndex = draggedIndex + 1
+        if (belowIndex < order.length) {
+          const rect = settledRectsRef.current.get(getId(order[belowIndex]))
+          if (rect) {
+            const mid = rect.top + rect.height / 2
+            // Hace falta pasarse claramente del punto medio de la fila de
+            // abajo (no solo rozarlo) para aceptar que toca bajar un
+            // puesto — así un temblor pequeño cerca de la frontera no
+            // cuenta.
+            if (currentY > mid + SWAP_MARGIN_PX) swapWith = belowIndex
+          }
+        }
+        if (swapWith === -1) {
+          const aboveIndex = draggedIndex - 1
+          if (aboveIndex >= 0) {
+            const rect = settledRectsRef.current.get(getId(order[aboveIndex]))
+            if (rect) {
+              const mid = rect.top + rect.height / 2
+              if (currentY < mid - SWAP_MARGIN_PX) swapWith = aboveIndex
+            }
+          }
+        }
+
+        if (swapWith === -1) break
+
+        // Medimos dónde está cada fila (menos la que arrastramos, que ya
+        // sigue al dedo por su cuenta) justo antes de cambiar el orden,
+        // para poder animar la diferencia después del render.
+        prevRectsRef.current = captureRects()
+        const next = order.slice()
+        const [moved] = next.splice(draggedIndex, 1)
+        next.splice(swapWith, 0, moved)
+        baseOrderRef.current = next
+        setDragOrder(next)
+      }
+    },
+    [getId, captureRects],
+  )
+
+  const flushPointerMove = useCallback(() => {
+    rafIdRef.current = null
+    const currentY = pendingYRef.current
+    if (currentY == null) return
+    computeTarget(currentY)
+  }, [computeTarget])
+
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent) => {
       const draggingId = draggingIdRef.current
@@ -123,9 +224,12 @@ export function useDragReorder<T>({
       e.preventDefault()
       const currentY = e.clientY
       lastPointerYRef.current = currentY
+      pendingYRef.current = currentY
 
       // La fila que se arrastra sigue al dedo directamente, sin esperar a
-      // ningún render — se siente inmediato.
+      // ningún render — se siente inmediato. Esta parte es barata (solo
+      // pone un transform en un nodo ya existente) así que se hace en cada
+      // evento, no solo una vez por fotograma.
       const draggedEl = rowRefs.current.get(draggingId)
       if (draggedEl) {
         const offset = currentY - dragStartYRef.current
@@ -133,34 +237,17 @@ export function useDragReorder<T>({
         draggedEl.style.transform = `translateY(${offset}px) scale(1.02)`
       }
 
-      const order = baseOrderRef.current
-      const draggedIndex = order.findIndex((it) => getId(it) === draggingId)
-      if (draggedIndex === -1) return
-
-      let targetIndex = draggedIndex
-      for (let i = 0; i < order.length; i++) {
-        if (i === draggedIndex) continue
-        // Posición de reposo, no la posición pintada ahora mismo (que
-        // puede estar a mitad de la animación FLIP).
-        const rect = settledRectsRef.current.get(getId(order[i]))
-        if (!rect) continue
-        const mid = rect.top + rect.height / 2
-        if (currentY > mid) targetIndex = i
-      }
-
-      if (targetIndex !== draggedIndex) {
-        // Medimos dónde está cada fila (menos la que arrastramos, que ya
-        // sigue al dedo por su cuenta) justo antes de cambiar el orden, para
-        // poder animar la diferencia después del render.
-        prevRectsRef.current = captureRects()
-        const next = order.slice()
-        const [moved] = next.splice(draggedIndex, 1)
-        next.splice(targetIndex, 0, moved)
-        baseOrderRef.current = next
-        setDragOrder(next)
+      // Lo caro (decidir si toca cambiar de sitio, y si toca, medir el
+      // layout de todas las filas) se limita a como mucho una vez por
+      // fotograma pintado. En una pantalla táctil pueden llegar bastantes
+      // más eventos "pointermove" que fotogramas — sobre todo si el dedo
+      // tiembla — y procesarlos todos era justo lo que hacía que se sintiera
+      // a tirones.
+      if (rafIdRef.current == null) {
+        rafIdRef.current = requestAnimationFrame(flushPointerMove)
       }
     },
-    [getId, captureRects],
+    [flushPointerMove],
   )
 
   // FLIP: después de cualquier cambio de orden, las filas que no se están
@@ -224,6 +311,16 @@ export function useDragReorder<T>({
   const handlePointerUp = useCallback(() => {
     const draggingId = draggingIdRef.current
     if (!draggingId) return
+    if (rafIdRef.current != null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+      // Puede quedar un último movimiento sin procesar (llegó un
+      // pointermove justo antes de soltar, todavía no le había tocado su
+      // fotograma) — lo aplicamos ya mismo para que el orden final
+      // coincida exactamente con el último sitio donde estaba el dedo.
+      if (pendingYRef.current != null) computeTarget(pendingYRef.current)
+    }
+    pendingYRef.current = null
     const el = rowRefs.current.get(draggingId)
     if (el) {
       el.style.transition = 'transform 180ms cubic-bezier(0.2, 0, 0.2, 1)'
@@ -240,7 +337,7 @@ export function useDragReorder<T>({
     const finalOrder = baseOrderRef.current
     setDragOrder(null)
     onCommit(finalOrder)
-  }, [onCommit])
+  }, [onCommit, computeTarget])
 
   return {
     displayItems,

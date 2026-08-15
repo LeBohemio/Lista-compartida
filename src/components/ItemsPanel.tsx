@@ -640,11 +640,13 @@ function ItemRow({
   // hoja (40px), en vez de dejar que el padding del contenedor añada una
   // altura suelta que no encaja en la rejilla, apoyamos toda la altura en
   // el interlineado del propio texto (leading-[40px] más abajo) y, si hay
-  // una segunda línea (fecha límite o quién la añadió), le damos también
-  // exactamente una línea completa. Así, una nota con texto largo que
-  // ocupa dos líneas empuja a las de abajo exactamente 2 líneas, y todo
-  // sigue cuadrando con las rayitas del fondo.
-  const hasSecondaryLine = (!soloList && !!item.creator?.username) || !!item.due_date
+  // una segunda línea (fecha límite), le damos también exactamente una
+  // línea completa. Así, una nota con texto largo que ocupa dos líneas
+  // empuja a las de abajo exactamente 2 líneas, y todo sigue cuadrando con
+  // las rayitas del fondo. Quién la añadió ya no ocupa su propia línea —
+  // ahora es solo una foto pegada al lateral derecho del propio texto (ver
+  // más abajo).
+  const hasSecondaryLine = !!item.due_date
 
   return (
     <div
@@ -697,20 +699,30 @@ function ItemRow({
               className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           ) : (
-            <p
-              onClick={readOnly || inReorder ? undefined : startEdit}
-              className={`break-words text-sm leading-[40px] ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
-            >
-              {item.content}
-            </p>
+            // El texto y la foto de quién la añadió van en la misma fila:
+            // items-end hace que la foto quede pegada al lateral derecho de
+            // la ÚLTIMA línea del texto (no de la primera), tanto si la nota
+            // cabe en una sola línea (foto a la misma altura, a la derecha)
+            // como si el texto es largo y ocupa varias (foto abajo del
+            // todo, a la derecha).
+            <div className="flex items-end gap-2">
+              <p
+                onClick={readOnly || inReorder ? undefined : startEdit}
+                className={`min-w-0 flex-1 break-words text-sm leading-[40px] ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+              >
+                {item.content}
+              </p>
+              {!soloList && item.creator?.username && (
+                <Avatar
+                  username={item.creator.username}
+                  avatarUrl={item.creator.avatar_url}
+                  size={22}
+                  className="mb-2 shrink-0"
+                />
+              )}
+            </div>
           )}
           <div className={`flex flex-wrap items-center gap-x-2 ${hasSecondaryLine ? 'h-10' : ''}`}>
-            {!soloList && item.creator?.username && (
-              <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
-                <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />
-                {t('notes.addedBy')} {item.creator.username}
-              </p>
-            )}
             {item.due_date && (
               <span
                 className={`text-xs ${
