@@ -6,20 +6,17 @@ export default function RenameListModal({
   listId,
   currentName,
   currentColor,
-  isArchived,
   onClose,
   onSaved,
 }: {
   listId: string
   currentName: string
   currentColor: string | null
-  isArchived: boolean
   onClose: () => void
   onSaved: () => void
 }) {
   const [name, setName] = useState(currentName)
   const [color, setColor] = useState<string | null>(currentColor)
-  const [archived, setArchived] = useState(isArchived)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,10 +28,7 @@ export default function RenameListModal({
     }
     setSubmitting(true)
     setError(null)
-    const { error: err } = await supabase
-      .from('lists')
-      .update({ name: name.trim(), color, archived_at: archived ? new Date().toISOString() : null })
-      .eq('id', listId)
+    const { error: err } = await supabase.from('lists').update({ name: name.trim(), color }).eq('id', listId)
     setSubmitting(false)
     if (err) {
       setError(err.message)
@@ -77,21 +71,6 @@ export default function RenameListModal({
               ))}
             </div>
           </div>
-
-          <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-600">
-            <input
-              type="checkbox"
-              checked={archived}
-              onChange={(e) => setArchived(e.target.checked)}
-              className="mt-0.5 h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span>
-              <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Archivar lista</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">
-                Se oculta de "Mis listas" sin borrarse. Puedes desarchivarla cuando quieras desde el mismo sitio.
-              </span>
-            </span>
-          </label>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
 

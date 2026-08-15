@@ -45,7 +45,17 @@ function sortByPosition(a: Item, b: Item) {
   return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
 }
 
-export default function ItemsPanel({ listId, items, soloList }: { listId: string; items: Item[]; soloList: boolean }) {
+export default function ItemsPanel({
+  listId,
+  items,
+  soloList,
+  readOnly,
+}: {
+  listId: string
+  items: Item[]
+  soloList: boolean
+  readOnly?: boolean
+}) {
   const { user } = useAuth()
   const { t } = useLanguage()
   const [content, setContent] = useState('')
@@ -233,26 +243,35 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
         ) : (
           <div className="py-8 text-center">
             <p className="mb-4 text-sm text-slate-400">{t('notes.empty')}</p>
-            <button
-              onClick={() => setShowAddSheet(true)}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-            >
-              {t('notes.addFirst')}
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setShowAddSheet(true)}
+                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                {t('notes.addFirst')}
+              </button>
+            )}
           </div>
         )
       ) : (
         <div className="space-y-4 pb-24">
+          {readOnly && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              🔒 {t('notes.readOnlyHint')}
+            </p>
+          )}
           {pendingItems.length > 0 && (
             <div>
-              <div className="mb-2 flex justify-end">
-                <button
-                  onClick={markAllDone}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                >
-                  {t('notes.markAllDone')}
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    onClick={markAllDone}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                  >
+                    {t('notes.markAllDone')}
+                  </button>
+                </div>
+              )}
               <NotepadCard>
                 {pendingReorder.displayItems.map((item) => (
                   <ItemRow
@@ -261,8 +280,9 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                     soloList={soloList}
                     editing={editingId === item.id}
                     dragging={pendingReorder.draggingId === item.id}
-                    draggable={!searching}
+                    draggable={!searching && !readOnly}
                     reorderMode={reorderMode}
+                    readOnly={readOnly}
                     onRowRef={(el) => pendingReorder.registerRow(item.id, el)}
                     onDragPointerDown={pendingReorder.handlePointerDown(item.id)}
                     onDragPointerMove={pendingReorder.handlePointerMove}
@@ -300,8 +320,9 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
                     soloList={soloList}
                     editing={editingId === item.id}
                     dragging={doneReorder.draggingId === item.id}
-                    draggable={!searching}
+                    draggable={!searching && !readOnly}
                     reorderMode={reorderMode}
+                    readOnly={readOnly}
                     onRowRef={(el) => doneReorder.registerRow(item.id, el)}
                     onDragPointerDown={doneReorder.handlePointerDown(item.id)}
                     onDragPointerMove={doneReorder.handlePointerMove}
@@ -323,14 +344,16 @@ export default function ItemsPanel({ listId, items, soloList }: { listId: string
         </div>
       )}
 
-      <button
-        onClick={() => setShowAddSheet(true)}
-        aria-label={t('notes.addTitle')}
-        title={t('notes.addTitle')}
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
-      >
-        +
-      </button>
+      {!readOnly && (
+        <button
+          onClick={() => setShowAddSheet(true)}
+          aria-label={t('notes.addTitle')}
+          title={t('notes.addTitle')}
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg hover:bg-brand-700"
+        >
+          +
+        </button>
+      )}
 
       {lastPendingId && (
         <UndoToast message="Nota eliminada" onUndo={() => undoDelete(lastPendingId)} />
@@ -545,6 +568,7 @@ function ItemRow({
   dragging,
   draggable,
   reorderMode,
+  readOnly,
   onRowRef,
   onDragPointerDown,
   onDragPointerMove,
@@ -565,6 +589,7 @@ function ItemRow({
   dragging: boolean
   draggable: boolean
   reorderMode?: boolean
+  readOnly?: boolean
   onRowRef: (el: HTMLElement | null) => void
   onDragPointerDown: (e: ReactPointerEvent) => void
   onDragPointerMove: (e: ReactPointerEvent) => void
@@ -620,8 +645,9 @@ function ItemRow({
         <input
           type="checkbox"
           checked={item.done}
-          onChange={() => onToggle(item)}
-          className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500"
+          disabled={readOnly}
+          onChange={() => !readOnly && onToggle(item)}
+          className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500 disabled:opacity-60"
         />
         <div className="min-w-0 flex-1" {...(!editing ? longPress : {})}>
           {editing ? (
@@ -636,8 +662,8 @@ function ItemRow({
             />
           ) : (
             <p
-              onClick={startEdit}
-              className={`truncate text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+              onClick={readOnly ? undefined : startEdit}
+              className={`truncate text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
             >
               {item.content}
             </p>
@@ -670,9 +696,13 @@ function ItemRow({
         <ContextMenu
           onClose={() => setShowMenu(false)}
           actions={[
-            { label: t('menu.editNote'), icon: '✎', onSelect: startEdit },
-            { label: t('menu.dueDate'), icon: '📅', onSelect: onOpenDueDate },
-            ...(onSortDate && onSortAlpha && onEnterCustomOrder
+            ...(!readOnly
+              ? [
+                  { label: t('menu.editNote'), icon: '✎', onSelect: startEdit },
+                  { label: t('menu.dueDate'), icon: '📅', onSelect: onOpenDueDate },
+                ]
+              : []),
+            ...(!readOnly && onSortDate && onSortAlpha && onEnterCustomOrder
               ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
               : []),
             { label: t('menu.delete'), icon: '🗑', danger: true, onSelect: () => onDelete(item.id) },
@@ -680,7 +710,7 @@ function ItemRow({
         />
       )}
 
-      {showSortMenu && onSortDate && onSortAlpha && onEnterCustomOrder && (
+      {!readOnly && showSortMenu && onSortDate && onSortAlpha && onEnterCustomOrder && (
         <ContextMenu
           title={t('menu.reorder')}
           onClose={() => setShowSortMenu(false)}

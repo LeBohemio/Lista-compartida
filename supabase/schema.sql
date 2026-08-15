@@ -123,6 +123,19 @@ as $$
   );
 $$;
 
+-- Una lista "completada" (archived_at no nulo) queda en modo consulta: se
+-- puede seguir leyendo todo (notas, gastos, chat) pero no añadir ni editar
+-- nada nuevo hasta que se reactive.
+create or replace function public.is_list_archived(p_list_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select l.archived_at is not null from public.lists l where l.id = p_list_id), false);
+$$;
+
 create or replace function public.list_has_expenses_enabled(p_list_id uuid)
 returns boolean
 language sql
@@ -188,10 +201,16 @@ create policy "items_select_member" on public.items
   for select to authenticated using (public.is_list_member(list_id, true));
 
 create policy "items_insert_member" on public.items
-  for insert to authenticated with check (public.is_list_member(list_id, true) and created_by = auth.uid());
+  for insert to authenticated
+  with check (
+    public.is_list_member(list_id, true)
+    and created_by = auth.uid()
+    and not public.is_list_archived(list_id)
+  );
 
 create policy "items_update_member" on public.items
-  for update to authenticated using (public.is_list_member(list_id, true));
+  for update to authenticated
+  using (public.is_list_member(list_id, true) and not public.is_list_archived(list_id));
 
 create policy "items_delete_member" on public.items
   for delete to authenticated using (public.is_list_member(list_id, true));
@@ -224,13 +243,19 @@ create policy "expenses_insert_member" on public.expenses
     public.is_list_member(list_id, true)
     and public.list_has_expenses_enabled(list_id)
     and created_by = auth.uid()
+    and not public.is_list_archived(list_id)
   );
 
 create policy "expenses_delete_member" on public.expenses
   for delete to authenticated using (public.is_list_member(list_id, true) and created_by = auth.uid());
 
 create policy "expenses_update_member" on public.expenses
-  for update to authenticated using (public.is_list_member(list_id, true) and created_by = auth.uid());
+  for update to authenticated
+  using (
+    public.is_list_member(list_id, true)
+    and created_by = auth.uid()
+    and not public.is_list_archived(list_id)
+  );
 
 -- ----------------------------------------------------------------------------
 -- 6. EXPENSE_SHARES (reparto de cada gasto)
@@ -295,6 +320,7 @@ create policy "settlements_insert_member" on public.settlements
     and public.list_has_expenses_enabled(list_id)
     and created_by = auth.uid()
     and (created_by = from_user or created_by = to_user)
+    and not public.is_list_archived(list_id)
   );
 
 -- ----------------------------------------------------------------------------
@@ -317,7 +343,11 @@ create policy "messages_select_member" on public.messages
 
 create policy "messages_insert_member" on public.messages
   for insert to authenticated
-  with check (public.is_list_member(list_id, true) and sender_id = auth.uid());
+  with check (
+    public.is_list_member(list_id, true)
+    and sender_id = auth.uid()
+    and not public.is_list_archived(list_id)
+  );
 
 create policy "messages_delete_own" on public.messages
   for delete to authenticated using (sender_id = auth.uid());

@@ -38,6 +38,7 @@ export default function ListDetailPage() {
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
+  const [confirmComplete, setConfirmComplete] = useState(false)
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -105,9 +106,21 @@ export default function ListDetailPage() {
   const isOwner = list.owner_id === user?.id
   const soloList = acceptedMembers.length <= 1
   const listColor = colorForList(list)
+  const isCompleted = !!list.archived_at
 
   const enableExpenses = async () => {
     await supabase.from('lists').update({ expenses_enabled: true }).eq('id', list.id)
+    refetch()
+  }
+
+  const completeList = async () => {
+    setConfirmComplete(false)
+    await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', list.id)
+    refetch()
+  }
+
+  const reactivateList = async () => {
+    await supabase.from('lists').update({ archived_at: null }).eq('id', list.id)
     refetch()
   }
 
@@ -136,9 +149,9 @@ export default function ListDetailPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="font-semibold text-slate-900 dark:text-slate-100">{list.name}</p>
-                {list.archived_at && (
+                {isCompleted && (
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-                    Archivada
+                    {t('lists.completedBadge')}
                   </span>
                 )}
                 {isOwner && (
@@ -149,6 +162,16 @@ export default function ListDetailPage() {
                     title="Editar lista"
                   >
                     ✎
+                  </button>
+                )}
+                {isOwner && (
+                  <button
+                    onClick={() => (isCompleted ? reactivateList() : setConfirmComplete(true))}
+                    className="text-xs text-slate-300 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
+                    aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                    title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                  >
+                    {isCompleted ? '↩' : '✓'}
                   </button>
                 )}
               </div>
@@ -244,11 +267,28 @@ export default function ListDetailPage() {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {tab === 'notas' && <ItemsPanel listId={list.id} items={items} soloList={soloList} />}
-        {tab === 'gastos' && list.expenses_enabled && (
-          <ExpensesPanel listId={list.id} members={members} expenses={expenses} settlements={settlements} soloList={soloList} />
+        {isCompleted && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span>🔒 {t('lists.readOnlyBanner')}</span>
+            {isOwner && (
+              <button onClick={reactivateList} className="shrink-0 font-semibold text-brand-600 hover:underline dark:text-brand-400">
+                {t('menu.reactivate')}
+              </button>
+            )}
+          </div>
         )}
-        {tab === 'chat' && <ChatPanel listId={list.id} messages={messages} />}
+        {tab === 'notas' && <ItemsPanel listId={list.id} items={items} soloList={soloList} readOnly={isCompleted} />}
+        {tab === 'gastos' && list.expenses_enabled && (
+          <ExpensesPanel
+            listId={list.id}
+            members={members}
+            expenses={expenses}
+            settlements={settlements}
+            soloList={soloList}
+            readOnly={isCompleted}
+          />
+        )}
+        {tab === 'chat' && <ChatPanel listId={list.id} messages={messages} readOnly={isCompleted} />}
       </main>
 
       {showInvite && (
@@ -260,12 +300,21 @@ export default function ListDetailPage() {
           listId={list.id}
           currentName={list.name}
           currentColor={list.color}
-          isArchived={!!list.archived_at}
           onClose={() => setShowRename(false)}
           onSaved={() => {
             setShowRename(false)
             refetch()
           }}
+        />
+      )}
+
+      {confirmComplete && (
+        <ConfirmDialog
+          title={t('dialogs.completeTitle')}
+          message={t('dialogs.completeMessage')}
+          confirmLabel={t('dialogs.completeConfirm')}
+          onCancel={() => setConfirmComplete(false)}
+          onConfirm={completeList}
         />
       )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
@@ -12,8 +13,17 @@ import type { Message } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
 
-export default function ChatPanel({ listId, messages }: { listId: string; messages: Message[] }) {
+export default function ChatPanel({
+  listId,
+  messages,
+  readOnly,
+}: {
+  listId: string
+  messages: Message[]
+  readOnly?: boolean
+}) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -179,40 +189,46 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
-          <form onSubmit={sendText} className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              aria-label="Adjuntar foto"
-            >
-              📷
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={sendImage}
-              className="hidden"
-            />
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Escribe un mensaje…"
-              className="flex-1 rounded-full border border-slate-300 px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-            <button
-              type="submit"
-              disabled={sending || !text.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
-              aria-label="Enviar"
-            >
-              ➤
-            </button>
-          </form>
+          {readOnly ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              🔒 {t('chat.readOnlyHint')}
+            </p>
+          ) : (
+            <form onSubmit={sendText} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                aria-label="Adjuntar foto"
+              >
+                📷
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={sendImage}
+                className="hidden"
+              />
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Escribe un mensaje…"
+                className="flex-1 rounded-full border border-slate-300 px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <button
+                type="submit"
+                disabled={sending || !text.trim()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+                aria-label="Enviar"
+              >
+                ➤
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

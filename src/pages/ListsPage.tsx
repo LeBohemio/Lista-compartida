@@ -25,6 +25,7 @@ export default function ListsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
+  const [confirmComplete, setConfirmComplete] = useState<{ listId: string; name: string } | null>(null)
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const [reorderMode, setReorderMode] = useState(false)
   const navigate = useNavigate()
@@ -37,6 +38,27 @@ export default function ListsPage() {
     () => lists.filter((l) => l.archived_at && !pendingDeleteIds.has(l.id)),
     [lists, pendingDeleteIds],
   )
+
+  const pendingNotesTotal = useMemo(
+    () =>
+      activeLists.reduce((sum, l) => {
+        const s = itemStats[l.id]
+        return sum + (s ? s.total - s.done : 0)
+      }, 0),
+    [activeLists, itemStats],
+  )
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return t('home.morning')
+    if (hour < 20) return t('home.afternoon')
+    return t('home.evening')
+  }, [t])
+  const statusLine =
+    activeLists.length === 0
+      ? null
+      : pendingNotesTotal === 0
+        ? t('home.allDone')
+        : `${activeLists.length} ${t('home.activeLists')} · ${pendingNotesTotal} ${t('home.pendingNotes')}`
 
   const reorder = useDragReorder<ListWithMembership>({
     items: activeLists,
@@ -110,6 +132,24 @@ export default function ListsPage() {
     refetch()
   }
 
+  const requestComplete = (listId: string, name: string) => {
+    setActionError(null)
+    setConfirmComplete({ listId, name })
+  }
+
+  const confirmCompleteList = async () => {
+    if (!confirmComplete) return
+    const { listId } = confirmComplete
+    setConfirmComplete(null)
+    await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', listId)
+    refetch()
+  }
+
+  const reactivateList = async (listId: string) => {
+    await supabase.from('lists').update({ archived_at: null }).eq('id', listId)
+    refetch()
+  }
+
   const duplicateList = async (l: ListWithMembership) => {
     setActionError(null)
     const { data: rpcData, error: rpcErr } = await supabase.rpc('create_list_with_owner', {
@@ -143,13 +183,19 @@ export default function ListsPage() {
       className="min-h-screen bg-slate-50 pb-24 dark:bg-slate-900"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Logo size={34} className="rounded-lg" />
+      <header className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
+        <div
+          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Logo size={40} className="rounded-xl shadow-md ring-1 ring-white/30" />
             <div>
-              <p className="text-xs text-slate-400">Hola,</p>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">{profile?.username ?? '…'}</p>
+              <p className="font-semibold leading-tight">
+                {greeting}, {profile?.username ?? '…'}
+              </p>
+              {statusLine && <p className="text-xs text-white/80">{statusLine}</p>}
             </div>
           </div>
           <button onClick={() => setShowProfile(true)} className="relative rounded-full" aria-label="Tu perfil">
@@ -157,10 +203,10 @@ export default function ListsPage() {
               username={profile?.username ?? '?'}
               avatarUrl={profile?.avatar_url}
               size={38}
-              className="ring-2 ring-white hover:ring-brand-200 dark:ring-slate-800"
+              className="ring-2 ring-white/70 hover:ring-white"
             />
             {invitations.length > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-slate-800">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
                 {invitations.length > 9 ? '9+' : invitations.length}
               </span>
             )}
@@ -258,6 +304,7 @@ export default function ListsPage() {
                   onOpen={() => navigate(`/lists/${l.id}`)}
                   onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                   onDuplicate={() => duplicateList(l)}
+                  onComplete={() => requestComplete(l.id, l.name)}
                   onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
                 />
               ))}
@@ -271,7 +318,7 @@ export default function ListsPage() {
               onClick={() => setShowArchived((s) => !s)}
               className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 hover:text-brand-600 dark:text-slate-400"
             >
-              {showArchived ? '▾' : '▸'} Archivadas ({archivedLists.length})
+              {showArchived ? '▾' : '▸'} {t('lists.completedSection')} ({archivedLists.length})
             </button>
             {showArchived && (
               <div className="space-y-3 opacity-70">
@@ -285,6 +332,7 @@ export default function ListsPage() {
                     onOpen={() => navigate(`/lists/${l.id}`)}
                     onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                     onDuplicate={() => duplicateList(l)}
+                    onReactivate={() => reactivateList(l.id)}
                     onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
                   />
                 ))}
@@ -319,13 +367,23 @@ export default function ListsPage() {
           title={confirmTarget.isOwner ? 'Eliminar lista' : 'Salir de la lista'}
           message={
             confirmTarget.isOwner
-              ? `¿Eliminar definitivamente la lista "${confirmTarget.name}"? Se borrará para todos los miembros, junto con sus notas, gastos y chat. Esta acción no se puede deshacer.`
+              ? t('dialogs.deleteMessage', { name: confirmTarget.name })
               : `¿Salir de la lista "${confirmTarget.name}"? Dejarás de verla, pero seguirá existiendo para el resto.`
           }
           confirmLabel={confirmTarget.isOwner ? 'Eliminar' : 'Salir'}
           danger={confirmTarget.isOwner}
           onCancel={() => setConfirmTarget(null)}
           onConfirm={confirmDeleteOrLeave}
+        />
+      )}
+
+      {confirmComplete && (
+        <ConfirmDialog
+          title={t('dialogs.completeTitle')}
+          message={t('dialogs.completeMessage')}
+          confirmLabel={t('dialogs.completeConfirm')}
+          onCancel={() => setConfirmComplete(null)}
+          onConfirm={confirmCompleteList}
         />
       )}
     </div>
@@ -349,6 +407,8 @@ function ListRow({
   onOpen,
   onTogglePin,
   onDuplicate,
+  onComplete,
+  onReactivate,
   onDeleteRequest,
 }: {
   list: ListWithMembership
@@ -367,6 +427,8 @@ function ListRow({
   onOpen: () => void
   onTogglePin: () => void
   onDuplicate: () => void
+  onComplete?: () => void
+  onReactivate?: () => void
   onDeleteRequest: (e: MouseEvent) => void
 }) {
   const { t } = useLanguage()
@@ -415,7 +477,7 @@ function ListRow({
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isOwner ? t('lists.owner') : t('lists.member')}
               {l.expenses_enabled ? ` · ${t('lists.expensesOn')}` : ''}
-              {l.archived_at ? ` · ${t('lists.archived')}` : ''}
+              {l.archived_at ? ` · ${t('lists.completedBadge')}` : ''}
             </p>
           </div>
         </div>
@@ -474,6 +536,12 @@ function ListRow({
             { label: t('menu.duplicate'), icon: '⧉', onSelect: onDuplicate },
             ...(onSortDate && onSortAlpha && onEnterCustomOrder
               ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
+              : []),
+            ...(isOwner && onComplete
+              ? [{ label: t('menu.complete'), icon: '✓', onSelect: onComplete }]
+              : []),
+            ...(isOwner && onReactivate
+              ? [{ label: t('menu.reactivate'), icon: '↩', onSelect: onReactivate }]
               : []),
           ]}
         />

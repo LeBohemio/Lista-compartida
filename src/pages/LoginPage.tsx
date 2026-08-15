@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../lib/i18n'
 import Logo from '../components/Logo'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 export default function LoginPage() {
   const { user, signIn } = useAuth()
+  const { t } = useLanguage()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +32,7 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Listas en Común</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Entra para ver tus listas</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('auth.appTagline')}</p>
         </div>
 
         <form
@@ -38,7 +40,7 @@ export default function LoginPage() {
           className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.email')}</label>
             <input
               type="email"
               required
@@ -51,13 +53,13 @@ export default function LoginPage() {
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Contraseña</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.password')}</label>
               <button
                 type="button"
                 onClick={() => setShowForgot(true)}
                 className="text-xs font-medium text-brand-600 hover:text-brand-700"
               >
-                ¿Olvidaste tu contraseña?
+                {t('auth.forgotPassword')}
               </button>
             </div>
             <input
@@ -78,14 +80,14 @@ export default function LoginPage() {
             disabled={submitting}
             className="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
-            {submitting ? 'Entrando…' : 'Entrar'}
+            {submitting ? t('auth.entering') : t('auth.enter')}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          ¿No tienes cuenta?{' '}
+          {t('auth.noAccount')}{' '}
           <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
-            Regístrate
+            {t('auth.register')}
           </Link>
         </p>
       </div>

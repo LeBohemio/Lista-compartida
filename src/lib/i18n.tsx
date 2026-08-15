@@ -91,6 +91,52 @@ const translations = {
     'reorder.done': 'Listo',
     'notes.addedBy': 'Añadido por',
     'notes.due': 'Vence',
+    'lists.completedBadge': 'Completada',
+    'lists.completedSection': 'Listas completadas',
+    'menu.complete': 'Completar lista',
+    'menu.reactivate': 'Reactivar lista',
+    'dialogs.completeTitle': '¿Completar lista?',
+    'dialogs.completeMessage':
+      'Dejará de aparecer en tus listas activas y pasará a "Listas completadas". Podrás seguir consultando sus notas, gastos y chat en cualquier momento, pero no podrás añadir cosas nuevas mientras esté completada. Si más adelante la necesitas, puedes reactivarla cuando quieras y todo volverá a estar disponible.',
+    'dialogs.completeConfirm': 'Completar',
+    'dialogs.deleteMessage':
+      '¿Eliminar definitivamente la lista "{name}"? Se borrará para todos los miembros, junto con sus notas, gastos y chat. Los gastos que se pagaron aquí dejarán de aparecer en tu histórico. Esta acción no se puede deshacer. Si solo quieres dejar de verla pero conservarlo todo, prueba mejor a completarla en vez de eliminarla.',
+    'lists.readOnlyBanner': 'Esta lista está completada. Puedes consultar notas, gastos y chat, pero no añadir cosas nuevas.',
+    'notes.readOnlyHint': 'Lista completada: solo consulta. Reactívala para poder añadir notas.',
+    'expenses.readOnlyHint': 'Lista completada: solo consulta. Reactívala para poder añadir gastos.',
+    'chat.readOnlyHint': 'Lista completada: solo puedes consultar el chat. Reactívala para escribir de nuevo.',
+    'home.morning': 'Buenos días',
+    'home.afternoon': 'Buenas tardes',
+    'home.evening': 'Buenas noches',
+    'home.activeLists': 'listas activas',
+    'home.pendingNotes': 'pendientes',
+    'home.allDone': 'Todo al día 👍',
+    'auth.email': 'Email',
+    'auth.password': 'Contraseña',
+    'auth.forgotPassword': '¿Olvidaste tu contraseña?',
+    'auth.enter': 'Entrar',
+    'auth.entering': 'Entrando…',
+    'auth.noAccount': '¿No tienes cuenta?',
+    'auth.register': 'Regístrate',
+    'auth.haveAccount': '¿Ya tienes cuenta?',
+    'auth.signIn': 'Entra',
+    'auth.appTagline': 'Entra para ver tus listas',
+    'auth.username': 'Nombre de usuario',
+    'auth.usernamePlaceholder': 'Cómo te verán los demás',
+    'auth.createAccount': 'Crear cuenta',
+    'auth.creatingAccount': 'Creando cuenta…',
+    'auth.registerTagline': 'Únete para crear y compartir listas',
+    'auth.accountCreated': '¡Cuenta creada!',
+    'auth.accountCreatedBody':
+      'Si tu proyecto de Supabase pide confirmación por email, revisa tu bandeja de entrada antes de entrar. Si no, ya puedes iniciar sesión directamente.',
+    'auth.goToLogin': 'Ir a iniciar sesión',
+    'auth.recoverPassword': 'Recuperar contraseña',
+    'auth.recoverPasswordBody': 'Te mandaremos un enlace a tu email para elegir una contraseña nueva.',
+    'auth.recoverPasswordSent':
+      'Si ese email tiene una cuenta, te hemos mandado un enlace para elegir una contraseña nueva. Revisa tu bandeja de entrada (y spam).',
+    'auth.sendLink': 'Enviar enlace',
+    'auth.sending': 'Enviando…',
+    'auth.understood': 'Entendido',
   },
   en: {
     'nav.notes': 'Notes',
@@ -174,6 +220,52 @@ const translations = {
     'reorder.done': 'Done',
     'notes.addedBy': 'Added by',
     'notes.due': 'Due',
+    'lists.completedBadge': 'Completed',
+    'lists.completedSection': 'Completed lists',
+    'menu.complete': 'Complete list',
+    'menu.reactivate': 'Reactivate list',
+    'dialogs.completeTitle': 'Complete this list?',
+    'dialogs.completeMessage':
+      'It will stop showing up in your active lists and move to "Completed lists". You can keep checking its notes, expenses and chat any time, but you won\'t be able to add new things while it\'s completed. If you need it later, you can reactivate it whenever you want and everything will be available again.',
+    'dialogs.completeConfirm': 'Complete',
+    'dialogs.deleteMessage':
+      'Permanently delete the list "{name}"? It will be deleted for all members, along with its notes, expenses and chat. Expenses paid here will disappear from your history. This action can\'t be undone. If you just want to stop seeing it while keeping everything, try completing it instead of deleting it.',
+    'lists.readOnlyBanner': 'This list is completed. You can check notes, expenses and chat, but not add new things.',
+    'notes.readOnlyHint': 'Completed list: view only. Reactivate it to add notes.',
+    'expenses.readOnlyHint': 'Completed list: view only. Reactivate it to add expenses.',
+    'chat.readOnlyHint': 'Completed list: you can only view the chat. Reactivate it to write again.',
+    'home.morning': 'Good morning',
+    'home.afternoon': 'Good afternoon',
+    'home.evening': 'Good evening',
+    'home.activeLists': 'active lists',
+    'home.pendingNotes': 'pending',
+    'home.allDone': 'All caught up 👍',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.forgotPassword': 'Forgot your password?',
+    'auth.enter': 'Sign in',
+    'auth.entering': 'Signing in…',
+    'auth.noAccount': "Don't have an account?",
+    'auth.register': 'Sign up',
+    'auth.haveAccount': 'Already have an account?',
+    'auth.signIn': 'Sign in',
+    'auth.appTagline': 'Sign in to see your lists',
+    'auth.username': 'Username',
+    'auth.usernamePlaceholder': 'How others will see you',
+    'auth.createAccount': 'Create account',
+    'auth.creatingAccount': 'Creating account…',
+    'auth.registerTagline': 'Join to create and share lists',
+    'auth.accountCreated': 'Account created!',
+    'auth.accountCreatedBody':
+      "If your Supabase project requires email confirmation, check your inbox before signing in. If not, you can sign in right away.",
+    'auth.goToLogin': 'Go to sign in',
+    'auth.recoverPassword': 'Recover password',
+    'auth.recoverPasswordBody': "We'll send a link to your email to choose a new password.",
+    'auth.recoverPasswordSent':
+      "If that email has an account, we've sent a link to choose a new password. Check your inbox (and spam).",
+    'auth.sendLink': 'Send link',
+    'auth.sending': 'Sending…',
+    'auth.understood': 'Got it',
   },
 } as const
 
@@ -182,7 +274,7 @@ export type TranslationKey = keyof (typeof translations)['es']
 type LanguageContextValue = {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -216,7 +308,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     [user, refreshProfile],
   )
 
-  const t = useCallback((key: TranslationKey) => translations[language][key] ?? translations.es[key] ?? key, [language])
+  const t = useCallback(
+    (key: TranslationKey, vars?: Record<string, string | number>) => {
+      let str: string = translations[language][key] ?? translations.es[key] ?? key
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          str = str.replace(`{${k}}`, String(v))
+        }
+      }
+      return str
+    },
+    [language],
+  )
 
   const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t])
 

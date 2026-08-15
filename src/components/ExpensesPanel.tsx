@@ -23,12 +23,14 @@ export default function ExpensesPanel({
   expenses,
   settlements,
   soloList,
+  readOnly,
 }: {
   listId: string
   members: ListMember[]
   expenses: Expense[]
   settlements: Settlement[]
   soloList: boolean
+  readOnly?: boolean
 }) {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -123,14 +125,22 @@ export default function ExpensesPanel({
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={() => setShowNew(true)}
-          className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
-        >
-          {t('expenses.new')}
-        </button>
-      </div>
+      {readOnly && (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          🔒 {t('expenses.readOnlyHint')}
+        </p>
+      )}
+
+      {!readOnly && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setShowNew(true)}
+            className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
+          >
+            {t('expenses.new')}
+          </button>
+        </div>
+      )}
 
       <BalanceSummary listId={listId} members={members} expenses={visibleExpenses} settlements={settlements} />
 
@@ -172,12 +182,14 @@ export default function ExpensesPanel({
         ) : (
           <div className="py-8 text-center">
             <p className="mb-4 text-sm text-slate-400">Aún no hay gastos por aquí. ¡Anota el primero!</p>
-            <button
-              onClick={() => setShowNew(true)}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-            >
-              ➕ Añadir tu primer gasto
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setShowNew(true)}
+                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                ➕ Añadir tu primer gasto
+              </button>
+            )}
           </div>
         )
       ) : (
@@ -203,17 +215,19 @@ export default function ExpensesPanel({
                     <span className="font-semibold text-slate-800 dark:text-slate-100">{formatEuro(row.data.total_amount)}</span>
                     {row.data.created_by === user?.id && (
                       <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingExpense(row.data)
-                          }}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                          aria-label="Editar gasto"
-                          title="Editar gasto"
-                        >
-                          ✎
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingExpense(row.data)
+                            }}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                            aria-label="Editar gasto"
+                            title="Editar gasto"
+                          >
+                            ✎
+                          </button>
+                        )}
                         <button
                           onClick={(e) => requestDelete(e, row.data.id)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
