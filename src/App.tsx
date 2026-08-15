@@ -24,7 +24,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex h-full min-h-screen items-center justify-center bg-slate-50 dark:bg-[var(--color-surface-alt)]">
         <p className="text-slate-500 dark:text-slate-400">Cargando…</p>
       </div>
     )

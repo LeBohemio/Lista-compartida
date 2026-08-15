@@ -20,13 +20,13 @@ export default function ContextMenu({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-2 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="w-full max-w-sm rounded-t-2xl bg-white p-2 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
           <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
         )}
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-100 dark:divide-[var(--color-surface-border)]">
           {actions.map((a) => (
             <button
               key={a.label}

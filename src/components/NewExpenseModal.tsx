@@ -215,7 +215,7 @@ export default function NewExpenseModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
@@ -258,10 +258,10 @@ export default function NewExpenseModal({
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
               placeholder="0.00"
-              className={`w-full rounded-lg border px-3 py-2.5 text-base focus:outline-none focus:ring-2 dark:bg-slate-900 dark:text-slate-100 ${
+              className={`w-full rounded-lg border px-3 py-2.5 text-base focus:outline-none focus:ring-2 dark:bg-[var(--color-surface-alt)] dark:text-slate-100 ${
                 needsManualReview
                   ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-100'
-                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100 dark:border-slate-600'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100 dark:border-[var(--color-surface-border)]'
               }`}
             />
           </div>
@@ -273,7 +273,7 @@ export default function NewExpenseModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ej. Supermercado, cena…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           </div>
 
@@ -288,7 +288,7 @@ export default function NewExpenseModal({
                   className={`rounded-full border px-3 py-1.5 text-sm transition ${
                     category === c.value
                       ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'border-slate-300 text-slate-600 hover:border-brand-300 dark:border-slate-600 dark:text-slate-300'
+                      : 'border-slate-300 text-slate-600 hover:border-brand-300 dark:border-[var(--color-surface-border)] dark:text-slate-300'
                   }`}
                 >
                   {c.icon} {c.label}
@@ -302,7 +302,7 @@ export default function NewExpenseModal({
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
             >
               {acceptedMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
@@ -321,7 +321,7 @@ export default function NewExpenseModal({
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
                   splitMode === 'equal'
                     ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                    : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
+                    : 'border-slate-300 text-slate-600 dark:border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
                 Partes iguales
@@ -332,7 +332,7 @@ export default function NewExpenseModal({
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
                   splitMode === 'custom'
                     ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                    : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
+                    : 'border-slate-300 text-slate-600 dark:border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
                 Importes personalizados
@@ -356,7 +356,7 @@ export default function NewExpenseModal({
                         setCustomAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))
                       }
                       placeholder="0.00"
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
                     />
                   )}
                 </div>
@@ -375,7 +375,7 @@ export default function NewExpenseModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>

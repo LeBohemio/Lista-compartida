@@ -70,7 +70,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -135,7 +135,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
               })}
             </div>
 
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:text-slate-100">
+            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 dark:border-[var(--color-surface-border)] dark:text-slate-100">
               <span>Total</span>
               <span>{formatEuro(totalMonth)}</span>
             </div>

@@ -186,7 +186,7 @@ export default function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)]/95">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
           {readOnly ? (
@@ -199,7 +199,7 @@ export default function ChatPanel({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={sending}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
                 aria-label="Adjuntar foto"
               >
                 📷
@@ -217,7 +217,7 @@ export default function ChatPanel({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Escribe un mensaje…"
-                className="flex-1 rounded-full border border-slate-300 px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                className="flex-1 rounded-full border border-slate-300 px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-100"
               />
               <button
                 type="submit"
@@ -320,7 +320,7 @@ function MessageBubble({
           className={`select-none rounded-2xl px-3 py-2 text-sm shadow-sm ${
             isMine
               ? 'rounded-br-sm bg-brand-600 text-white'
-              : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700'
+              : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:text-slate-100 dark:ring-[var(--color-surface-border)]'
           }`}
         >
           {m.image_path && imageUrl && (

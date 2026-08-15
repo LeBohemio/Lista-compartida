@@ -224,7 +224,7 @@ export default function ItemsPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('notes.searchPlaceholder')}
-          className="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          className="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-100"
         />
       )}
 
@@ -449,7 +449,7 @@ function AddNoteSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('notes.addTitle')}</h2>
@@ -477,7 +477,7 @@ function AddNoteSheet({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('notes.addPlaceholder')}
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
           />
           <button
             type="submit"
@@ -494,7 +494,7 @@ function AddNoteSheet({
               <button
                 key={s.id}
                 onClick={() => onSuggestion(s)}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface)] dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
               >
                 {s.content}
               </button>
@@ -504,7 +504,7 @@ function AddNoteSheet({
 
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="mt-5 w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           {t('common.done')}
         </button>
@@ -527,7 +527,7 @@ function DueDateSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Fecha límite</h2>
@@ -536,13 +536,13 @@ function DueDateSheet({
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
         />
         <div className="flex gap-3">
           {item.due_date && (
             <button
               onClick={() => onSave(null)}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Quitar fecha
             </button>
@@ -657,7 +657,7 @@ function ItemRow({
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => onSaveEdit(draft)}
-              className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           ) : (
             <p

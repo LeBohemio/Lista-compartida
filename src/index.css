@@ -10,6 +10,19 @@
   --color-brand-700: #4338ca;
 }
 
+/*
+ * Tonos de "superficie" para el tema oscuro (fondo de tarjetas/modales,
+ * fondo de página, bordes sutiles). Estos valores son solo el respaldo
+ * inicial antes de que arranque la app — en cuanto carga, applyTheme() los
+ * recalcula a partir del color de acento (el tuyo, o el índigo por defecto
+ * si aún no has iniciado sesión) y los sustituye.
+ */
+:root {
+  --color-surface: #25243d;
+  --color-surface-alt: #1a1929;
+  --color-surface-border: #383663;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -22,7 +35,7 @@ body {
 }
 
 html.dark body {
-  background-color: #0f172a;
+  background-color: var(--color-surface-alt);
 }
 
 /* Hide number input spinners for amount fields */

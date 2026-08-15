@@ -180,7 +180,7 @@ export default function ListsPage() {
 
   return (
     <div
-      className="min-h-screen bg-slate-50 pb-24 dark:bg-slate-900"
+      className="min-h-screen bg-slate-50 pb-24 dark:bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       <header className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
@@ -238,7 +238,7 @@ export default function ListsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => respondInvitation(inv.id, false)}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white dark:border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
                     >
                       {t('lists.reject')}
                     </button>
@@ -274,7 +274,7 @@ export default function ListsPage() {
           {loading ? (
             <p className="text-sm text-slate-400">Cargando listas…</p>
           ) : activeLists.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-600">
+            <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-[var(--color-surface-border)]">
               <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
               <button
                 onClick={() => setShowCreate(true)}
@@ -284,7 +284,7 @@ export default function ListsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
               {reorder.displayItems.map((l) => (
                 <ListRow
                   key={l.id}
@@ -321,7 +321,7 @@ export default function ListsPage() {
               {showArchived ? '▾' : '▸'} {t('lists.completedSection')} ({archivedLists.length})
             </button>
             {showArchived && (
-              <div className="space-y-3 opacity-70">
+              <div className="overflow-hidden rounded-xl bg-white opacity-70 shadow-sm ring-1 ring-slate-200 dark:bg-[var(--color-surface)] dark:ring-[var(--color-surface-border)]">
                 {archivedLists.map((l) => (
                   <ListRow
                     key={l.id}
@@ -448,9 +448,11 @@ function ListRow({
       role="button"
       tabIndex={0}
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
-      className={`w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:shadow-md hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700 ${
-        inReorder ? 'touch-none select-none' : ''
-      } ${dragging ? 'relative shadow-lg ring-2 ring-brand-300' : ''}`}
+      className={`w-full p-4 text-left transition ${inReorder ? 'touch-none select-none' : ''} ${
+        dragging
+          ? 'relative rounded-xl bg-white shadow-lg ring-2 ring-brand-300 dark:bg-[var(--color-surface)]'
+          : 'hover:bg-slate-50 dark:hover:bg-white/5'
+      }`}
       style={inReorder ? { cursor: 'grab' } : undefined}
       {...(inReorder ? {} : longPress)}
     >
@@ -462,7 +464,7 @@ function ListRow({
             </span>
           )}
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-800"
+            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-[var(--color-surface)]"
             style={{ backgroundColor: colorForList(l), boxShadow: `0 0 0 1px ${colorForList(l)}55` }}
             aria-hidden="true"
           />

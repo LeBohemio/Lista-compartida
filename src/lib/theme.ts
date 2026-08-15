@@ -62,14 +62,38 @@ function atLightness(hex: string, lightness: number, satBoostCap?: number): stri
   return rgbToHex(...hslToRgb(h, finalSat, lightness))
 }
 
-/** Genera la rampa de tonos brand-50/100/500/600/700 a partir de un único color de acento. */
+/**
+ * Genera la rampa de tonos brand-50/100/500/600/700 a partir de un único
+ * color de acento. Los tonos 600/700 se calculan RELATIVOS a la luminosidad
+ * del propio color elegido (en vez de a una luminosidad fija), para que
+ * funcione igual de bien con acentos claros y con acentos ya oscuros — si no,
+ * un acento oscuro podía acabar con un "600"/"700" más claro que el propio
+ * "500", lo cual se ve raro en botones y hovers.
+ */
 export function shadesFromAccent(hex: string) {
+  const [, , l] = rgbToHsl(...hexToRgb(hex))
+  const l600 = Math.max(l - 20, 8)
+  const l700 = Math.max(l - 32, 5)
   return {
     50: atLightness(hex, 95, 60),
     100: atLightness(hex, 90, 55),
     500: hex,
-    600: atLightness(hex, 45),
-    700: atLightness(hex, 35),
+    600: atLightness(hex, l600),
+    700: atLightness(hex, l700),
+  }
+}
+
+/**
+ * Genera los tonos de "superficie" (fondo de tarjetas/modales, fondo de
+ * página, bordes sutiles) para el tema oscuro, a partir del color de acento
+ * — en vez del gris genérico de siempre, para que todo el modo oscuro
+ * combine con el acento elegido.
+ */
+export function surfaceShadesFromAccent(hex: string) {
+  return {
+    surface: atLightness(hex, 19, 26),
+    surfaceAlt: atLightness(hex, 13, 24),
+    surfaceBorder: atLightness(hex, 30, 30),
   }
 }
 
@@ -82,10 +106,16 @@ export function applyTheme(theme: Theme, accentColor: string | null) {
   const isDark = theme === 'dark' || (theme === 'system' && prefersDark)
   root.classList.toggle('dark', isDark)
 
-  const shades = shadesFromAccent(accentColor || DEFAULT_ACCENT)
+  const effectiveAccent = accentColor || DEFAULT_ACCENT
+  const shades = shadesFromAccent(effectiveAccent)
   root.style.setProperty('--color-brand-50', shades[50])
   root.style.setProperty('--color-brand-100', shades[100])
   root.style.setProperty('--color-brand-500', shades[500])
   root.style.setProperty('--color-brand-600', shades[600])
   root.style.setProperty('--color-brand-700', shades[700])
+
+  const surf = surfaceShadesFromAccent(effectiveAccent)
+  root.style.setProperty('--color-surface', surf.surface)
+  root.style.setProperty('--color-surface-alt', surf.surfaceAlt)
+  root.style.setProperty('--color-surface-border', surf.surfaceBorder)
 }

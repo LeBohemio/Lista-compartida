@@ -29,7 +29,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-slate-800"
+        className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl dark:bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-2 text-lg font-semibold text-red-600">Eliminar cuenta</h2>
@@ -45,7 +45,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           type="text"
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100 dark:border-[var(--color-surface-border)] dark:bg-[var(--color-surface-alt)] dark:text-slate-100"
           placeholder="ELIMINAR"
         />
 
@@ -54,7 +54,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancelar
           </button>
