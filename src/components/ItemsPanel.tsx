@@ -53,11 +53,17 @@ export default function ItemsPanel({
   items,
   soloList,
   readOnly,
+  onCompleteList,
 }: {
   listId: string
   items: Item[]
   soloList: boolean
   readOnly?: boolean
+  // Solo se pasa cuando quien mira la lista puede completarla (el dueño, y
+  // la lista no está ya completada) — así el botón de abajo solo aparece
+  // quien puede pulsarlo de verdad. Abre la misma confirmación que el botón
+  // ✓ de la cabecera, para no duplicar esa lógica.
+  onCompleteList?: () => void
 }) {
   const { user } = useAuth()
   const { t, language } = useLanguage()
@@ -302,7 +308,14 @@ export default function ItemsPanel({
             ))}
 
             {doneItems.length > 0 && (
-              <div className="flex items-center justify-between bg-[var(--color-surface-alt)] px-3 py-1.5">
+              // h-10 (40px) a propósito, no padding vertical suelto: la
+              // rayita de fondo de la hoja (ver NotepadCard) se repite cada
+              // 40px desde arriba de toda la tarjeta, así que si esta franja
+              // no mide EXACTAMENTE 40px, todo lo que va después (las notas
+              // ya hechas) queda desplazado respecto a esas rayitas — se ve
+              // como si los márgenes de las notas hechas no coincidieran con
+              // los de las pendientes, aunque las filas en sí midan igual.
+              <div className="flex h-10 items-center justify-between bg-[var(--color-surface-alt)] px-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   {t('notes.doneSectionLabel')} ({doneItems.length})
                 </p>
@@ -343,6 +356,20 @@ export default function ItemsPanel({
               />
             ))}
           </NotepadCard>
+
+          {/* Cuando ya está todo marcado, no hace falta ir a buscar el ✓
+              pequeño de la cabecera — se ofrece completar la lista aquí
+              mismo, justo donde ya estás mirando. No se muestra mientras se
+              busca (con el filtro activo "todo hecho" puede ser solo un
+              efecto del filtro, no que la lista entera esté acabada). */}
+          {!readOnly && !searching && onCompleteList && doneItems.length > 0 && pendingItems.length === 0 && (
+            <button
+              onClick={onCompleteList}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-400 dark:hover:bg-brand-950/50"
+            >
+              ✓ {t('notes.completeListCta')}
+            </button>
+          )}
         </div>
       )}
 
