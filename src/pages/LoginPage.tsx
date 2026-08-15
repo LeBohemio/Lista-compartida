@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import Logo from '../components/Logo'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
+import LanguageToggle from '../components/LanguageToggle'
 
 export default function LoginPage() {
   const { user, signIn } = useAuth()
@@ -28,6 +29,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-[var(--color-surface-alt)]">
+      <LanguageToggle />
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />

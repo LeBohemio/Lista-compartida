@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import Logo from '../components/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 
 export default function RegisterPage() {
   const { user, signUp } = useAuth()
@@ -40,6 +41,7 @@ export default function RegisterPage() {
   if (done) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4 bg-[var(--color-surface-alt)]">
+        <LanguageToggle />
         <div className="w-full max-w-sm rounded-2xl p-6 text-center shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <h1 className="mb-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('auth.accountCreated')}</h1>
           <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">{t('auth.accountCreatedBody')}</p>
@@ -56,6 +58,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-[var(--color-surface-alt)]">
+      <LanguageToggle />
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />
