@@ -1,4 +1,4 @@
-import type { Expense, NetBalance, Settlement, SuggestedDebt } from './types'
+import type { Expense, Language, NetBalance, Settlement, SuggestedDebt } from './types'
 
 const toCents = (n: number) => Math.round(n * 100)
 const fromCents = (c: number) => Math.round(c) / 100
@@ -78,8 +78,13 @@ export function simplifyDebts(netBalances: NetBalance): SuggestedDebt[] {
   return debts
 }
 
-export function formatEuro(amount: number): string {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
+// Sin conversión entre divisas: solo cambia cómo se formatea el número
+// (símbolo, dónde va, separador de miles/decimales…), nunca lo recalcula.
+// `currency` es la de la lista (o la del perfil, en vistas que no están
+// atadas a una lista concreta); `language` decide el formato regional
+// (1.234,56 € en español, €1,234.56 en inglés).
+export function formatCurrency(amount: number, currency: string = 'EUR', language: Language = 'es'): string {
+  return new Intl.NumberFormat(language === 'en' ? 'en-US' : 'es-ES', { style: 'currency', currency }).format(amount)
 }
 
 /**

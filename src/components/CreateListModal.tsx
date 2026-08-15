@@ -2,17 +2,18 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { PALETTE, colorForName } from '../lib/colors'
-import { useLanguage } from '../lib/i18n'
+import { useLanguage, type TranslationKey } from '../lib/i18n'
+import { DEFAULT_CURRENCY } from '../lib/currencies'
 
-const TEMPLATES = [
-  { label: '🛒 Compra', name: 'Compra' },
-  { label: '🧹 Tareas de casa', name: 'Tareas de casa' },
-  { label: '✈️ Viaje', name: 'Viaje' },
-  { label: '🎁 Regalos', name: 'Regalos' },
-  { label: '🎂 Cumpleaños', name: 'Cumpleaños' },
-  { label: '🎉 Fiesta', name: 'Fiesta' },
-  { label: '💼 Trabajo', name: 'Trabajo' },
-  { label: '📦 Mudanza', name: 'Mudanza' },
+const TEMPLATES: { emoji: string; labelKey: TranslationKey }[] = [
+  { emoji: '🛒', labelKey: 'lists.template.shopping' },
+  { emoji: '🧹', labelKey: 'lists.template.chores' },
+  { emoji: '✈️', labelKey: 'lists.template.trip' },
+  { emoji: '🎁', labelKey: 'lists.template.gifts' },
+  { emoji: '🎂', labelKey: 'lists.template.birthday' },
+  { emoji: '🎉', labelKey: 'lists.template.party' },
+  { emoji: '💼', labelKey: 'lists.template.work' },
+  { emoji: '📦', labelKey: 'lists.template.move' },
 ]
 
 export default function CreateListModal({
@@ -22,7 +23,7 @@ export default function CreateListModal({
   onClose: () => void
   onCreated: (listId: string) => void
 }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { t } = useLanguage()
   const [name, setName] = useState('')
   const [expensesEnabled, setExpensesEnabled] = useState(false)
@@ -55,9 +56,12 @@ export default function CreateListModal({
       return
     }
 
+    // La lista hereda la divisa preferida de tu perfil sin preguntarte nada
+    // aquí — se puede cambiar después, por esa lista en concreto, desde sus
+    // ajustes si hace falta una distinta.
     await supabase
       .from('lists')
-      .update({ color: color ?? colorForName(name.trim()) })
+      .update({ color: color ?? colorForName(name.trim()), currency: profile?.currency ?? DEFAULT_CURRENCY })
       .eq('id', list.id)
 
     setSubmitting(false)
@@ -95,20 +99,23 @@ export default function CreateListModal({
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.templatesLabel')}</label>
             <div className="flex flex-wrap gap-2">
-              {TEMPLATES.map((tpl) => (
-                <button
-                  type="button"
-                  key={tpl.name}
-                  onClick={() => setName(tpl.name)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                    name === tpl.name
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
-                  }`}
-                >
-                  {tpl.label}
-                </button>
-              ))}
+              {TEMPLATES.map((tpl) => {
+                const tplName = t(tpl.labelKey)
+                return (
+                  <button
+                    type="button"
+                    key={tpl.labelKey}
+                    onClick={() => setName(tplName)}
+                    className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                      name === tplName
+                        ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                        : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
+                    }`}
+                  >
+                    {tpl.emoji} {tplName}
+                  </button>
+                )
+              })}
             </div>
           </div>
 

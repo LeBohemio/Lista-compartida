@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { useLanguage } from './lib/i18n'
 import { applyTheme } from './lib/theme'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -11,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   const { loading, profile } = useAuth()
+  const { t } = useLanguage()
 
   useEffect(() => {
     const theme = profile?.theme ?? 'system'
@@ -26,7 +28,7 @@ function App() {
   if (loading) {
     return (
       <div className="flex h-full min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-500 dark:text-slate-400">Cargando…</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
       </div>
     )
   }

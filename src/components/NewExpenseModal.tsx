@@ -4,26 +4,29 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
-import { splitEqually } from '../lib/balances'
+import { formatCurrency, splitEqually } from '../lib/balances'
+import { currencySymbol, type CurrencyCode } from '../lib/currencies'
 import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom' | 'percent'
 
 export default function NewExpenseModal({
   listId,
+  currency,
   members,
   editing,
   onClose,
   onCreated,
 }: {
   listId: string
+  currency: CurrencyCode
   members: ListMember[]
   editing?: Expense
   onClose: () => void
   onCreated: () => void
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const acceptedMembers = useMemo(() => members.filter((m) => m.status === 'accepted'), [members])
   const isEditing = !!editing
 
@@ -286,7 +289,9 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.totalAmount')}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              {t('expenses.totalAmount', { symbol: currencySymbol(currency) })}
+            </label>
             <input
               type="text"
               inputMode="decimal"
@@ -326,7 +331,7 @@ export default function NewExpenseModal({
                       : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
                   }`}
                 >
-                  {c.icon} {c.label}
+                  {c.icon} {t(c.labelKey)}
                 </button>
               ))}
             </div>
@@ -391,7 +396,7 @@ export default function NewExpenseModal({
                   <span className="text-sm text-slate-700 dark:text-slate-200">{m.profile?.username ?? m.user_id}</span>
                   {splitMode === 'equal' ? (
                     <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {((equalShares[m.user_id] ?? 0) / 100).toFixed(2)} €
+                      {formatCurrency((equalShares[m.user_id] ?? 0) / 100, currency, language)}
                     </span>
                   ) : splitMode === 'percent' ? (
                     <div className="flex items-center gap-2">
@@ -410,7 +415,7 @@ export default function NewExpenseModal({
                         {(() => {
                           const pct = Number.parseFloat((percentAmounts[m.user_id] ?? '0').replace(',', '.'))
                           const cents = Math.round(Math.round((totalValid ? totalAmount : 0) * 100) * ((Number.isFinite(pct) ? pct : 0) / 100))
-                          return `${(cents / 100).toFixed(2)} €`
+                          return formatCurrency(cents / 100, currency, language)
                         })()}
                       </span>
                     </div>

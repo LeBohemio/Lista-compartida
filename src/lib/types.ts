@@ -1,3 +1,5 @@
+import type { CurrencyCode } from './currencies'
+
 export type Theme = 'light' | 'dark' | 'system'
 export type Language = 'es' | 'en'
 
@@ -10,6 +12,7 @@ export type Profile = {
   accent_color: string | null
   background_color: string | null
   language: Language
+  currency: CurrencyCode
   created_at: string
 }
 
@@ -22,6 +25,7 @@ export type List = {
   owner_id: string
   expenses_enabled: boolean
   color: string | null
+  currency: CurrencyCode
   archived_at: string | null
   last_activity_at: string
   created_at: string

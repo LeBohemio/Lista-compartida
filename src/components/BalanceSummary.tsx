@@ -1,23 +1,26 @@
 import { useMemo, useState } from 'react'
-import { computeNetBalances, formatEuro, simplifyDebts } from '../lib/balances'
+import { computeNetBalances, formatCurrency, simplifyDebts } from '../lib/balances'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import type { CurrencyCode } from '../lib/currencies'
 import type { Expense, ListMember, Settlement, SuggestedDebt } from '../lib/types'
 import SettleUpModal from './SettleUpModal'
 
 export default function BalanceSummary({
   listId,
+  currency,
   members,
   expenses,
   settlements,
 }: {
   listId: string
+  currency: CurrencyCode
   members: ListMember[]
   expenses: Expense[]
   settlements: Settlement[]
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [settling, setSettling] = useState<SuggestedDebt | null>(null)
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
 
@@ -39,16 +42,16 @@ export default function BalanceSummary({
       const name = m.profile?.username ?? m.user_id
       const status =
         balance > 0.004
-          ? t('balance.owed', { amount: formatEuro(balance) })
+          ? t('balance.owed', { amount: formatCurrency(balance, currency, language) })
           : balance < -0.004
-            ? t('balance.owes', { amount: formatEuro(-balance) })
+            ? t('balance.owes', { amount: formatCurrency(-balance, currency, language) })
             : t('balance.settled')
       lines.push(`• ${name}: ${status}`)
     }
     if (suggestedDebts.length > 0) {
       lines.push('', t('balance.pendingPayments'))
       for (const d of suggestedDebts) {
-        lines.push(`• ${profileById.get(d.from)} ${t('balance.owesAmountTo', { amount: formatEuro(d.amount) })} ${profileById.get(d.to)}`)
+        lines.push(`• ${profileById.get(d.from)} ${t('balance.owesAmountTo', { amount: formatCurrency(d.amount, currency, language) })} ${profileById.get(d.to)}`)
       }
     } else {
       lines.push('', t('balance.noDebts'))
@@ -116,9 +119,9 @@ export default function BalanceSummary({
                 }`}
               >
                 {balance > 0.004
-                  ? t('balance.owed', { amount: formatEuro(balance) })
+                  ? t('balance.owed', { amount: formatCurrency(balance, currency, language) })
                   : balance < -0.004
-                    ? t('balance.owes', { amount: formatEuro(-balance) })
+                    ? t('balance.owes', { amount: formatCurrency(-balance, currency, language) })
                     : t('balance.settled')}
               </span>
             </div>
@@ -136,7 +139,7 @@ export default function BalanceSummary({
               <div key={idx} className="flex items-center justify-between text-sm">
                 <span className="text-slate-700 dark:text-slate-200">
                   <strong className="text-red-500 dark:text-red-400">{profileById.get(d.from)}</strong>{' '}
-                  {t('balance.owesAmountTo', { amount: formatEuro(d.amount) })}{' '}
+                  {t('balance.owesAmountTo', { amount: formatCurrency(d.amount, currency, language) })}{' '}
                   <strong className="text-green-600 dark:text-green-400">{profileById.get(d.to)}</strong>
                 </span>
                 {canSettle && (

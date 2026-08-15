@@ -60,7 +60,7 @@ export default function ItemsPanel({
   readOnly?: boolean
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -102,7 +102,7 @@ export default function ItemsPanel({
   const applySort = async (criterion: 'date' | 'alpha') => {
     const sortFn = (a: Item, b: Item) =>
       criterion === 'alpha'
-        ? a.content.localeCompare(b.content, 'es')
+        ? a.content.localeCompare(b.content, language === 'en' ? 'en' : 'es')
         : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     await Promise.all([
       persistOrder([...pendingItems].sort(sortFn)),

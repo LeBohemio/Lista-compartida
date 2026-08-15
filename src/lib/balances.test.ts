@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeNetBalances, formatEuro, simplifyDebts, splitEqually } from './balances'
+import { computeNetBalances, formatCurrency, simplifyDebts, splitEqually } from './balances'
 import type { Expense, Settlement } from './types'
 
 // Helper para construir un gasto de prueba sin tener que rellenar todos los
@@ -257,17 +257,28 @@ describe('simplifyDebts', () => {
   })
 })
 
-describe('formatEuro', () => {
-  it('formatea importes positivos con el símbolo del euro', () => {
-    expect(formatEuro(10)).toContain('10')
-    expect(formatEuro(10)).toContain('€')
+describe('formatCurrency', () => {
+  it('formatea importes positivos en euros por defecto', () => {
+    expect(formatCurrency(10)).toContain('10')
+    expect(formatCurrency(10)).toContain('€')
   })
 
   it('redondea a dos decimales', () => {
-    expect(formatEuro(10.005)).toMatch(/10[.,]0[01]\s?€/)
+    expect(formatCurrency(10.005)).toMatch(/10[.,]0[01]\s?€/)
   })
 
   it('formatea cero correctamente', () => {
-    expect(formatEuro(0)).toContain('0')
+    expect(formatCurrency(0)).toContain('0')
+  })
+
+  it('cambia el símbolo según la divisa, sin convertir el número', () => {
+    expect(formatCurrency(10, 'USD', 'en')).toContain('10')
+    expect(formatCurrency(10, 'USD', 'en')).toContain('$')
+    expect(formatCurrency(10, 'GBP', 'en')).toContain('£')
+  })
+
+  it('usa el separador decimal correcto según el idioma (coma en español, punto en inglés)', () => {
+    expect(formatCurrency(10.5, 'EUR', 'es')).toMatch(/10,5/)
+    expect(formatCurrency(10.5, 'USD', 'en')).toMatch(/10\.5/)
   })
 })

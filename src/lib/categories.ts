@@ -1,12 +1,13 @@
 import type { ExpenseCategory } from './types'
+import type { TranslationKey } from './i18n'
 
-export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string; icon: string }[] = [
-  { value: 'comida', label: 'Comida', icon: '🍔' },
-  { value: 'transporte', label: 'Transporte', icon: '🚗' },
-  { value: 'alojamiento', label: 'Alojamiento', icon: '🏨' },
-  { value: 'ocio', label: 'Ocio', icon: '🎉' },
-  { value: 'compras', label: 'Compras', icon: '🛍️' },
-  { value: 'otros', label: 'Otros', icon: '📦' },
+export const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; icon: string }[] = [
+  { value: 'comida', labelKey: 'expenseCategory.comida', icon: '🍔' },
+  { value: 'transporte', labelKey: 'expenseCategory.transporte', icon: '🚗' },
+  { value: 'alojamiento', labelKey: 'expenseCategory.alojamiento', icon: '🏨' },
+  { value: 'ocio', labelKey: 'expenseCategory.ocio', icon: '🎉' },
+  { value: 'compras', labelKey: 'expenseCategory.compras', icon: '🛍️' },
+  { value: 'otros', labelKey: 'expenseCategory.otros', icon: '📦' },
 ]
 
 export function categoryIcon(category: ExpenseCategory | null | undefined): string {

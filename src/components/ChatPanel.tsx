@@ -300,7 +300,7 @@ function MessageBubble({
   onLongPress: () => void
   onOpenImage: (url: string) => void
 }) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const longPress = useLongPress(onLongPress)
 
   return (
@@ -338,7 +338,10 @@ function MessageBubble({
           {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
         </div>
         <p className="mt-0.5 px-1 text-[10px] text-slate-400">
-          {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+          {new Date(m.created_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </p>
       </div>
     </div>

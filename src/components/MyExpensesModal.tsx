@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { formatEuro } from '../lib/balances'
+import { formatCurrency } from '../lib/balances'
+import { DEFAULT_CURRENCY, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
 
-type ListRef = { name: string; color: string | null }
+type ListRef = { name: string; color: string | null; currency: CurrencyCode }
 type ExpenseRow = { id: string; list_id: string; total_amount: number; created_at: string; list: ListRef | null }
 type SettlementRow = { id: string; amount: number; created_at: string }
 
@@ -14,8 +15,13 @@ function monthKey(dateStr: string) {
 }
 
 export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { t, language } = useLanguage()
+  // El total agregado del mes (que puede sumar gastos de varias listas) se
+  // muestra en tu divisa de perfil — no hay conversión real, así que si
+  // mezclas listas con divisas distintas ese total es solo orientativo. Cada
+  // fila "por lista" de abajo sí usa la divisa real de esa lista.
+  const myCurrency = profile?.currency ?? DEFAULT_CURRENCY
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [settlements, setSettlements] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +33,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
     Promise.all([
       supabase
         .from('expenses')
-        .select('id, list_id, total_amount, created_at, list:lists(name, color)')
+        .select('id, list_id, total_amount, created_at, list:lists(name, color, currency)')
         .eq('paid_by', user.id)
         .order('created_at', { ascending: false }),
       supabase
@@ -56,9 +62,14 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const monthSettlements = settlements.filter((s) => monthKey(s.created_at) === key)
 
   const byList = useMemo(() => {
-    const map = new Map<string, { name: string; color: string | null; total: number }>()
+    const map = new Map<string, { name: string; color: string | null; currency: CurrencyCode; total: number }>()
     for (const e of monthExpenses) {
-      const cur = map.get(e.list_id) ?? { name: e.list?.name ?? '—', color: e.list?.color ?? null, total: 0 }
+      const cur = map.get(e.list_id) ?? {
+        name: e.list?.name ?? '—',
+        color: e.list?.color ?? null,
+        currency: e.list?.currency ?? myCurrency,
+        total: 0,
+      }
       cur.total += Number(e.total_amount)
       map.set(e.list_id, cur)
     }
@@ -124,7 +135,9 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
                         />
                         {row.name}
                       </span>
-                      <span className="font-medium text-slate-800 dark:text-slate-100">{formatEuro(row.total)}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {formatCurrency(row.total, row.currency, language)}
+                      </span>
                     </div>
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                       <div
@@ -139,13 +152,13 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
 
             <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900 border-[var(--color-surface-border)] dark:text-slate-100">
               <span>{t('myExpenses.total')}</span>
-              <span>{formatEuro(totalMonth)}</span>
+              <span>{formatCurrency(totalMonth, myCurrency, language)}</span>
             </div>
 
             {totalCollected > 0 && (
               <div className="mt-2 flex items-center justify-between text-sm text-green-600 dark:text-green-400">
                 <span>{t('myExpenses.collected')}</span>
-                <span className="font-medium">{formatEuro(totalCollected)}</span>
+                <span className="font-medium">{formatCurrency(totalCollected, myCurrency, language)}</span>
               </div>
             )}
           </>

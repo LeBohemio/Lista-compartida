@@ -8,6 +8,7 @@ import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
 import AvatarCropper from './AvatarCropper'
 import AvatarPicker from './AvatarPicker'
+import { CURRENCIES } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
 
 const THEME_OPTIONS: { value: Theme; labelKey: TranslationKey }[] = [
@@ -161,6 +162,15 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
   const setTheme = async (theme: Theme) => {
     await supabase.from('profiles').update({ theme }).eq('id', user.id)
+    await refreshProfile()
+  }
+
+  // Esto es solo tu divisa por defecto: las listas que crees a partir de
+  // ahora la heredan directamente, sin preguntarte nada al crearlas. Las
+  // listas que ya existen no cambian — su divisa se edita aparte, en los
+  // ajustes de cada lista.
+  const setCurrency = async (currency: (typeof CURRENCIES)[number]['code']) => {
+    await supabase.from('profiles').update({ currency }).eq('id', user.id)
     await refreshProfile()
   }
 
@@ -359,6 +369,24 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
+          <div>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.currency')}</p>
+            <div className="flex flex-wrap gap-2">
+              {CURRENCIES.map((c) => (
+                <button
+                  key={c.code}
+                  onClick={() => setCurrency(c.code)}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                    profile.currency === c.code
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                  }`}
+                >
+                  {c.flag} {c.code}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
@@ -417,7 +445,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="nuevo@email.com"
+              placeholder={t('profile.newEmailPlaceholder')}
               className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
             {emailMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{emailMessage}</p>}

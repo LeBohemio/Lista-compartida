@@ -1,24 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { PALETTE } from '../lib/colors'
+import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
 
 export default function RenameListModal({
   listId,
   currentName,
   currentColor,
+  currentCurrency,
   onClose,
   onSaved,
 }: {
   listId: string
   currentName: string
   currentColor: string | null
+  currentCurrency: CurrencyCode
   onClose: () => void
   onSaved: () => void
 }) {
   const { t } = useLanguage()
   const [name, setName] = useState(currentName)
   const [color, setColor] = useState<string | null>(currentColor)
+  const [currency, setCurrency] = useState<CurrencyCode>(currentCurrency)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,7 +34,7 @@ export default function RenameListModal({
     }
     setSubmitting(true)
     setError(null)
-    const { error: err } = await supabase.from('lists').update({ name: name.trim(), color }).eq('id', listId)
+    const { error: err } = await supabase.from('lists').update({ name: name.trim(), color, currency }).eq('id', listId)
     setSubmitting(false)
     if (err) {
       setError(err.message)
@@ -70,6 +74,26 @@ export default function RenameListModal({
                   className="h-8 w-8 rounded-full ring-offset-2 transition"
                   style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
                 />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.currency')}</label>
+            <div className="flex flex-wrap gap-2">
+              {CURRENCIES.map((c) => (
+                <button
+                  type="button"
+                  key={c.code}
+                  onClick={() => setCurrency(c.code)}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                    currency === c.code
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
+                  }`}
+                >
+                  {c.flag} {c.code}
+                </button>
               ))}
             </div>
           </div>

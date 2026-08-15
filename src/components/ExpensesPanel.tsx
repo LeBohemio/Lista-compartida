@@ -2,7 +2,8 @@ import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
-import { formatEuro } from '../lib/balances'
+import { formatCurrency } from '../lib/balances'
+import type { CurrencyCode } from '../lib/currencies'
 import type { Expense, ListMember, Settlement } from '../lib/types'
 import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
@@ -19,6 +20,7 @@ type LedgerRow =
 
 export default function ExpensesPanel({
   listId,
+  currency,
   members,
   expenses,
   settlements,
@@ -26,6 +28,7 @@ export default function ExpensesPanel({
   readOnly,
 }: {
   listId: string
+  currency: CurrencyCode
   members: ListMember[]
   expenses: Expense[]
   settlements: Settlement[]
@@ -33,7 +36,7 @@ export default function ExpensesPanel({
   readOnly?: boolean
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [showNew, setShowNew] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -142,7 +145,13 @@ export default function ExpensesPanel({
         </div>
       )}
 
-      <BalanceSummary listId={listId} members={members} expenses={visibleExpenses} settlements={settlements} />
+      <BalanceSummary
+        listId={listId}
+        currency={currency}
+        members={members}
+        expenses={visibleExpenses}
+        settlements={settlements}
+      />
 
       {categoryTotals.length > 0 && (
         <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
@@ -155,7 +164,7 @@ export default function ExpensesPanel({
                 key={c.value}
                 className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-600 bg-[var(--color-surface-alt)] dark:text-slate-300"
               >
-                {c.icon} {c.label}: {formatEuro(c.total)}
+                {c.icon} {t(c.labelKey)}: {formatCurrency(c.total, currency, language)}
               </span>
             ))}
           </div>
@@ -212,7 +221,7 @@ export default function ExpensesPanel({
                         {!soloList ? ` · ${t('expenses.paidBy', { name: row.data.payer?.username ?? '—' })}` : ''}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {new Date(row.data.created_at).toLocaleString('es-ES')}
+                        {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
                         {row.data.is_draft && (
                           <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">{t('expenses.draftBadge')}</span>
                         )}
@@ -220,7 +229,7 @@ export default function ExpensesPanel({
                     </div>
                   </button>
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-slate-800 dark:text-slate-100">{formatEuro(row.data.total_amount)}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">{formatCurrency(row.data.total_amount, currency, language)}</span>
                     {row.data.created_by === user?.id && (
                       <>
                         {!readOnly && (
@@ -264,7 +273,7 @@ export default function ExpensesPanel({
                       {(row.data.shares ?? []).map((s) => (
                         <div key={s.id} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
                           <span>{s.profile?.username ?? s.user_id}</span>
-                          <span>{formatEuro(s.amount)}</span>
+                          <span>{formatCurrency(s.amount, currency, language)}</span>
                         </div>
                       ))}
                     </div>
@@ -285,9 +294,11 @@ export default function ExpensesPanel({
                     })}
                     {row.data.note ? ` · ${row.data.note}` : ''}
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-500">{new Date(row.data.created_at).toLocaleString('es-ES')}</p>
+                  <p className="text-xs text-green-600 dark:text-green-500">
+                    {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
+                  </p>
                 </div>
-                <span className="font-semibold text-green-800 dark:text-green-400">{formatEuro(row.data.amount)}</span>
+                <span className="font-semibold text-green-800 dark:text-green-400">{formatCurrency(row.data.amount, currency, language)}</span>
               </div>
             ),
           )}
@@ -297,6 +308,7 @@ export default function ExpensesPanel({
       {showNew && (
         <NewExpenseModal
           listId={listId}
+          currency={currency}
           members={members}
           onClose={() => setShowNew(false)}
           onCreated={() => setShowNew(false)}
@@ -306,6 +318,7 @@ export default function ExpensesPanel({
       {editingExpense && (
         <NewExpenseModal
           listId={listId}
+          currency={currency}
           members={members}
           editing={editingExpense}
           onClose={() => setEditingExpense(null)}

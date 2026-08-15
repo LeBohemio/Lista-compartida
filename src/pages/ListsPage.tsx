@@ -7,6 +7,7 @@ import { useLongPress } from '../hooks/useLongPress'
 import { useDragReorder } from '../hooks/useDragReorder'
 import { supabase } from '../lib/supabaseClient'
 import CreateListModal from '../components/CreateListModal'
+import GreetingSummary from '../components/GreetingSummary'
 import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
 import ProfileModal from '../components/ProfileModal'
@@ -17,7 +18,8 @@ import type { ListWithMembership, Profile } from '../lib/types'
 
 export default function ListsPage() {
   const { profile } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const [showSummary, setShowSummary] = useState(false)
   const { lists, invitations, itemStats, memberAvatars, loading, error, refetch, togglePin, reorderLists } =
     useLists()
   const [showCreate, setShowCreate] = useState(false)
@@ -69,7 +71,7 @@ export default function ListsPage() {
   const applySortLists = async (criterion: 'date' | 'alpha') => {
     const sorted = [...activeLists].sort((a, b) =>
       criterion === 'alpha'
-        ? a.name.localeCompare(b.name, 'es')
+        ? a.name.localeCompare(b.name, language === 'en' ? 'en' : 'es')
         : new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime(),
     )
     await reorderLists(sorted.map((l) => l.id))
@@ -153,7 +155,7 @@ export default function ListsPage() {
   const duplicateList = async (l: ListWithMembership) => {
     setActionError(null)
     const { data: rpcData, error: rpcErr } = await supabase.rpc('create_list_with_owner', {
-      p_name: `${l.name} (copia)`,
+      p_name: t('lists.copySuffix', { name: l.name }),
       p_expenses_enabled: l.expenses_enabled,
     })
     const newList = rpcData as { id: string } | null
@@ -162,7 +164,8 @@ export default function ListsPage() {
       return
     }
 
-    await supabase.from('lists').update({ color: l.color }).eq('id', newList.id)
+    // La copia mantiene la divisa de la lista original, no la del perfil.
+    await supabase.from('lists').update({ color: l.color, currency: l.currency }).eq('id', newList.id)
 
     const { data: sourceItems } = await supabase.from('items').select('content').eq('list_id', l.id)
     if (sourceItems && sourceItems.length > 0 && profile) {
@@ -189,16 +192,19 @@ export default function ListsPage() {
           aria-hidden="true"
         />
         <div className="relative mx-auto flex max-w-2xl items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSummary(true)}
+            className="flex min-w-0 items-center gap-3 rounded-lg text-left"
+          >
             <Logo size={40} className="rounded-xl shadow-md ring-1 ring-white/30" />
-            <div>
-              <p className="font-semibold leading-tight">
+            <div className="min-w-0">
+              <p className="truncate font-semibold leading-tight">
                 {greeting}, {profile?.username ?? '…'}
               </p>
-              {statusLine && <p className="text-xs text-white/80">{statusLine}</p>}
+              {statusLine && <p className="truncate text-xs text-white/80">{statusLine}</p>}
             </div>
-          </div>
-          <button onClick={() => setShowProfile(true)} className="relative rounded-full" aria-label="Tu perfil">
+          </button>
+          <button onClick={() => setShowProfile(true)} className="relative rounded-full" aria-label={t('profile.title')}>
             <Avatar
               username={profile?.username ?? '?'}
               avatarUrl={profile?.avatar_url}
@@ -234,7 +240,7 @@ export default function ListsPage() {
                 >
                   <div>
                     <p className="font-medium text-slate-900 dark:text-slate-100">{inv.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Te han invitado a esta lista</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('lists.invitedToList')}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -273,7 +279,7 @@ export default function ListsPage() {
           )}
 
           {loading ? (
-            <p className="text-sm text-slate-400">Cargando listas…</p>
+            <p className="text-sm text-slate-400">{t('lists.loadingLists')}</p>
           ) : activeLists.length === 0 ? (
             <div className="rounded-xl border border-dashed p-8 text-center border-[var(--color-surface-border)]">
               <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
@@ -346,7 +352,7 @@ export default function ListsPage() {
       <button
         onClick={() => setShowCreate(true)}
         className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
-        aria-label="Crear lista"
+        aria-label={t('lists.createFab')}
       >
         +
       </button>
@@ -362,6 +368,18 @@ export default function ListsPage() {
       )}
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+
+      {showSummary && (
+        <GreetingSummary
+          lists={activeLists}
+          itemStats={itemStats}
+          onClose={() => setShowSummary(false)}
+          onSelectList={(listId) => {
+            setShowSummary(false)
+            navigate(`/lists/${listId}`)
+          }}
+        />
+      )}
 
       {confirmTarget && (
         <ConfirmDialog

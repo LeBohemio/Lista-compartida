@@ -279,6 +279,7 @@ export default function ListDetailPage() {
         {tab === 'gastos' && list.expenses_enabled && (
           <ExpensesPanel
             listId={list.id}
+            currency={list.currency}
             members={members}
             expenses={expenses}
             settlements={settlements}
@@ -298,6 +299,7 @@ export default function ListDetailPage() {
           listId={list.id}
           currentName={list.name}
           currentColor={list.color}
+          currentCurrency={list.currency}
           onClose={() => setShowRename(false)}
           onSaved={() => {
             setShowRename(false)
