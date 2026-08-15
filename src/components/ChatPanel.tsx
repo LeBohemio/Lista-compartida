@@ -27,6 +27,7 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
   const [menuTarget, setMenuTarget] = useState<Message | null>(null)
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null)
   const [copiedFeedback, setCopiedFeedback] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
 
   const visibleMessages = useMemo(
     () => messages.filter((m) => !pendingDeleteIds.has(m.id)),
@@ -167,6 +168,7 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
                 isFirstInGroup={isFirstInGroup}
                 imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
                 onLongPress={() => setMenuTarget(m)}
+                onOpenImage={setViewerUrl}
               />
             )
           })
@@ -240,6 +242,29 @@ export default function ChatPanel({ listId, messages }: { listId: string; messag
           onForwarded={() => setForwardTarget(null)}
         />
       )}
+
+      {viewerUrl && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setViewerUrl(null)}
+        >
+          <button
+            onClick={() => setViewerUrl(null)}
+            aria-label="Cerrar"
+            title="Cerrar"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+          >
+            ✕
+          </button>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <img
+            src={viewerUrl}
+            alt="Foto ampliada"
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -250,12 +275,14 @@ function MessageBubble({
   isFirstInGroup,
   imageUrl,
   onLongPress,
+  onOpenImage,
 }: {
   message: Message
   isMine: boolean
   isFirstInGroup: boolean
   imageUrl?: string
   onLongPress: () => void
+  onOpenImage: (url: string) => void
 }) {
   const longPress = useLongPress(onLongPress)
 
@@ -280,7 +307,17 @@ function MessageBubble({
               : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700'
           }`}
         >
-          {m.image_path && <img src={imageUrl} alt="Foto" className="mb-1 max-h-56 rounded-lg object-contain" />}
+          {m.image_path && imageUrl && (
+            <img
+              src={imageUrl}
+              alt="Foto"
+              className="mb-1 max-h-56 cursor-pointer rounded-lg object-contain"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenImage(imageUrl)
+              }}
+            />
+          )}
           {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
         </div>
         <p className="mt-0.5 px-1 text-[10px] text-slate-400">
