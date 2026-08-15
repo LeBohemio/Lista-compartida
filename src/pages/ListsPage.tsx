@@ -437,32 +437,29 @@ function ListRow({
   const longPress = useLongPress(() => setShowMenu(true))
   const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
 
+  const inReorder = reorderMode && !!onDragPointerDown
   return (
     <div
       ref={onRowRef}
-      onClick={onOpen}
+      onClick={inReorder ? undefined : onOpen}
+      onPointerDown={inReorder ? onDragPointerDown : undefined}
+      onPointerMove={inReorder ? onDragPointerMove : undefined}
+      onPointerUp={inReorder ? onDragPointerUp : undefined}
       role="button"
       tabIndex={0}
+      aria-label={inReorder ? t('lists.dragHandle') : undefined}
       className={`w-full rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:shadow-md hover:ring-brand-300 dark:bg-slate-800 dark:ring-slate-700 ${
-        dragging ? 'relative z-10 ring-2 ring-brand-300' : ''
-      }`}
-      {...longPress}
+        inReorder ? 'touch-none select-none' : ''
+      } ${dragging ? 'relative shadow-lg ring-2 ring-brand-300' : ''}`}
+      style={inReorder ? { cursor: 'grab' } : undefined}
+      {...(inReorder ? {} : longPress)}
     >
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          {reorderMode && onDragPointerDown && (
-            <button
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={onDragPointerDown}
-              onPointerMove={onDragPointerMove}
-              onPointerUp={onDragPointerUp}
-              aria-label={t('lists.dragHandle')}
-              title={t('lists.dragHandle')}
-              className="shrink-0 touch-none select-none px-0.5 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
-              style={{ cursor: 'grab' }}
-            >
+          {inReorder && (
+            <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true">
               ⠿
-            </button>
+            </span>
           )}
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-800"

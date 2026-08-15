@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { useLanguage } from '../lib/i18n'
+import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { PALETTE } from '../lib/colors'
 import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
@@ -9,10 +9,10 @@ import MyExpensesModal from './MyExpensesModal'
 import AvatarCropper from './AvatarCropper'
 import type { Language, Theme } from '../lib/types'
 
-const THEME_OPTIONS: { value: Theme; label: string }[] = [
-  { value: 'light', label: '☀️ Claro' },
-  { value: 'dark', label: '🌙 Oscuro' },
-  { value: 'system', label: '📱 Del móvil' },
+const THEME_OPTIONS: { value: Theme; labelKey: TranslationKey }[] = [
+  { value: 'light', labelKey: 'theme.light' },
+  { value: 'dark', labelKey: 'theme.dark' },
+  { value: 'system', labelKey: 'theme.system' },
 ]
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
@@ -22,14 +22,26 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
 
 // Fondos suaves, pensados para no competir con el color de acento de
 // botones/burbujas. `null` representa "usar el fondo por defecto de la app".
-const BACKGROUND_OPTIONS: { value: string | null; label: string; swatch: string }[] = [
-  { value: null, label: 'Por defecto', swatch: '#f1f5f9' },
-  { value: '#fdf6ec', label: 'Cálido', swatch: '#fdf6ec' },
-  { value: '#eef4ff', label: 'Azulado', swatch: '#eef4ff' },
-  { value: '#eefaf1', label: 'Verdoso', swatch: '#eefaf1' },
-  { value: '#fdf0f6', label: 'Rosado', swatch: '#fdf0f6' },
-  { value: '#f4f0ff', label: 'Lila', swatch: '#f4f0ff' },
-  { value: '#fffbea', label: 'Amarillo suave', swatch: '#fffbea' },
+// Se muestran siempre las claritas y las oscuras juntas: quien use el tema
+// oscuro puede igualmente elegir un fondo clarito si le gusta más, y
+// viceversa — no se restringe según el tema activo.
+const BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; swatch: string }[] = [
+  { value: null, labelKey: 'bg.default', swatch: '#f1f5f9' },
+  { value: '#fdf6ec', labelKey: 'bg.warm', swatch: '#fdf6ec' },
+  { value: '#eef4ff', labelKey: 'bg.blue', swatch: '#eef4ff' },
+  { value: '#eefaf1', labelKey: 'bg.green', swatch: '#eefaf1' },
+  { value: '#fdf0f6', labelKey: 'bg.pink', swatch: '#fdf0f6' },
+  { value: '#f4f0ff', labelKey: 'bg.purple', swatch: '#f4f0ff' },
+  { value: '#fffbea', labelKey: 'bg.yellow', swatch: '#fffbea' },
+]
+
+const DARK_BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; swatch: string }[] = [
+  { value: '#241f18', labelKey: 'bg.warm', swatch: '#241f18' },
+  { value: '#15202e', labelKey: 'bg.blue', swatch: '#15202e' },
+  { value: '#132a1c', labelKey: 'bg.green', swatch: '#132a1c' },
+  { value: '#2a1720', labelKey: 'bg.pink', swatch: '#2a1720' },
+  { value: '#1e1a2e', labelKey: 'bg.purple', swatch: '#1e1a2e' },
+  { value: '#2a2712', labelKey: 'bg.yellow', swatch: '#2a2712' },
 ]
 
 export default function ProfileModal({ onClose }: { onClose: () => void }) {
@@ -127,7 +139,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       return
     }
     await refreshProfile()
-    setUsernameMessage('Nombre de usuario actualizado.')
+    setUsernameMessage(t('profile.usernameUpdated'))
     setNewUsername('')
   }
 
@@ -142,7 +154,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       setEmailMessage(err.message)
       return
     }
-    setEmailMessage('Te hemos mandado un email de confirmación a la nueva dirección. Hasta que no lo confirmes, seguirás entrando con la actual.')
+    setEmailMessage(t('profile.emailConfirmSent'))
     setNewEmail('')
   }
 
@@ -150,11 +162,11 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     setPasswordMessage(null)
     if (newPassword.length < 6) {
-      setPasswordMessage('La contraseña debe tener al menos 6 caracteres.')
+      setPasswordMessage(t('profile.passwordTooShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordMessage('Las dos contraseñas no coinciden.')
+      setPasswordMessage(t('profile.passwordsDontMatch'))
       return
     }
     setPasswordSubmitting(true)
@@ -164,7 +176,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       setPasswordMessage(err.message)
       return
     }
-    setPasswordMessage('Contraseña actualizada.')
+    setPasswordMessage(t('profile.passwordUpdated'))
     setNewPassword('')
     setConfirmPassword('')
   }
@@ -177,8 +189,8 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
       >
         <button
           onClick={onClose}
-          aria-label="Cerrar"
-          title="Cerrar"
+          aria-label={t('common.close')}
+          title={t('common.close')}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
           ✕
@@ -193,7 +205,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
             className="ring-2 ring-slate-100 dark:ring-slate-700"
           />
           <label className="cursor-pointer rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100">
-            {uploading ? 'Subiendo…' : 'Cambiar foto'}
+            {uploading ? t('profile.uploading') : t('profile.changePhoto')}
             <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
           </label>
         </div>
@@ -225,12 +237,12 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
                     : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
                 }`}
               >
-                {opt.label}
+                {t(opt.labelKey)}
               </button>
             ))}
           </div>
           <div>
-            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Color de acento</p>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.accentColor')}</p>
             <div className="flex flex-wrap gap-2">
               {PALETTE.map((c) => (
                 <button
@@ -247,14 +259,14 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Color de fondo</p>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.backgroundColor')}</p>
             <div className="flex flex-wrap gap-2">
               {BACKGROUND_OPTIONS.map((opt) => (
                 <button
-                  key={opt.label}
+                  key={opt.labelKey}
                   onClick={() => setBackgroundColor(opt.value)}
-                  aria-label={opt.label}
-                  title={opt.label}
+                  aria-label={t(opt.labelKey)}
+                  title={t(opt.labelKey)}
                   className="relative h-8 w-8 rounded-full border border-slate-200 transition dark:border-slate-600"
                   style={{
                     backgroundColor: opt.swatch,
@@ -268,6 +280,23 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
                     </span>
                   )}
                 </button>
+              ))}
+            </div>
+            <p className="mb-2 mt-3 text-xs text-slate-500 dark:text-slate-400">{t('bg.darkVariants')}</p>
+            <div className="flex flex-wrap gap-2">
+              {DARK_BACKGROUND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setBackgroundColor(opt.value)}
+                  aria-label={t(opt.labelKey)}
+                  title={t(opt.labelKey)}
+                  className="relative h-8 w-8 rounded-full border border-slate-600 transition"
+                  style={{
+                    backgroundColor: opt.swatch,
+                    boxShadow:
+                      profile.background_color === opt.value ? '0 0 0 2px white, 0 0 0 4px #4f46e5' : 'none',
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -292,7 +321,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cambiar nombre de usuario</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeUsername')}</p>
           <form onSubmit={handleChangeUsername} className="space-y-2">
             <input
               type="text"
@@ -307,26 +336,26 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               disabled={usernameSubmitting || !newUsername.trim()}
               className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              {usernameSubmitting ? 'Guardando…' : 'Actualizar nombre de usuario'}
+              {usernameSubmitting ? t('common.saving') : t('profile.updateUsername')}
             </button>
           </form>
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cambiar contraseña</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changePassword')}</p>
           <form onSubmit={handleChangePassword} className="space-y-2">
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Contraseña nueva"
+              placeholder={t('profile.newPassword')}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repite la contraseña"
+              placeholder={t('profile.repeatPassword')}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {passwordMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{passwordMessage}</p>}
@@ -335,13 +364,13 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               disabled={passwordSubmitting || !newPassword}
               className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              {passwordSubmitting ? 'Guardando…' : 'Actualizar contraseña'}
+              {passwordSubmitting ? t('common.saving') : t('profile.updatePassword')}
             </button>
           </form>
         </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cambiar email</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeEmail')}</p>
           <form onSubmit={handleChangeEmail} className="space-y-2">
             <input
               type="email"
@@ -356,7 +385,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
               disabled={emailSubmitting || !newEmail}
               className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              {emailSubmitting ? 'Guardando…' : 'Actualizar email'}
+              {emailSubmitting ? t('common.saving') : t('profile.updateEmail')}
             </button>
           </form>
         </div>

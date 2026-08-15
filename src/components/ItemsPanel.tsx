@@ -260,87 +260,86 @@ export default function ItemsPanel({
               🔒 {t('notes.readOnlyHint')}
             </p>
           )}
-          {pendingItems.length > 0 && (
-            <div>
-              {!readOnly && (
-                <div className="mb-2 flex justify-end">
-                  <button
-                    onClick={markAllDone}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                  >
-                    {t('notes.markAllDone')}
-                  </button>
-                </div>
-              )}
-              <NotepadCard>
-                {pendingReorder.displayItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    soloList={soloList}
-                    editing={editingId === item.id}
-                    dragging={pendingReorder.draggingId === item.id}
-                    draggable={!searching && !readOnly}
-                    reorderMode={reorderMode}
-                    readOnly={readOnly}
-                    onRowRef={(el) => pendingReorder.registerRow(item.id, el)}
-                    onDragPointerDown={pendingReorder.handlePointerDown(item.id)}
-                    onDragPointerMove={pendingReorder.handlePointerMove}
-                    onDragPointerUp={pendingReorder.handlePointerUp}
-                    onSortDate={() => applySort('date')}
-                    onSortAlpha={() => applySort('alpha')}
-                    onEnterCustomOrder={() => setReorderMode(true)}
-                    onStartEdit={() => setEditingId(item.id)}
-                    onSaveEdit={(val) => saveEdit(item.id, val)}
-                    onCancelEdit={() => setEditingId(null)}
-                    onToggle={toggleDone}
-                    onDelete={requestDelete}
-                    onOpenDueDate={() => setDueDateTarget(item)}
-                  />
-                ))}
-              </NotepadCard>
+          {!readOnly && pendingItems.length > 0 && (
+            <div className="mb-2 flex justify-end">
+              <button
+                onClick={markAllDone}
+                className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+              >
+                {t('notes.markAllDone')}
+              </button>
             </div>
           )}
 
-          {doneItems.length > 0 && (
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Hechos / comprados ({doneItems.length})
+          <NotepadCard>
+            {pendingReorder.displayItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                soloList={soloList}
+                editing={editingId === item.id}
+                dragging={pendingReorder.draggingId === item.id}
+                draggable={!searching && !readOnly}
+                reorderMode={reorderMode}
+                readOnly={readOnly}
+                onRowRef={(el) => pendingReorder.registerRow(item.id, el)}
+                onDragPointerDown={pendingReorder.handlePointerDown(item.id)}
+                onDragPointerMove={pendingReorder.handlePointerMove}
+                onDragPointerUp={pendingReorder.handlePointerUp}
+                onSortDate={() => applySort('date')}
+                onSortAlpha={() => applySort('alpha')}
+                onEnterCustomOrder={() => setReorderMode(true)}
+                onStartEdit={() => setEditingId(item.id)}
+                onSaveEdit={(val) => saveEdit(item.id, val)}
+                onCancelEdit={() => setEditingId(null)}
+                onToggle={toggleDone}
+                onDelete={requestDelete}
+                onOpenDueDate={() => setDueDateTarget(item)}
+              />
+            ))}
+
+            {doneItems.length > 0 && (
+              <div className="flex items-center justify-between bg-amber-900/[0.03] px-3 py-1.5 dark:bg-amber-100/[0.03]">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {t('notes.doneSectionLabel')} ({doneItems.length})
                 </p>
-                <button onClick={() => setConfirmEmpty(true)} className="text-xs font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                  {t('notes.emptyDone')}
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => setConfirmEmpty(true)}
+                    className="text-[11px] font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    {t('notes.emptyDone')}
+                  </button>
+                )}
               </div>
-              <NotepadCard muted>
-                {doneReorder.displayItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    soloList={soloList}
-                    editing={editingId === item.id}
-                    dragging={doneReorder.draggingId === item.id}
-                    draggable={!searching && !readOnly}
-                    reorderMode={reorderMode}
-                    readOnly={readOnly}
-                    onRowRef={(el) => doneReorder.registerRow(item.id, el)}
-                    onDragPointerDown={doneReorder.handlePointerDown(item.id)}
-                    onDragPointerMove={doneReorder.handlePointerMove}
-                    onDragPointerUp={doneReorder.handlePointerUp}
-                    onSortDate={() => applySort('date')}
-                    onSortAlpha={() => applySort('alpha')}
-                    onEnterCustomOrder={() => setReorderMode(true)}
-                    onStartEdit={() => setEditingId(item.id)}
-                    onSaveEdit={(val) => saveEdit(item.id, val)}
-                    onCancelEdit={() => setEditingId(null)}
-                    onToggle={toggleDone}
-                    onDelete={requestDelete}
-                    onOpenDueDate={() => setDueDateTarget(item)}
-                  />
-                ))}
-              </NotepadCard>
-            </div>
-          )}
+            )}
+
+            {doneReorder.displayItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                soloList={soloList}
+                editing={editingId === item.id}
+                dragging={doneReorder.draggingId === item.id}
+                draggable={!searching && !readOnly}
+                reorderMode={reorderMode}
+                readOnly={readOnly}
+                onRowRef={(el) => doneReorder.registerRow(item.id, el)}
+                onDragPointerDown={doneReorder.handlePointerDown(item.id)}
+                onDragPointerMove={doneReorder.handlePointerMove}
+                onDragPointerUp={doneReorder.handlePointerUp}
+                onSortDate={() => applySort('date')}
+                onSortAlpha={() => applySort('alpha')}
+                onEnterCustomOrder={() => setReorderMode(true)}
+                onStartEdit={() => setEditingId(item.id)}
+                onSaveEdit={(val) => saveEdit(item.id, val)}
+                onCancelEdit={() => setEditingId(null)}
+                onToggle={toggleDone}
+                onDelete={requestDelete}
+                onOpenDueDate={() => setDueDateTarget(item)}
+              />
+            ))}
+          </NotepadCard>
         </div>
       )}
 
@@ -622,34 +621,34 @@ function ItemRow({
 
   const overdue = !!item.due_date && !item.done && item.due_date < todayISO()
   const dueToday = !!item.due_date && !item.done && item.due_date === todayISO()
+  const inReorder = draggable && !!reorderMode
 
   return (
     <div
       ref={onRowRef}
-      className={`px-3 py-2.5 sm:pl-11 ${dragging ? 'relative z-10 bg-amber-50/80 dark:bg-amber-950/20' : ''}`}
+      onPointerDown={inReorder ? onDragPointerDown : undefined}
+      onPointerMove={inReorder ? onDragPointerMove : undefined}
+      onPointerUp={inReorder ? onDragPointerUp : undefined}
+      aria-label={inReorder ? t('lists.dragHandle') : undefined}
+      className={`px-3 py-2.5 sm:pl-11 ${inReorder ? 'touch-none select-none' : ''} ${
+        dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-amber-50/80 dark:bg-amber-950/20' : ''
+      }`}
+      style={inReorder ? { cursor: 'grab' } : undefined}
     >
       <div className="flex items-center gap-3">
-        {draggable && reorderMode && (
-          <button
-            onPointerDown={onDragPointerDown}
-            onPointerMove={onDragPointerMove}
-            onPointerUp={onDragPointerUp}
-            aria-label={t('lists.dragHandle')}
-            title={t('lists.dragHandle')}
-            className="shrink-0 touch-none select-none px-0.5 py-1 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
-            style={{ cursor: 'grab' }}
-          >
+        {inReorder && (
+          <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true">
             ⠿
-          </button>
+          </span>
         )}
         <input
           type="checkbox"
           checked={item.done}
-          disabled={readOnly}
-          onChange={() => !readOnly && onToggle(item)}
+          disabled={readOnly || inReorder}
+          onChange={() => !readOnly && !inReorder && onToggle(item)}
           className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500 disabled:opacity-60"
         />
-        <div className="min-w-0 flex-1" {...(!editing ? longPress : {})}>
+        <div className="min-w-0 flex-1" {...(!editing && !inReorder ? longPress : {})}>
           {editing ? (
             <input
               type="text"
@@ -662,7 +661,7 @@ function ItemRow({
             />
           ) : (
             <p
-              onClick={readOnly ? undefined : startEdit}
+              onClick={readOnly || inReorder ? undefined : startEdit}
               className={`truncate text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
             >
               {item.content}
