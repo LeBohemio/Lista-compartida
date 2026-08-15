@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { formatCurrency } from '../lib/balances'
 import { DEFAULT_CURRENCY, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
+import ConfirmDialog from './ConfirmDialog'
 
 type ListRef = { name: string; color: string | null; currency: CurrencyCode }
 type ExpenseRow = { id: string; list_id: string; total_amount: number; created_at: string; list: ListRef | null }
@@ -15,7 +16,7 @@ function monthKey(dateStr: string) {
 }
 
 export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const { t, language } = useLanguage()
   // El total agregado del mes (que puede sumar gastos de varias listas) se
   // muestra en tu divisa de perfil — no hay conversión real, así que si
@@ -26,31 +27,53 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const [settlements, setSettlements] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [monthOffset, setMonthOffset] = useState(0)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
-  useEffect(() => {
+  const fetchMine = () => {
     if (!user) return
     setLoading(true)
+    let expensesQuery = supabase
+      .from('expenses')
+      .select('id, list_id, total_amount, created_at, list:lists(name, color, currency)')
+      .eq('paid_by', user.id)
+    let settlementsQuery = supabase
+      .from('settlements')
+      .select('id, amount, created_at')
+      .eq('to_user', user.id)
+      // Solo lo ya confirmado cuenta como "cobrado de verdad" — un pago
+      // que alguien dice haber hecho pero que todavía no has confirmado
+      // no debe sumar aquí.
+      .not('confirmed_at', 'is', null)
+    // Corte personal (ver migration_v13.sql): puramente una vista propia,
+    // no borra ni afecta a nada compartido con el resto de la lista.
+    if (profile?.expenses_reset_at) {
+      expensesQuery = expensesQuery.gte('created_at', profile.expenses_reset_at)
+      settlementsQuery = settlementsQuery.gte('created_at', profile.expenses_reset_at)
+    }
     Promise.all([
-      supabase
-        .from('expenses')
-        .select('id, list_id, total_amount, created_at, list:lists(name, color, currency)')
-        .eq('paid_by', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('settlements')
-        .select('id, amount, created_at')
-        .eq('to_user', user.id)
-        // Solo lo ya confirmado cuenta como "cobrado de verdad" — un pago
-        // que alguien dice haber hecho pero que todavía no has confirmado
-        // no debe sumar aquí.
-        .not('confirmed_at', 'is', null)
-        .order('created_at', { ascending: false }),
+      expensesQuery.order('created_at', { ascending: false }),
+      settlementsQuery.order('created_at', { ascending: false }),
     ]).then(([expRes, settRes]) => {
       setExpenses(((expRes.data as unknown as ExpenseRow[]) ?? []))
       setSettlements(((settRes.data as unknown as SettlementRow[]) ?? []))
       setLoading(false)
     })
-  }, [user])
+  }
+
+  useEffect(() => {
+    fetchMine()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile?.expenses_reset_at])
+
+  const doReset = async () => {
+    if (!user) return
+    setResetting(true)
+    await supabase.from('profiles').update({ expenses_reset_at: new Date().toISOString() }).eq('id', user.id)
+    await refreshProfile()
+    setResetting(false)
+    setConfirmReset(false)
+  }
 
   const monthDate = useMemo(() => {
     const d = new Date()
@@ -98,7 +121,21 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
         >
           ✕
         </button>
-        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('myExpenses.title')}</h2>
+        <h2 className="mb-1 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('myExpenses.title')}</h2>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          {profile?.expenses_reset_at ? (
+            <p className="text-xs text-slate-400">
+              {t('myExpenses.resetSince', {
+                date: new Date(profile.expenses_reset_at).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES'),
+              })}
+            </p>
+          ) : (
+            <span />
+          )}
+          <button onClick={() => setConfirmReset(true)} className="text-xs font-medium text-slate-400 hover:text-red-500 dark:hover:text-red-400">
+            {t('myExpenses.resetAction')}
+          </button>
+        </div>
 
         <div className="mb-5 flex items-center justify-between">
           <button
@@ -168,6 +205,17 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           </>
         )}
       </div>
+
+      {confirmReset && (
+        <ConfirmDialog
+          title={t('myExpenses.resetConfirmTitle')}
+          message={t('myExpenses.resetConfirmMessage')}
+          confirmLabel={resetting ? t('common.saving') : t('myExpenses.resetConfirmButton')}
+          danger
+          onConfirm={doReset}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
     </div>
   )
 }

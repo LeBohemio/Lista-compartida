@@ -155,7 +155,7 @@ export default function ListDetailPage() {
                 {isOwner && (
                   <button
                     onClick={() => setShowRename(true)}
-                    className="text-xs text-slate-300 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
+                    className="rounded-full border border-slate-200 px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     aria-label={t('list.editTitle')}
                     title={t('list.editTitle')}
                   >

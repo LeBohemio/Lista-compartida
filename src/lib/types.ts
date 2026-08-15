@@ -14,6 +14,12 @@ export type Profile = {
   language: Language
   currency: CurrencyCode
   created_at: string
+  // Fecha de corte personal para "Mis gastos" (MyExpensesModal): si tiene
+  // valor, esa vista solo cuenta gastos/liquidaciones desde esta fecha en
+  // adelante. No borra nada ni afecta al balance compartido de las listas —
+  // solo filtra lo que ve esta persona en su propio resumen. Ver
+  // migration_v13.sql.
+  expenses_reset_at: string | null
 }
 
 export type MemberStatus = 'invited' | 'accepted'
