@@ -156,7 +156,7 @@ const translations = {
     'auth.registerTagline': 'Únete para crear y compartir listas',
     'auth.accountCreated': '¡Cuenta creada!',
     'auth.accountCreatedBody':
-      'Si tu proyecto de Supabase pide confirmación por email, revisa tu bandeja de entrada antes de entrar. Si no, ya puedes iniciar sesión directamente.',
+      'Te hemos enviado un email de confirmación. Confirma tu dirección para activar tu cuenta y poder entrar.',
     'auth.goToLogin': 'Ir a iniciar sesión',
     'auth.recoverPassword': 'Recuperar contraseña',
     'auth.recoverPasswordBody': 'Te mandaremos un enlace a tu email para elegir una contraseña nueva.',
@@ -519,7 +519,7 @@ const translations = {
     'auth.registerTagline': 'Join to create and share lists',
     'auth.accountCreated': 'Account created!',
     'auth.accountCreatedBody':
-      "If your Supabase project requires email confirmation, check your inbox before signing in. If not, you can sign in right away.",
+      "We've sent you a confirmation email. Confirm your address to activate your account and sign in.",
     'auth.goToLogin': 'Go to sign in',
     'auth.recoverPassword': 'Recover password',
     'auth.recoverPasswordBody': "We'll send a link to your email to choose a new password.",
