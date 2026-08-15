@@ -19,6 +19,7 @@ function makeExpense(
     created_by: null,
     created_at: new Date().toISOString(),
     is_draft: false,
+    no_debt: overrides.no_debt ?? false,
     shares: overrides.shares.map((s, i) => ({
       id: `share-${i}`,
       expense_id: overrides.id ?? 'expense-1',
@@ -38,6 +39,12 @@ function makeSettlement(overrides: Partial<Settlement>): Settlement {
     note: null,
     created_by: null,
     created_at: new Date().toISOString(),
+    // Por defecto, confirmada (así los tests ya existentes, que no hablan
+    // de confirmación, siguen probando lo mismo que antes de añadir esta
+    // función). Los tests de "pendiente de confirmar" pasan confirmed_at:
+    // null explícitamente — con "in" en vez de "??" para no confundir ese
+    // null explícito con "no me lo has pasado".
+    confirmed_at: 'confirmed_at' in overrides ? (overrides.confirmed_at ?? null) : new Date().toISOString(),
   }
 }
 
@@ -199,6 +206,41 @@ describe('computeNetBalances', () => {
     expect(balances.alice).toBeCloseTo(10.1 - 3.37, 5)
     expect(balances.bob).toBeCloseTo(-3.37, 5)
     expect(balances.carla).toBeCloseTo(-3.36, 5)
+  })
+
+  it('una liquidación pendiente de confirmar (confirmed_at null) todavía no cambia el balance', () => {
+    const expenses = [
+      makeExpense({
+        total_amount: 20,
+        paid_by: 'alice',
+        shares: [
+          { user_id: 'alice', amount: 10 },
+          { user_id: 'bob', amount: 10 },
+        ],
+      }),
+    ]
+    const settlements = [makeSettlement({ from_user: 'bob', to_user: 'alice', amount: 10, confirmed_at: null })]
+    const balances = computeNetBalances(expenses, settlements)
+    // Igual que si la liquidación no existiera todavía.
+    expect(balances.alice).toBeCloseTo(10)
+    expect(balances.bob).toBeCloseTo(-10)
+  })
+
+  it('un gasto marcado como "cada uno pagó lo suyo" (no_debt) no genera ninguna deuda', () => {
+    const expenses = [
+      makeExpense({
+        total_amount: 20,
+        paid_by: null,
+        no_debt: true,
+        shares: [
+          { user_id: 'alice', amount: 12 },
+          { user_id: 'bob', amount: 8 },
+        ],
+      }),
+    ]
+    const balances = computeNetBalances(expenses, [])
+    expect(balances.alice ?? 0).toBeCloseTo(0)
+    expect(balances.bob ?? 0).toBeCloseTo(0)
   })
 
   it('ignora gastos sin pagador o repartos sin usuario asignado, sin romperse', () => {

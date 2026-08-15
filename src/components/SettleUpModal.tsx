@@ -2,10 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { formatCurrency } from '../lib/balances'
+import { currencySymbol, type CurrencyCode } from '../lib/currencies'
 import type { SuggestedDebt } from '../lib/types'
 
 export default function SettleUpModal({
   listId,
+  currency,
   debt,
   fromName,
   toName,
@@ -13,6 +16,7 @@ export default function SettleUpModal({
   onSettled,
 }: {
   listId: string
+  currency: CurrencyCode
   debt: SuggestedDebt
   fromName: string
   toName: string
@@ -20,11 +24,17 @@ export default function SettleUpModal({
   onSettled: () => void
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [amount, setAmount] = useState(debt.amount.toFixed(2))
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Si quien registra el pago es quien cobra (p. ej. cobró en efectivo y lo
+  // apunta ella misma), se da por bueno al momento. Si es el deudor quien lo
+  // registra ("ya te he pagado"), queda pendiente de que la otra persona lo
+  // confirme, y no cuenta en el balance hasta entonces.
+  const autoConfirm = user?.id === debt.to
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -44,6 +54,7 @@ export default function SettleUpModal({
       amount: value,
       note: note.trim() || null,
       created_by: user.id,
+      confirmed_at: autoConfirm ? new Date().toISOString() : null,
     })
 
     setSubmitting(false)
@@ -66,9 +77,21 @@ export default function SettleUpModal({
           {t('settle.bodyEnd')}
         </p>
 
+        <p
+          className={`mb-4 rounded-lg px-3 py-2 text-xs ${
+            autoConfirm
+              ? 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+              : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+          }`}
+        >
+          {autoConfirm ? t('settle.autoConfirmNote') : t('settle.pendingConfirmNote', { name: toName })}
+        </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('settle.amount')}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              {t('settle.amount', { symbol: currencySymbol(currency) })}
+            </label>
             <input
               type="text"
               inputMode="decimal"
@@ -76,7 +99,9 @@ export default function SettleUpModal({
               onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
-            <p className="mt-1 text-xs text-slate-400">{t('settle.suggestedDebt', { amount: debt.amount.toFixed(2) })}</p>
+            <p className="mt-1 text-xs text-slate-400">
+              {t('settle.suggestedDebt', { amount: formatCurrency(debt.amount, currency, language) })}
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('settle.note')}</label>

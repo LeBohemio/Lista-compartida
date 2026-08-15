@@ -165,7 +165,7 @@ export default function ListDetailPage() {
                 {isOwner && (
                   <button
                     onClick={() => (isCompleted ? reactivateList() : setConfirmComplete(true))}
-                    className="text-xs text-slate-300 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
+                    className="rounded-full border border-brand-200 px-2 py-0.5 text-sm font-semibold text-brand-600 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-400 dark:hover:bg-brand-950/40"
                     aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                     title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                   >

@@ -213,12 +213,25 @@ export default function ExpensesPanel({
               >
                 <div className="flex w-full items-center justify-between px-4 py-3">
                   <button onClick={() => toggleExpand(row.data)} className="flex flex-1 items-center gap-2 text-left">
-                    <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
+                    {row.data.no_debt ? (
+                      <span
+                        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm dark:bg-slate-700"
+                        aria-hidden="true"
+                      >
+                        🤝
+                      </span>
+                    ) : (
+                      <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
+                    )}
                     <div>
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                         <span className="mr-1">{categoryIcon(row.data.category)}</span>
                         {row.data.description || t('expenses.ticket')}
-                        {!soloList ? ` · ${t('expenses.paidBy', { name: row.data.payer?.username ?? '—' })}` : ''}
+                        {row.data.no_debt
+                          ? ` · ${t('expenses.noDebtBadge')}`
+                          : !soloList
+                            ? ` · ${t('expenses.paidBy', { name: row.data.payer?.username ?? '—' })}`
+                            : ''}
                       </p>
                       <p className="text-xs text-slate-400">
                         {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
@@ -280,7 +293,7 @@ export default function ExpensesPanel({
                   </div>
                 )}
               </div>
-            ) : (
+            ) : row.data.confirmed_at ? (
               <div
                 key={`s-${row.data.id}`}
                 className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
@@ -299,6 +312,27 @@ export default function ExpensesPanel({
                   </p>
                 </div>
                 <span className="font-semibold text-green-800 dark:text-green-400">{formatCurrency(row.data.amount, currency, language)}</span>
+              </div>
+            ) : (
+              <div
+                key={`s-${row.data.id}`}
+                className="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3 ring-1 ring-amber-100 dark:bg-amber-950/30 dark:ring-amber-900"
+              >
+                <div>
+                  <p className="text-sm text-amber-800 dark:text-amber-400">
+                    ⏳{' '}
+                    {t('expenses.settledMessage', {
+                      from: row.data.from_profile?.username ?? '—',
+                      to: row.data.to_profile?.username ?? '—',
+                    })}{' '}
+                    · {t('settle.pendingSectionTitle')}
+                    {row.data.note ? ` · ${row.data.note}` : ''}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
+                  </p>
+                </div>
+                <span className="font-semibold text-amber-800 dark:text-amber-400">{formatCurrency(row.data.amount, currency, language)}</span>
               </div>
             ),
           )}

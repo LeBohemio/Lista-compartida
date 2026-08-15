@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 import { computeNetBalances, formatCurrency, simplifyDebts } from '../lib/balances'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -23,6 +24,24 @@ export default function BalanceSummary({
   const { t, language } = useLanguage()
   const [settling, setSettling] = useState<SuggestedDebt | null>(null)
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
+  const [actingOnId, setActingOnId] = useState<string | null>(null)
+
+  const pendingSettlements = useMemo(
+    () => settlements.filter((s) => !s.confirmed_at && (s.from_user === user?.id || s.to_user === user?.id)),
+    [settlements, user],
+  )
+
+  const confirmSettlement = async (id: string) => {
+    setActingOnId(id)
+    await supabase.from('settlements').update({ confirmed_at: new Date().toISOString() }).eq('id', id)
+    setActingOnId(null)
+  }
+
+  const removeSettlement = async (id: string) => {
+    setActingOnId(id)
+    await supabase.from('settlements').delete().eq('id', id)
+    setActingOnId(null)
+  }
 
   const profileById = useMemo(() => {
     const map = new Map<string, string>()
@@ -99,6 +118,46 @@ export default function BalanceSummary({
         </p>
       )}
 
+      {pendingSettlements.length > 0 && (
+        <div className="mb-4 space-y-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950/30">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            ⏳ {t('settle.pendingSectionTitle')}
+          </p>
+          {pendingSettlements.map((s) => {
+            const iAmOwed = s.to_user === user?.id
+            const otherName = iAmOwed ? (profileById.get(s.from_user ?? '') ?? '—') : (profileById.get(s.to_user ?? '') ?? '—')
+            const busy = actingOnId === s.id
+            return (
+              <div key={s.id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-amber-800 dark:text-amber-300">
+                  {iAmOwed
+                    ? t('settle.claimToYou', { name: otherName, amount: formatCurrency(s.amount, currency, language) })
+                    : t('settle.waitingOnOther', { name: otherName, amount: formatCurrency(s.amount, currency, language) })}
+                </span>
+                <div className="flex shrink-0 gap-1.5">
+                  {iAmOwed && (
+                    <button
+                      disabled={busy}
+                      onClick={() => confirmSettlement(s.id)}
+                      className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {t('settle.confirmReceived')}
+                    </button>
+                  )}
+                  <button
+                    disabled={busy}
+                    onClick={() => removeSettlement(s.id)}
+                    className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                  >
+                    {iAmOwed ? t('settle.reject') : t('settle.withdraw')}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <div className="mb-4 space-y-1.5">
         {accepted.map((m) => {
           const balance = netBalances[m.user_id] ?? 0
@@ -159,6 +218,7 @@ export default function BalanceSummary({
       {settling && (
         <SettleUpModal
           listId={listId}
+          currency={currency}
           debt={settling}
           fromName={profileById.get(settling.from) ?? ''}
           toName={profileById.get(settling.to) ?? ''}

@@ -649,21 +649,9 @@ function ItemRow({
   return (
     <div
       ref={onRowRef}
-      onPointerDown={inReorder ? onDragPointerDown : undefined}
-      onPointerMove={inReorder ? onDragPointerMove : undefined}
-      onPointerUp={inReorder ? onDragPointerUp : undefined}
-      aria-label={inReorder ? t('lists.dragHandle') : undefined}
-      // El touch-action: none hace falta desde el momento en que la fila
-      // entra en modo reordenar, no solo mientras se arrastra de verdad: el
-      // navegador decide si un toque va a hacer scroll o no nada más tocar
-      // la pantalla, así que si esperamos a aplicarlo justo cuando empieza
-      // el arrastre (tras mantener pulsado), ya es tarde y el navegador
-      // puede haber empezado a mover la página él solo — eso era lo que
-      // hacía que "el fondo se moviera" al resaltar una nota.
-      className={`px-3 sm:pl-11 ${inReorder ? 'select-none touch-none' : ''} ${
+      className={`px-3 sm:pl-11 ${
         dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
       }`}
-      style={inReorder ? { cursor: 'grab' } : undefined}
     >
       <div className="flex items-start gap-3">
         {/* Casilla (y el asa ⠿) fijas a 40px de alto, para que queden a la
@@ -671,9 +659,23 @@ function ItemRow({
             cuando el texto ocupa varias líneas. */}
         <div className="flex h-10 shrink-0 items-center gap-3">
           {inReorder && (
-            <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
+            // El asa es lo único que arrastra — el resto de la fila queda
+            // libre para hacer scroll con normalidad, como si no estuvieras
+            // en modo reordenar. touch-none va puesto aquí de forma estática
+            // (no reactiva) porque tiene que estar ya así desde antes de que
+            // toques la pantalla para que el navegador lo respete desde el
+            // primer instante.
+            <button
+              type="button"
+              onPointerDown={onDragPointerDown}
+              onPointerMove={onDragPointerMove}
+              onPointerUp={onDragPointerUp}
+              aria-label={t('lists.dragHandle')}
+              className="-m-2 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+              style={{ cursor: 'grab' }}
+            >
               ⠿
-            </span>
+            </button>
           )}
           <input
             type="checkbox"

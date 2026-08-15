@@ -44,6 +44,7 @@ export default function NewExpenseModal({
     return stored && EXPENSE_CATEGORIES.some((c) => c.value === stored) ? stored : 'otros'
   })
   const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
+  const [noDebt, setNoDebt] = useState(editing?.no_debt ?? false)
   const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
   const [splitMode, setSplitMode] = useState<SplitMode>(editing ? 'custom' : 'equal')
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(() => {
@@ -157,7 +158,8 @@ export default function NewExpenseModal({
           receipt_image_path: receiptPath,
           ocr_confidence: ocrConfidence,
           category,
-          paid_by: paidBy,
+          paid_by: noDebt ? null : paidBy,
+          no_debt: noDebt,
           is_draft: isDraft,
         })
         .eq('id', editing!.id)
@@ -175,7 +177,8 @@ export default function NewExpenseModal({
           receipt_image_path: receiptPath,
           ocr_confidence: ocrConfidence,
           category,
-          paid_by: paidBy,
+          paid_by: noDebt ? null : paidBy,
+          no_debt: noDebt,
           created_by: user!.id,
           is_draft: isDraft,
         })
@@ -203,7 +206,7 @@ export default function NewExpenseModal({
       setError(t('expenses.errorTotalInvalid'))
       return
     }
-    if (!paidBy) {
+    if (!noDebt && !paidBy) {
       setError(t('expenses.errorNoPayer'))
       return
     }
@@ -229,7 +232,7 @@ export default function NewExpenseModal({
   // cierra sin más.
   const handleRequestClose = async () => {
     if (submitting) return
-    if (!user || !totalValid || !paidBy || acceptedMembers.length === 0) {
+    if (!user || !totalValid || (!noDebt && !paidBy) || acceptedMembers.length === 0) {
       onClose()
       return
     }
@@ -338,22 +341,42 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.whoPaid')}</label>
-            <select
-              value={paidBy}
-              onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-            >
-              {acceptedMembers.map((m) => (
-                <option key={m.user_id} value={m.user_id}>
-                  {m.profile?.username ?? m.user_id} {m.user_id === user?.id ? t('expenses.you') : ''}
-                </option>
-              ))}
-            </select>
+            <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={noDebt}
+                onChange={(e) => setNoDebt(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-brand-600"
+              />
+              <span>
+                <span className="font-medium">{t('expenses.noDebt')}</span>
+                <br />
+                <span className="text-xs text-slate-400">{t('expenses.noDebtHint')}</span>
+              </span>
+            </label>
           </div>
 
+          {!noDebt && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.whoPaid')}</label>
+              <select
+                value={paidBy}
+                onChange={(e) => setPaidBy(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              >
+                {acceptedMembers.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.profile?.username ?? m.user_id} {m.user_id === user?.id ? t('expenses.you') : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.split')}</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              {noDebt ? t('expenses.contributionSplit') : t('expenses.split')}
+            </label>
             <div className="mb-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -436,7 +459,10 @@ export default function NewExpenseModal({
             </div>
             {splitMode === 'custom' && totalValid && (
               <p className={`mt-2 text-xs ${customMatchesTotal ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                {t('expenses.sumCurrent', { sum: (customTotalCents / 100).toFixed(2), total: totalAmount.toFixed(2) })}
+                {t('expenses.sumCurrent', {
+                  sum: formatCurrency(customTotalCents / 100, currency, language),
+                  total: formatCurrency(totalAmount, currency, language),
+                })}
               </p>
             )}
             {splitMode === 'percent' && totalValid && (

@@ -81,6 +81,11 @@ export type Expense = {
   // porcentajes incompletos) — se guardó igualmente al salir del
   // formulario, como borrador, para no perder lo ya escrito.
   is_draft: boolean
+  // true cuando cada persona pagó su propia parte directamente — el gasto
+  // cuenta igual en el historial y en los totales, pero no genera deuda
+  // entre nadie (paid_by va a null, y los "shares" son solo un registro de
+  // cuánto puso cada uno, no una deuda). Ver migration_v12.sql.
+  no_debt: boolean
   // joined
   payer?: Profile
   shares?: ExpenseShare[]
@@ -104,6 +109,9 @@ export type Settlement = {
   note: string | null
   created_by: string | null
   created_at: string
+  // null = pendiente de que to_user lo confirme; con fecha = ya confirmado
+  // (y cuenta en el balance). Ver migration_v11.sql.
+  confirmed_at: string | null
   // joined
   from_profile?: Profile
   to_profile?: Profile

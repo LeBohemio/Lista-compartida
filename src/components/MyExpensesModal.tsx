@@ -40,6 +40,10 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
         .from('settlements')
         .select('id, amount, created_at')
         .eq('to_user', user.id)
+        // Solo lo ya confirmado cuenta como "cobrado de verdad" — un pago
+        // que alguien dice haber hecho pero que todavía no has confirmado
+        // no debe sumar aquí.
+        .not('confirmed_at', 'is', null)
         .order('created_at', { ascending: false }),
     ]).then(([expRes, settRes]) => {
       setExpenses(((expRes.data as unknown as ExpenseRow[]) ?? []))

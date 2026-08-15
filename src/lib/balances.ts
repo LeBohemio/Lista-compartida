@@ -10,9 +10,14 @@ const fromCents = (c: number) => Math.round(c) / 100
  *
  * Se construye a partir de:
  *  - Gastos: quien paga (`paid_by`) recibe +total, y cada reparto (`shares`)
- *    resta su parte correspondiente (incluida la del propio pagador).
+ *    resta su parte correspondiente (incluida la del propio pagador). Los
+ *    gastos marcados como `no_debt` ("cada uno pagó lo suyo") no entran en
+ *    esta cuenta: se guardan y se ven en el historial, pero no mueven el
+ *    balance de nadie.
  *  - Liquidaciones (`settlements`): un pago directo de una persona a otra
- *    reduce la deuda de quien paga y reduce el crédito de quien cobra.
+ *    reduce la deuda de quien paga y reduce el crédito de quien cobra. Solo
+ *    cuentan las que ya están confirmadas (`confirmed_at` con fecha) — una
+ *    liquidación pendiente de confirmar no cambia el balance todavía.
  */
 export function computeNetBalances(expenses: Expense[], settlements: Settlement[]): NetBalance {
   const centsByUser = new Map<string, number>()
@@ -21,6 +26,7 @@ export function computeNetBalances(expenses: Expense[], settlements: Settlement[
   }
 
   for (const expense of expenses) {
+    if (expense.no_debt) continue
     if (expense.paid_by) add(expense.paid_by, toCents(expense.total_amount))
     for (const share of expense.shares ?? []) {
       if (share.user_id) add(share.user_id, -toCents(share.amount))
@@ -28,6 +34,7 @@ export function computeNetBalances(expenses: Expense[], settlements: Settlement[
   }
 
   for (const s of settlements) {
+    if (!s.confirmed_at) continue
     // from_user salda deuda -> su balance mejora (menos negativo)
     if (s.from_user) add(s.from_user, toCents(s.amount))
     // to_user ya cobró -> su crédito pendiente baja
