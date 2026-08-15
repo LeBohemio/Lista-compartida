@@ -67,8 +67,26 @@ export default function ListDetailPage() {
 
   // Vibración sutil cuando llega un mensaje nuevo de otra persona mientras no
   // estás mirando la pestaña de chat, para enterarte sin tener que comprobarlo.
+  //
+  // Bug que arreglamos aquí: al entrar en una lista (o al cambiar de una
+  // lista a otra), los mensajes se cargan de golpe de forma asíncrona — el
+  // array pasa de [] a tener, digamos, 20 mensajes ya existentes. Eso NO es
+  // un mensaje nuevo de verdad, es solo el historial cargándose, pero como
+  // antes solo comparábamos "¿hay más mensajes que antes?", esa carga
+  // inicial se contaba como "llegaron mensajes nuevos" y hacía vibrar el
+  // móvil nada más entrar. loadedForListRef marca de qué lista es la carga
+  // que ya hemos visto, para saber cuándo estamos ante esa primera carga
+  // (de esta lista en concreto) y no vibrar en ese caso — solo a partir de
+  // ahí, con mensajes que llegan de verdad mientras ya estás mirando la
+  // lista, vibra.
   const prevMessageCountRef = useRef(messages.length)
+  const loadedForListRef = useRef<string | undefined>(undefined)
   useEffect(() => {
+    if (loadedForListRef.current !== listId) {
+      loadedForListRef.current = listId
+      prevMessageCountRef.current = messages.length
+      return
+    }
     if (messages.length > prevMessageCountRef.current) {
       const newOnes = messages.slice(prevMessageCountRef.current)
       const fromOthers = newOnes.some((m) => m.sender_id !== user?.id)
@@ -77,7 +95,7 @@ export default function ListDetailPage() {
       }
     }
     prevMessageCountRef.current = messages.length
-  }, [messages, tab, user])
+  }, [messages, tab, user, listId])
 
   if (loading) {
     return (

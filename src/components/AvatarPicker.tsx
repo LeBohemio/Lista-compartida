@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 
 const AVATAR_CATEGORIES: { slug: string; labelKey: TranslationKey }[] = [
@@ -34,6 +34,47 @@ export default function AvatarPicker({
     if (!selected) return
     onSelect(selected)
   }
+
+  const activeIndex = AVATAR_CATEGORIES.findIndex((c) => c.slug === activeSlug)
+  const goToCategory = (index: number) => {
+    const clamped = Math.max(0, Math.min(AVATAR_CATEGORIES.length - 1, index))
+    setActiveSlug(AVATAR_CATEGORIES[clamped].slug)
+  }
+
+  // Deslizar hacia los lados directamente sobre las fotos también cambia de
+  // categoría (además de tocar las pompitas de arriba) — como un carrusel.
+  // touch-action: pan-y (clase estática touch-pan-y más abajo, no puesta a
+  // mano por JS) le dice al navegador desde el primer instante del toque
+  // "el gesto vertical es scroll normal tuyo, el horizontal lo llevo yo",
+  // así puede seguir haciendo scroll vertical con normalidad si hay más de
+  // una fila de fotos, sin que compita con el deslizar horizontal.
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  const SWIPE_THRESHOLD_PX = 40
+
+  const handleGridPointerDown = (e: ReactPointerEvent) => {
+    swipeStartRef.current = { x: e.clientX, y: e.clientY }
+  }
+  const handleGridPointerUp = (e: ReactPointerEvent) => {
+    const start = swipeStartRef.current
+    swipeStartRef.current = null
+    if (!start) return
+    const deltaX = e.clientX - start.x
+    const deltaY = e.clientY - start.y
+    // Solo cuenta como deslizar de categoría si el movimiento es
+    // claramente más horizontal que vertical — si no, es que estabas
+    // haciendo scroll normal por la rejilla, o solo has tocado una foto.
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return
+    goToCategory(deltaX < 0 ? activeIndex + 1 : activeIndex - 1)
+  }
+
+  // Cuando la categoría activa cambia por deslizar (no solo al tocar su
+  // pompita, que ya está siempre visible porque la acabas de tocar), la
+  // llevamos a la vista dentro de la fila de categorías, por si estaba
+  // fuera de pantalla.
+  const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  useEffect(() => {
+    pillRefs.current.get(activeSlug)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [activeSlug])
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
@@ -74,6 +115,10 @@ export default function AvatarPicker({
           {AVATAR_CATEGORIES.map((cat) => (
             <button
               key={cat.slug}
+              ref={(el) => {
+                if (el) pillRefs.current.set(cat.slug, el)
+                else pillRefs.current.delete(cat.slug)
+              }}
               onClick={() => setActiveSlug(cat.slug)}
               className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                 activeSlug === cat.slug
@@ -86,7 +131,11 @@ export default function AvatarPicker({
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div
+          className="flex-1 touch-pan-y overflow-y-auto px-6 py-4"
+          onPointerDown={handleGridPointerDown}
+          onPointerUp={handleGridPointerUp}
+        >
           <div className="grid grid-cols-5 gap-3">
             {Array.from({ length: AVATARS_PER_CATEGORY }, (_, i) => {
               const url = `/avatars/${activeSlug}-${i + 1}.png`
