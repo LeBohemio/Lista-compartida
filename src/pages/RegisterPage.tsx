@@ -20,11 +20,11 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     if (username.trim().length < 2) {
-      setError('El nombre de usuario debe tener al menos 2 caracteres.')
+      setError(t('auth.usernameTooShort'))
       return
     }
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.')
+      setError(t('profile.passwordTooShort'))
       return
     }
     setSubmitting(true)
@@ -96,7 +96,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-              placeholder="Mínimo 6 caracteres"
+              placeholder={t('auth.passwordMinPlaceholder')}
             />
           </div>
 

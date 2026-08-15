@@ -448,9 +448,9 @@ function ListRow({
       role="button"
       tabIndex={0}
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
-      className={`w-full p-4 text-left transition ${inReorder ? 'touch-none select-none' : ''} ${
+      className={`w-full p-4 text-left transition ${inReorder ? 'select-none' : ''} ${
         dragging
-          ? 'relative rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
+          ? 'relative touch-none rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
           : 'hover:bg-slate-50 dark:hover:bg-white/5'
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}

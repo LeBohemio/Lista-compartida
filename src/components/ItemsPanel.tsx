@@ -635,6 +635,15 @@ function ItemRow({
   const overdue = !!item.due_date && !item.done && item.due_date < todayISO()
   const dueToday = !!item.due_date && !item.done && item.due_date === todayISO()
   const inReorder = draggable && !!reorderMode
+  // Para que la nota ocupe siempre un múltiplo exacto de una "línea" de la
+  // hoja (40px), en vez de dejar que el padding del contenedor añada una
+  // altura suelta que no encaja en la rejilla, apoyamos toda la altura en
+  // el interlineado del propio texto (leading-[40px] más abajo) y, si hay
+  // una segunda línea (fecha límite o quién la añadió), le damos también
+  // exactamente una línea completa. Así, una nota con texto largo que
+  // ocupa dos líneas empuja a las de abajo exactamente 2 líneas, y todo
+  // sigue cuadrando con las rayitas del fondo.
+  const hasSecondaryLine = (!soloList && !!item.creator?.username) || !!item.due_date
 
   return (
     <div
@@ -643,8 +652,8 @@ function ItemRow({
       onPointerMove={inReorder ? onDragPointerMove : undefined}
       onPointerUp={inReorder ? onDragPointerUp : undefined}
       aria-label={inReorder ? t('lists.dragHandle') : undefined}
-      className={`px-3 py-2.5 sm:pl-11 ${inReorder ? 'touch-none select-none' : ''} ${
-        dragging ? 'relative shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
+      className={`px-3 sm:pl-11 ${inReorder ? 'select-none' : ''} ${
+        dragging ? 'relative touch-none shadow-md ring-1 ring-brand-200 bg-[var(--color-surface-alt)]' : ''
       }`}
       style={inReorder ? { cursor: 'grab' } : undefined}
     >
@@ -675,12 +684,12 @@ function ItemRow({
           ) : (
             <p
               onClick={readOnly || inReorder ? undefined : startEdit}
-              className={`break-words text-sm ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+              className={`break-words text-sm leading-[40px] ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
             >
               {item.content}
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-x-2">
+          <div className={`flex flex-wrap items-center gap-x-2 ${hasSecondaryLine ? 'h-10' : ''}`}>
             {!soloList && item.creator?.username && (
               <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
                 <Avatar username={item.creator.username} avatarUrl={item.creator.avatar_url} size={16} />

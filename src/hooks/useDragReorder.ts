@@ -1,14 +1,23 @@
 import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
+const HOLD_DELAY_MS = 420
+const MOVE_CANCEL_PX = 8
+
 /**
  * Reordenar una lista arrastrando una fila entera (no hace falta un tirador
- * aparte: en modo reordenar, con pulsar y mover sobre el elemento ya vale).
+ * aparte: en modo reordenar, con mantener pulsada la fila ya vale).
  *
- * Dos cosas para que se sienta bien al tacto:
- *  1) La fila que arrastras sigue al dedo en tiempo real (transform directo
+ * Cosas para que se sienta bien al tacto:
+ *  1) No se arrastra al primer contacto: hay que mantener pulsado un
+ *     instante (como una pulsación larga normal). Si antes de eso te
+ *     mueves, se entiende que querías hacer scroll por la lista, no
+ *     reordenar, y no pasa nada — el scroll sigue funcionando.
+ *  2) La fila que arrastras sigue al dedo en tiempo real (transform directo
  *     sobre su nodo del DOM, sin pasar por el estado de React en cada
- *     movimiento, para que no haya tirones).
- *  2) Las demás filas, cuando les toca hacer sitio, no "saltan": se animan
+ *     movimiento, para que no haya tirones). Cuando esa fila cambia de
+ *     posición dentro de la lista (porque ha hecho sitio para otra), se
+ *     corrige el punto de referencia para que no dé un salto.
+ *  3) Las demás filas, cuando les toca hacer sitio, no "saltan": se animan
  *     con la técnica FLIP (se mide su posición antes y después del cambio de
  *     orden, y se anima la diferencia con una transición corta).
  */
@@ -32,11 +41,26 @@ export function useDragReorder<T>({
   // durante la animación FLIP, porque mientras una fila todavía se está
   // desplazando hacia su sitio, su posición pintada en pantalla no es la
   // definitiva, y comparar contra eso hacía que la fila arrastrada
-  // "vibrara" (el objetivo cambiaba de un frame a otro sin que te hubieras
-  // movido).
+  // "vibrara" (el objetivo cambiaba de un fotograma a otro sin que te
+  // hubieras movido).
   const settledRectsRef = useRef<Map<string, DOMRect>>(new Map())
   const dragStartYRef = useRef(0)
   const draggingIdRef = useRef<string | null>(null)
+  // Último desplazamiente (transform) aplicado a la fila arrastrada, y su
+  // posición "natural" (de layout, sin ese transform) conocida más
+  // reciente — hacen falta para corregir el salto que se veía cuando la
+  // propia fila arrastrada cambiaba de sitio en la lista a mitad de gesto
+  // (ver el efecto más abajo).
+  const currentOffsetRef = useRef(0)
+  const dragNaturalTopRef = useRef(0)
+  const lastPointerYRef = useRef(0)
+
+  // Pulsación larga pendiente: se ha tocado una fila pero todavía no ha
+  // pasado suficiente tiempo (o ya se ha movido demasiado) como para
+  // considerarlo un "mantener pulsado".
+  const pendingIdRef = useRef<string | null>(null)
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const holdStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const registerRow = useCallback((id: string, el: HTMLElement | null) => {
     if (el) rowRefs.current.set(id, el)
@@ -51,18 +75,33 @@ export function useDragReorder<T>({
     return map
   }, [])
 
-  const handlePointerDown = useCallback(
-    (id: string) => (e: ReactPointerEvent) => {
-      e.preventDefault()
+  const cancelPendingHold = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+    pendingIdRef.current = null
+    holdStartRef.current = null
+  }, [])
+
+  const beginDrag = useCallback(
+    (id: string, startY: number, target: HTMLElement, pointerId: number) => {
       baseOrderRef.current = items
       setDragOrder(items)
       setDraggingId(id)
       draggingIdRef.current = id
-      dragStartYRef.current = e.clientY
+      dragStartYRef.current = startY
+      lastPointerYRef.current = startY
+      currentOffsetRef.current = 0
       const startRects = captureRects()
       prevRectsRef.current = startRects
       settledRectsRef.current = startRects
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      dragNaturalTopRef.current = startRects.get(id)?.top ?? 0
+      try {
+        target.setPointerCapture(pointerId)
+      } catch {
+        // el puntero puede haber dejado de existir; no pasa nada.
+      }
       const el = rowRefs.current.get(id)
       if (el) {
         el.style.transition = 'none'
@@ -73,17 +112,53 @@ export function useDragReorder<T>({
     [items, captureRects],
   )
 
+  const handlePointerDown = useCallback(
+    (id: string) => (e: ReactPointerEvent) => {
+      const target = e.currentTarget as HTMLElement
+      const pointerId = e.pointerId
+      const startY = e.clientY
+      holdStartRef.current = { x: e.clientX, y: e.clientY }
+      pendingIdRef.current = id
+      holdTimerRef.current = setTimeout(() => {
+        if (pendingIdRef.current !== id) return
+        pendingIdRef.current = null
+        if (navigator.vibrate) navigator.vibrate(15)
+        beginDrag(id, startY, target, pointerId)
+      }, HOLD_DELAY_MS)
+      // Ojo: aquí no hacemos preventDefault ni setPointerCapture todavía —
+      // así, si esto acaba siendo un scroll (el usuario no mantiene
+      // pulsado), el navegador puede seguir moviendo la lista con
+      // normalidad.
+    },
+    [beginDrag],
+  )
+
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent) => {
+      // Fase de espera: todavía no se ha confirmado la pulsación larga. Si
+      // el dedo se ha movido más de la cuenta, era un intento de hacer
+      // scroll, así que cancelamos y no llegamos a reordenar nada.
+      if (pendingIdRef.current && !draggingIdRef.current) {
+        const start = holdStartRef.current
+        if (start) {
+          const dx = e.clientX - start.x
+          const dy = e.clientY - start.y
+          if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) cancelPendingHold()
+        }
+        return
+      }
+
       const draggingId = draggingIdRef.current
       if (!draggingId) return
       const currentY = e.clientY
+      lastPointerYRef.current = currentY
 
       // La fila que se arrastra sigue al dedo directamente, sin esperar a
       // ningún render — se siente inmediato.
       const draggedEl = rowRefs.current.get(draggingId)
       if (draggedEl) {
         const offset = currentY - dragStartYRef.current
+        currentOffsetRef.current = offset
         draggedEl.style.transform = `translateY(${offset}px) scale(1.02)`
       }
 
@@ -114,7 +189,7 @@ export function useDragReorder<T>({
         setDragOrder(next)
       }
     },
-    [getId, captureRects],
+    [getId, captureRects, cancelPendingHold],
   )
 
   // FLIP: después de cualquier cambio de orden, las filas que no se están
@@ -124,6 +199,32 @@ export function useDragReorder<T>({
     if (!dragOrder) return
     const prevRects = prevRectsRef.current
     if (prevRects.size === 0) return
+
+    // La propia fila arrastrada puede haber cambiado de posición "natural"
+    // (de layout) al hacerle sitio a otra — su nodo sigue siendo el mismo,
+    // pero ahora vive en otro punto de la lista. Si no lo compensamos, el
+    // transform que le aplicamos (pensado como un desplazamiento desde su
+    // posición de inicio) deja de coincidir con dónde está el dedo, y la
+    // fila da un salto — eso es lo que se sentía como "vibrar". Aquí
+    // medimos ese cambio y lo absorbemos en el punto de referencia, para
+    // que el dedo y la nota sigan coincidiendo sin ningún salto.
+    const draggedId = draggingIdRef.current
+    if (draggedId) {
+      const draggedEl = rowRefs.current.get(draggedId)
+      if (draggedEl) {
+        const visualTop = draggedEl.getBoundingClientRect().top
+        const naturalTopNow = visualTop - currentOffsetRef.current
+        const deltaSwap = naturalTopNow - dragNaturalTopRef.current
+        if (Math.abs(deltaSwap) > 0.5) {
+          dragStartYRef.current += deltaSwap
+          dragNaturalTopRef.current = naturalTopNow
+          const offset = lastPointerYRef.current - dragStartYRef.current
+          currentOffsetRef.current = offset
+          draggedEl.style.transform = `translateY(${offset}px) scale(1.02)`
+        }
+      }
+    }
+
     rowRefs.current.forEach((el, id) => {
       if (id === draggingIdRef.current) return
       const next = el.getBoundingClientRect()
@@ -150,6 +251,7 @@ export function useDragReorder<T>({
   }, [dragOrder])
 
   const handlePointerUp = useCallback(() => {
+    cancelPendingHold()
     const draggingId = draggingIdRef.current
     if (!draggingId) return
     const el = rowRefs.current.get(draggingId)
@@ -168,7 +270,7 @@ export function useDragReorder<T>({
     const finalOrder = baseOrderRef.current
     setDragOrder(null)
     onCommit(finalOrder)
-  }, [onCommit])
+  }, [onCommit, cancelPendingHold])
 
   return {
     displayItems,
