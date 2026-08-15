@@ -52,6 +52,23 @@ export function useDragReorder<T>({
   // hubieras movido).
   const settledRectsRef = useRef<Map<string, DOMRect>>(new Map())
   const dragStartYRef = useRef(0)
+  // El dedo no se mueve en línea recta al arrastrar — aunque la intención
+  // sea subir/bajar la nota, es normal que el punto tocado se desvíe
+  // también a los lados. Antes solo seguíamos al dedo en vertical (el
+  // transform aplicado a la fila solo tenía translateY): en cuanto el dedo
+  // se apartaba un poco hacia un lado, la nota se quedaba "atrás" respecto
+  // a dónde estaba tocando realmente el dedo, y eso se sentía como que el
+  // arrastre se quedaba pillado o solo funcionaba en vertical — no era un
+  // límite del navegador (el asa ya tiene touch-action:none y captura el
+  // puntero, así que los eventos siguen llegando aunque el dedo se mueva a
+  // cualquier sitio de la pantalla), era que nuestro propio código
+  // ignoraba el eje horizontal al dibujar. dragStartXRef/currentOffsetXRef
+  // guardan lo mismo que sus equivalentes en Y pero para el eje horizontal,
+  // para que la nota seguida al dedo en las dos direcciones a la vez. El
+  // reparto de sitio en la lista sigue decidiéndose solo por Y (esto es una
+  // lista vertical, la X no cambia el orden), así que esa parte no cambia.
+  const dragStartXRef = useRef(0)
+  const currentOffsetXRef = useRef(0)
   const draggingIdRef = useRef<string | null>(null)
   // Último desplazamiente (transform) aplicado a la fila arrastrada, y su
   // posición "natural" (de layout, sin ese transform) conocida más
@@ -92,12 +109,14 @@ export function useDragReorder<T>({
   }, [])
 
   const beginDrag = useCallback(
-    (id: string, startY: number, target: HTMLElement, pointerId: number) => {
+    (id: string, startY: number, startX: number, target: HTMLElement, pointerId: number) => {
       baseOrderRef.current = items
       setDragOrder(items)
       setDraggingId(id)
       draggingIdRef.current = id
       dragStartYRef.current = startY
+      dragStartXRef.current = startX
+      currentOffsetXRef.current = 0
       lastPointerYRef.current = startY
       currentOffsetRef.current = 0
       const startRects = captureRects()
@@ -132,7 +151,7 @@ export function useDragReorder<T>({
   const handlePointerDown = useCallback(
     (id: string) => (e: ReactPointerEvent) => {
       if (navigator.vibrate) navigator.vibrate(15)
-      beginDrag(id, e.clientY, e.currentTarget as HTMLElement, e.pointerId)
+      beginDrag(id, e.clientY, e.clientX, e.currentTarget as HTMLElement, e.pointerId)
     },
     [beginDrag],
   )
@@ -230,11 +249,14 @@ export function useDragReorder<T>({
       // ningún render — se siente inmediato. Esta parte es barata (solo
       // pone un transform en un nodo ya existente) así que se hace en cada
       // evento, no solo una vez por fotograma.
+      const currentX = e.clientX
       const draggedEl = rowRefs.current.get(draggingId)
       if (draggedEl) {
         const offset = currentY - dragStartYRef.current
+        const offsetX = currentX - dragStartXRef.current
         currentOffsetRef.current = offset
-        draggedEl.style.transform = `translateY(${offset}px) scale(1.02)`
+        currentOffsetXRef.current = offsetX
+        draggedEl.style.transform = `translateY(${offset}px) translateX(${offsetX}px) scale(1.02)`
       }
 
       // Lo caro (decidir si toca cambiar de sitio, y si toca, medir el
@@ -278,7 +300,7 @@ export function useDragReorder<T>({
           dragNaturalTopRef.current = naturalTopNow
           const offset = lastPointerYRef.current - dragStartYRef.current
           currentOffsetRef.current = offset
-          draggedEl.style.transform = `translateY(${offset}px) scale(1.02)`
+          draggedEl.style.transform = `translateY(${offset}px) translateX(${currentOffsetXRef.current}px) scale(1.02)`
         }
       }
     }
