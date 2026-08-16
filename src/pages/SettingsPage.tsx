@@ -45,6 +45,10 @@ const DARK_BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey;
   { value: '#2a1720', labelKey: 'bg.pink', swatch: '#2a1720' },
   { value: '#1e1a2e', labelKey: 'bg.purple', swatch: '#1e1a2e' },
   { value: '#2a2712', labelKey: 'bg.yellow', swatch: '#2a2712' },
+  // Negro neutro (sin ningún tinte de color), algo más claro que el negro
+  // puro para que no se coma los bordes/sombras — pensado para combinar
+  // con el acento negro de abajo.
+  { value: '#1c1c1e', labelKey: 'bg.black', swatch: '#1c1c1e' },
 ]
 
 // Todas las opciones de fondo van juntas en una sola fila (claritas y
@@ -74,7 +78,12 @@ const LIGHT_ACCENT_COLORS =
   amberIndex === -1
     ? [...PALETTE, YELLOW_ACCENT]
     : [...PALETTE.slice(0, amberIndex + 1), YELLOW_ACCENT, ...PALETTE.slice(amberIndex + 1)]
-const ALL_ACCENT_COLORS = [...LIGHT_ACCENT_COLORS, ...DARK_ACCENT_PALETTE]
+// Negro puro, al final del todo — combinado con "Negro" en color de fondo
+// da un tema en escala de grises. shadesFromAccent() (ver theme.ts) trata
+// un acento sin saturación como gris puro en todos sus tonos, así que
+// funciona bien sin ningún caso especial.
+const BLACK_ACCENT = '#000000'
+const ALL_ACCENT_COLORS = [...LIGHT_ACCENT_COLORS, ...DARK_ACCENT_PALETTE, BLACK_ACCENT]
 
 // Ajustes — antes era un modal (ProfileModal) al que se accedía desde el
 // avatar en "Mis listas"; ahora es una pantalla propia, con ruta y
@@ -281,7 +290,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen pb-28 bg-[var(--color-surface-alt)]">
+    <div
+      className="min-h-screen pb-28 bg-[var(--color-surface-alt)]"
+      style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+    >
       <header className="sticky top-0 z-10 bg-[var(--color-surface)] px-4 py-4 shadow-sm">
         <h1 className="mx-auto max-w-2xl text-lg font-semibold text-slate-900 dark:text-slate-100">
           {t('profile.title')}

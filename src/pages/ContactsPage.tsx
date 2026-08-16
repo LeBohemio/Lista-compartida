@@ -9,7 +9,7 @@ import type { Contact, ContactRequest } from '../lib/types'
 import type { ContactRequestsData } from '../hooks/useContactRequests'
 
 export default function ContactsPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { t } = useLanguage()
   const { contacts, incoming, outgoing, loading, error: loadError, refetch } =
     useOutletContext<ContactRequestsData>()
@@ -119,7 +119,10 @@ export default function ContactsPage() {
   const hasPending = incoming.length > 0 || outgoing.length > 0
 
   return (
-    <div className="min-h-screen pb-28 bg-[var(--color-surface-alt)]">
+    <div
+      className="min-h-screen pb-28 bg-[var(--color-surface-alt)]"
+      style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+    >
       <header className="sticky top-0 z-10 bg-[var(--color-surface)] px-4 py-4 shadow-sm">
         <h1 className="mx-auto max-w-2xl text-lg font-semibold text-slate-900 dark:text-slate-100">
           {t('nav.tabContacts')}

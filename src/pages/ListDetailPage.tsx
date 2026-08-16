@@ -220,7 +220,17 @@ export default function ListDetailPage() {
           {isOwner && (
             <button
               onClick={() => setShowInvite(true)}
-              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
+              // En claro es un botón "outline" (texto de color sobre fondo
+              // blanco/claro real, así que siempre hay contraste de sobra).
+              // En oscuro NO usamos texto de color sobre el fondo de la
+              // cabecera (--color-surface, calculado a partir del acento):
+              // con acentos de tono claro/cálido (amarillo, por ejemplo)
+              // ambos acaban pareciéndose y el botón se vuelve invisible.
+              // En su lugar, en oscuro pintamos el botón relleno (blanco
+              // sobre brand-600), el mismo patrón que ya usan el resto de
+              // botones principales de la app — funciona bien pase lo que
+              // pase con el acento elegido.
+              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
             >
               {t('list.inviteButton')}
             </button>
