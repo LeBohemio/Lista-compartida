@@ -101,7 +101,7 @@ export type ContactRequest = {
   id: string
   from_user_id: string
   to_user_id: string
-  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
   created_at: string
   responded_at: string | null
   from_profile?: Profile
