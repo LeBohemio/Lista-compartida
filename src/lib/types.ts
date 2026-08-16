@@ -90,30 +90,8 @@ export type Contact = {
   user_id: string
   contact_user_id: string
   created_at: string
-  // Fijar arriba, silenciar avisos del chat directo, y hasta cuándo has
-  // leído esa conversación — todo por tu propia fila (no compartido con la
-  // otra persona). Ver migration_v18.sql.
-  pinned: boolean
-  muted: boolean
-  last_read_message_at: string | null
   // joined
   contact?: Profile
-}
-
-export type ContactRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
-
-// Petición de contacto directa (sin pasar por invitar a una lista) — ver
-// migration_v17.sql. from_user_id la manda, to_user_id la recibe.
-export type ContactRequest = {
-  id: string
-  from_user_id: string
-  to_user_id: string
-  status: ContactRequestStatus
-  created_at: string
-  responded_at: string | null
-  // joined
-  from_profile?: Profile
-  to_profile?: Profile
 }
 
 export type ListWithMembership = List & {
@@ -208,14 +186,10 @@ export type ItemSuggestion = {
   updated_at: string
 }
 
-// Un mensaje es de una lista (list_id lleno, to_user_id vacío) O de un chat
-// directo entre dos personas (list_id vacío, to_user_id lleno) — nunca las
-// dos cosas a la vez. Ver migration_v18.sql.
 export type Message = {
   id: string
-  list_id: string | null
+  list_id: string
   sender_id: string | null
-  to_user_id: string | null
   content: string | null
   image_path: string | null
   created_at: string

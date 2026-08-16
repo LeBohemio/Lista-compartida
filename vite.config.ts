@@ -29,7 +29,7 @@ export default defineConfig({
         name: 'Listas en Común',
         short_name: 'En Común',
         description: 'Listas de notas y gastos compartidos entre varias personas',
-        theme_color: '#4f46e5',
+        theme_color: '#000000',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
