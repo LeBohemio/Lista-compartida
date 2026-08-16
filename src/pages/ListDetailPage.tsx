@@ -352,7 +352,12 @@ export default function ListDetailPage() {
       </main>
 
       {showInvite && (
-        <InviteMemberModal listId={list.id} onClose={() => setShowInvite(false)} onInvited={() => refetch()} />
+        <InviteMemberModal
+          listId={list.id}
+          existingMemberIds={members.map((m) => m.user_id)}
+          onClose={() => setShowInvite(false)}
+          onInvited={() => refetch()}
+        />
       )}
 
       {showRename && (

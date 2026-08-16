@@ -71,8 +71,27 @@ export type ListMember = {
   // Silenciar el chat de ESTA lista (no afecta a otras listas ni a otros
   // tipos de aviso). Ver migration_v15.sql.
   muted: boolean
+  // Quién mandó la invitación — hace falta para saber con quién os hacéis
+  // contactos automáticamente en cuanto se acepta. null en invitaciones
+  // antiguas (de antes de esto) o en la fila del propio dueño al crear la
+  // lista. Ver migration_v16.sql.
+  invited_by: string | null
   // joined
   profile?: Profile
+}
+
+// Contactos: gente con la que ya has compartido alguna lista (se hacen
+// contactos automáticamente en cuanto aceptan tu invitación) — se pueden
+// añadir directamente a otras listas sin volver a escribir su email. Cada
+// fila es de una sola dirección (ver migration_v16.sql); borrar un contacto
+// es mutuo y pasa siempre por la función remove_contact, nunca por un
+// delete directo sobre esta tabla.
+export type Contact = {
+  user_id: string
+  contact_user_id: string
+  created_at: string
+  // joined
+  contact?: Profile
 }
 
 export type ListWithMembership = List & {

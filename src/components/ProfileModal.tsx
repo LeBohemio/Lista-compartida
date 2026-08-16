@@ -6,6 +6,7 @@ import { PALETTE } from '../lib/colors'
 import Avatar from './Avatar'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import MyExpensesModal from './MyExpensesModal'
+import ContactsModal from './ContactsModal'
 import AvatarCropper from './AvatarCropper'
 import AvatarPicker from './AvatarPicker'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
@@ -84,6 +85,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [showMyExpenses, setShowMyExpenses] = useState(false)
+  const [showContacts, setShowContacts] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
@@ -321,12 +323,20 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
         {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
 
-        <button
-          onClick={() => setShowMyExpenses(true)}
-          className="mb-6 w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-        >
-          {t('profile.myExpenses')}
-        </button>
+        <div className="mb-6 space-y-2">
+          <button
+            onClick={() => setShowMyExpenses(true)}
+            className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            {t('profile.myExpenses')}
+          </button>
+          <button
+            onClick={() => setShowContacts(true)}
+            className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            {t('profile.contacts')}
+          </button>
+        </div>
 
         <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.appearance')}</p>
@@ -580,6 +590,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
       {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} />}
       {showMyExpenses && <MyExpensesModal onClose={() => setShowMyExpenses(false)} />}
+      {showContacts && <ContactsModal onClose={() => setShowContacts(false)} />}
       {cropFile && (
         <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />
       )}
