@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ContactCardSheet from '../components/ContactCardSheet'
 import { useLanguage } from '../lib/i18n'
-import type { Contact, ContactRequest } from '../lib/types'
+import type { Contact, ContactRequest, Profile } from '../lib/types'
 import type { ContactRequestsData } from '../hooks/useContactRequests'
 
 export default function ContactsPage() {
@@ -15,6 +16,7 @@ export default function ContactsPage() {
     useOutletContext<ContactRequestsData>()
 
   const [search, setSearch] = useState('')
+  const [cardTarget, setCardTarget] = useState<Profile | null>(null)
   const [removing, setRemoving] = useState<Contact | null>(null)
   const [removingBusy, setRemovingBusy] = useState(false)
   const [respondingId, setRespondingId] = useState<string | null>(null)
@@ -28,7 +30,10 @@ export default function ContactsPage() {
   const visibleContacts = contacts
     .filter((c) => c.contact)
     .filter((c) => !normalizedSearch || c.contact!.username.toLowerCase().includes(normalizedSearch))
-    .sort((a, b) => a.contact!.username.localeCompare(b.contact!.username))
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+      return a.contact!.username.localeCompare(b.contact!.username)
+    })
 
   const confirmRemove = async () => {
     if (!removing) return
@@ -274,25 +279,40 @@ export default function ContactsPage() {
             ) : (
               <ul className="divide-y divide-[var(--color-surface-border)]">
                 {visibleContacts.map((c) => (
-                  <li key={c.contact_user_id} className="flex items-center gap-3 px-4 py-2.5">
-                    <Avatar
-                      username={c.contact!.username}
-                      avatarUrl={c.contact!.avatar_url}
-                      size={36}
-                      enlargeOnClick={false}
-                    />
-                    <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                      {c.contact!.username}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setRemoving(c)}
-                      aria-label={t('contacts.remove')}
-                      title={t('contacts.remove')}
-                      className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                  <li key={c.contact_user_id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setCardTarget(c.contact!)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setCardTarget(c.contact!)
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-white/5"
                     >
-                      🗑
-                    </button>
+                      <Avatar
+                        username={c.contact!.username}
+                        avatarUrl={c.contact!.avatar_url}
+                        size={36}
+                        enlargeOnClick={false}
+                      />
+                      <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {c.pinned && <span className="mr-1">📌</span>}
+                        {c.contact!.username}
+                        {c.muted && <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setRemoving(c)
+                        }}
+                        aria-label={t('contacts.remove')}
+                        title={t('contacts.remove')}
+                        className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -310,6 +330,10 @@ export default function ContactsPage() {
           onCancel={() => setRemoving(null)}
           onConfirm={confirmRemove}
         />
+      )}
+
+      {cardTarget && (
+        <ContactCardSheet targetProfile={cardTarget} onClose={() => setCardTarget(null)} onChanged={refetch} />
       )}
     </div>
   )

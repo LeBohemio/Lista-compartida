@@ -13,12 +13,33 @@ import type { Message } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
 
+// A quién pertenece esta conversación: el chat de una lista (como hasta
+// ahora) o el chat directo con un contacto (ver migration_v18.sql). El
+// resto del componente deriva de aquí el payload de inserción y la
+// convención de ruta de las fotos, sin duplicar la lógica de la UI.
+export type ChatTarget = { kind: 'list'; listId: string } | { kind: 'direct'; peerId: string }
+
+function imagePathPrefix(target: ChatTarget, myUserId: string) {
+  if (target.kind === 'list') return target.listId
+  // Convención "dm/{id_menor}_{id_mayor}" — ordenados para que ambas
+  // personas calculen siempre la misma ruta. Debe coincidir exactamente
+  // con la que espera public.is_chat_image_participant en migration_v18.sql.
+  const pair = [myUserId, target.peerId].sort()
+  return `dm/${pair[0]}_${pair[1]}`
+}
+
+function insertPayload(target: ChatTarget) {
+  return target.kind === 'list'
+    ? { list_id: target.listId, to_user_id: null }
+    : { list_id: null, to_user_id: target.peerId }
+}
+
 export default function ChatPanel({
-  listId,
+  target,
   messages,
   readOnly,
 }: {
-  listId: string
+  target: ChatTarget
   messages: Message[]
   readOnly?: boolean
 }) {
@@ -79,7 +100,7 @@ export default function ChatPanel({
     setError(null)
     const { error: err } = await supabase
       .from('messages')
-      .insert({ list_id: listId, sender_id: user.id, content: text.trim() })
+      .insert({ ...insertPayload(target), sender_id: user.id, content: text.trim() })
     setSending(false)
     if (err) {
       setError(err.message)
@@ -95,7 +116,7 @@ export default function ChatPanel({
     setSending(true)
 
     const ext = file.name.split('.').pop() || 'jpg'
-    const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const path = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const { error: uploadErr } = await supabase.storage
       .from('chat-images')
       .upload(path, file, { contentType: file.type || 'image/jpeg' })
@@ -109,7 +130,7 @@ export default function ChatPanel({
 
     const { error: insertErr } = await supabase
       .from('messages')
-      .insert({ list_id: listId, sender_id: user.id, image_path: path, content: text.trim() || null })
+      .insert({ ...insertPayload(target), sender_id: user.id, image_path: path, content: text.trim() || null })
 
     setSending(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -253,7 +274,7 @@ export default function ChatPanel({
       {forwardTarget && (
         <ForwardMessageModal
           message={forwardTarget}
-          currentListId={listId}
+          currentTarget={target}
           onClose={() => setForwardTarget(null)}
           onForwarded={() => setForwardTarget(null)}
         />

@@ -12,6 +12,8 @@ import ChatPanel from '../components/ChatPanel'
 import RenameListModal from '../components/RenameListModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
+import ContactCardSheet from '../components/ContactCardSheet'
+import type { Profile } from '../lib/types'
 
 type Tab = 'notas' | 'gastos' | 'chat'
 
@@ -47,6 +49,7 @@ export default function ListDetailPage() {
   const [showRename, setShowRename] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState(false)
+  const [cardTarget, setCardTarget] = useState<Profile | null>(null)
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -240,14 +243,28 @@ export default function ListDetailPage() {
         {showMembers && (
           <div className="mx-auto mt-3 max-w-2xl rounded-lg p-3 text-sm bg-[var(--color-surface)]">
             <ul className="space-y-2">
-              {members.map((m) => (
+              {members.map((m) => {
+                const isSelf = m.user_id === profile?.id
+                return (
                 <li key={m.user_id} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                    <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
-                    {m.profile?.username ?? m.user_id}
-                    {m.user_id === profile?.id ? ` ${t('expenses.you')}` : ''}
-                    {m.role === 'owner' ? t('list.ownerSuffix') : ''}
-                  </span>
+                  {isSelf || !m.profile ? (
+                    <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
+                      {m.profile?.username ?? m.user_id}
+                      {isSelf ? ` ${t('expenses.you')}` : ''}
+                      {m.role === 'owner' ? t('list.ownerSuffix') : ''}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCardTarget(m.profile!)}
+                      className="flex items-center gap-2 rounded text-left text-slate-700 hover:text-brand-600 dark:text-slate-200 dark:hover:text-brand-400"
+                    >
+                      <Avatar username={m.profile.username} avatarUrl={m.profile.avatar_url} size={24} enlargeOnClick={false} />
+                      {m.profile.username}
+                      {m.role === 'owner' ? t('list.ownerSuffix') : ''}
+                    </button>
+                  )}
                   <span className="flex items-center gap-2">
                     <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {m.status === 'accepted' ? t('member.statusActive') : t('member.statusPending')}
@@ -266,7 +283,8 @@ export default function ListDetailPage() {
                     )}
                   </span>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           </div>
         )}
@@ -356,7 +374,7 @@ export default function ListDetailPage() {
                 </button>
               </div>
             )}
-            <ChatPanel listId={list.id} messages={messages} readOnly={isCompleted} />
+            <ChatPanel target={{ kind: 'list', listId: list.id }} messages={messages} readOnly={isCompleted} />
           </>
         )}
       </main>
@@ -404,6 +422,8 @@ export default function ListDetailPage() {
           onConfirm={removeMember}
         />
       )}
+
+      {cardTarget && <ContactCardSheet targetProfile={cardTarget} onClose={() => setCardTarget(null)} />}
     </div>
   )
 }

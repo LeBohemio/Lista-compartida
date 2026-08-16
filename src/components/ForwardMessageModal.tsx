@@ -3,43 +3,54 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { colorForList } from '../lib/colors'
 import { useLanguage } from '../lib/i18n'
-import type { List, Message } from '../lib/types'
+import Avatar from './Avatar'
+import type { ChatTarget } from './ChatPanel'
+import type { Contact, List, Message } from '../lib/types'
+
+// Misma convención de rutas que ChatPanel.tsx (deben coincidir con
+// public.is_chat_image_participant en migration_v18.sql).
+function imagePathPrefix(target: ChatTarget, myUserId: string) {
+  if (target.kind === 'list') return target.listId
+  const pair = [myUserId, target.peerId].sort()
+  return `dm/${pair[0]}_${pair[1]}`
+}
 
 export default function ForwardMessageModal({
   message,
-  currentListId,
+  currentTarget,
   onClose,
   onForwarded,
 }: {
   message: Message
-  currentListId: string
+  currentTarget: ChatTarget
   onClose: () => void
   onForwarded: () => void
 }) {
   const { user } = useAuth()
   const { t } = useLanguage()
   const [lists, setLists] = useState<List[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('list_members')
-      .select('list:lists(*)')
-      .eq('user_id', user.id)
-      .eq('status', 'accepted')
-      .then(({ data }) => {
-        const all = ((data as unknown as { list: List }[]) ?? []).map((r) => r.list).filter(Boolean)
-        setLists(all.filter((l) => l.id !== currentListId))
-        setLoading(false)
-      })
-  }, [user, currentListId])
+    Promise.all([
+      supabase.from('list_members').select('list:lists(*)').eq('user_id', user.id).eq('status', 'accepted'),
+      supabase.from('contacts').select('*, contact:profiles!contacts_contact_user_id_fkey(*)').eq('user_id', user.id),
+    ]).then(([listsRes, contactsRes]) => {
+      const allLists = ((listsRes.data as unknown as { list: List }[]) ?? []).map((r) => r.list).filter(Boolean)
+      setLists(allLists.filter((l) => !(currentTarget.kind === 'list' && l.id === currentTarget.listId)))
+      const allContacts = ((contactsRes.data as unknown as Contact[]) ?? []).filter((c) => c.contact)
+      setContacts(allContacts.filter((c) => !(currentTarget.kind === 'direct' && c.contact_user_id === currentTarget.peerId)))
+      setLoading(false)
+    })
+  }, [user, currentTarget])
 
-  const forwardTo = async (targetListId: string) => {
+  const forwardTo = async (target: ChatTarget, key: string) => {
     if (!user) return
-    setSendingTo(targetListId)
+    setSendingTo(key)
     setError(null)
 
     let newImagePath: string | null = null
@@ -53,7 +64,7 @@ export default function ForwardMessageModal({
         return
       }
       const ext = message.image_path.split('.').pop() || 'jpg'
-      newImagePath = `${targetListId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      newImagePath = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('chat-images')
         .upload(newImagePath, blob, { contentType: blob.type || 'image/jpeg' })
@@ -65,7 +76,8 @@ export default function ForwardMessageModal({
     }
 
     const { error: insertErr } = await supabase.from('messages').insert({
-      list_id: targetListId,
+      list_id: target.kind === 'list' ? target.listId : null,
+      to_user_id: target.kind === 'direct' ? target.peerId : null,
       sender_id: user.id,
       content: message.content,
       image_path: newImagePath,
@@ -91,22 +103,49 @@ export default function ForwardMessageModal({
 
         {loading ? (
           <p className="py-6 text-center text-sm text-slate-400">{t('forward.loadingLists')}</p>
-        ) : lists.length === 0 ? (
+        ) : lists.length === 0 && contacts.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-400">{t('forward.noOtherLists')}</p>
         ) : (
-          <div className="space-y-2">
-            {lists.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => forwardTo(l.id)}
-                disabled={sendingTo !== null}
-                className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:hover:bg-slate-700"
-              >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
-                <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
-                {sendingTo === l.id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
-              </button>
-            ))}
+          <div className="space-y-4">
+            {lists.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('nav.tabLists')}</p>
+                <div className="space-y-2">
+                  {lists.map((l) => (
+                    <button
+                      key={l.id}
+                      onClick={() => forwardTo({ kind: 'list', listId: l.id }, l.id)}
+                      disabled={sendingTo !== null}
+                      className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:hover:bg-slate-700"
+                    >
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
+                      <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
+                      {sendingTo === l.id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {contacts.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('nav.tabContacts')}</p>
+                <div className="space-y-2">
+                  {contacts.map((c) => (
+                    <button
+                      key={c.contact_user_id}
+                      onClick={() => forwardTo({ kind: 'direct', peerId: c.contact_user_id }, c.contact_user_id)}
+                      disabled={sendingTo !== null}
+                      className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:hover:bg-slate-700"
+                    >
+                      <Avatar username={c.contact!.username} avatarUrl={c.contact!.avatar_url} size={24} enlargeOnClick={false} />
+                      <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{c.contact!.username}</span>
+                      {sendingTo === c.contact_user_id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
