@@ -42,13 +42,23 @@ export async function enablePush(userId: string) {
   if (permission !== 'granted') throw new Error('denied')
 
   const registration = await navigator.serviceWorker.ready
-  let subscription = await registration.pushManager.getSubscription()
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    })
+  const oldSubscription = await registration.pushManager.getSubscription()
+
+  // Renovamos la suscripción al activar las notificaciones para asegurarnos
+  // de que usa la VAPID_PUBLIC_KEY actual.
+  if (oldSubscription) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', oldSubscription.endpoint)
+
+    await oldSubscription.unsubscribe()
   }
+
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  })
 
   const json = subscription.toJSON()
   const endpoint = json.endpoint
