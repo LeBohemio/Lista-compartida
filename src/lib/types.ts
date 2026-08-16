@@ -90,6 +90,9 @@ export type Contact = {
   user_id: string
   contact_user_id: string
   created_at: string
+  pinned: boolean
+  muted: boolean
+  last_read_message_at: string | null
   // joined
   contact?: Profile
 }
