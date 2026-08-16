@@ -3,12 +3,11 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { PALETTE } from '../lib/colors'
-import Avatar from './Avatar'
-import DeleteAccountDialog from './DeleteAccountDialog'
-import MyExpensesModal from './MyExpensesModal'
-import ContactsModal from './ContactsModal'
-import AvatarCropper from './AvatarCropper'
-import AvatarPicker from './AvatarPicker'
+import Avatar from '../components/Avatar'
+import DeleteAccountDialog from '../components/DeleteAccountDialog'
+import MyExpensesModal from '../components/MyExpensesModal'
+import AvatarCropper from '../components/AvatarCropper'
+import AvatarPicker from '../components/AvatarPicker'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
 import { disablePush, enablePush, isPushSupported } from '../lib/push'
@@ -77,7 +76,12 @@ const LIGHT_ACCENT_COLORS =
     : [...PALETTE.slice(0, amberIndex + 1), YELLOW_ACCENT, ...PALETTE.slice(amberIndex + 1)]
 const ALL_ACCENT_COLORS = [...LIGHT_ACCENT_COLORS, ...DARK_ACCENT_PALETTE]
 
-export default function ProfileModal({ onClose }: { onClose: () => void }) {
+// Ajustes — antes era un modal (ProfileModal) al que se accedía desde el
+// avatar en "Mis listas"; ahora es una pantalla propia, con ruta y
+// navegación real, dentro de la pestaña "Ajustes" de la barra inferior
+// (ver MainLayout.tsx / App.tsx). El botón de "Contactos" que vivía aquí
+// dentro se ha quitado: Contactos es ahora su propia pestaña.
+export default function SettingsPage() {
   const { user, profile, refreshProfile, signOut } = useAuth()
   const { language, setLanguage, t } = useLanguage()
   const [uploading, setUploading] = useState(false)
@@ -85,7 +89,6 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [showMyExpenses, setShowMyExpenses] = useState(false)
-  const [showContacts, setShowContacts] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
@@ -278,21 +281,14 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div
-        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          aria-label={t('common.close')}
-          title={t('common.close')}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-        >
-          ✕
-        </button>
-        <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('profile.title')}</h2>
+    <div className="min-h-screen pb-28 bg-[var(--color-surface-alt)]">
+      <header className="sticky top-0 z-10 bg-[var(--color-surface)] px-4 py-4 shadow-sm">
+        <h1 className="mx-auto max-w-2xl text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {t('profile.title')}
+        </h1>
+      </header>
 
+      <main className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-5 flex flex-col items-center gap-3">
           <Avatar
             username={profile.username}
@@ -323,22 +319,16 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
 
         {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
 
-        <div className="mb-6 space-y-2">
+        <div className="mb-6">
           <button
             onClick={() => setShowMyExpenses(true)}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             {t('profile.myExpenses')}
           </button>
-          <button
-            onClick={() => setShowContacts(true)}
-            className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            {t('profile.contacts')}
-          </button>
         </div>
 
-        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.appearance')}</p>
           <div className="flex gap-2">
             {THEME_OPTIONS.map((opt) => (
@@ -431,7 +421,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.notifications')}</p>
 
           {!isPushSupported() ? (
@@ -495,7 +485,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeUsername')}</p>
           <form onSubmit={handleChangeUsername} className="space-y-2">
             <input
@@ -516,7 +506,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           </form>
         </div>
 
-        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changePassword')}</p>
           <form onSubmit={handleChangePassword} className="space-y-2">
             <input
@@ -544,7 +534,7 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           </form>
         </div>
 
-        <div className="mb-6 space-y-3 border-t border-slate-100 pt-5 border-[var(--color-surface-border)]">
+        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeEmail')}</p>
           <form onSubmit={handleChangeEmail} className="space-y-2">
             <input
@@ -565,20 +555,12 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
           </form>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            {t('common.close')}
-          </button>
-          <button
-            onClick={() => signOut()}
-            className="flex-1 rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
-          >
-            {t('profile.signOut')}
-          </button>
-        </div>
+        <button
+          onClick={() => signOut()}
+          className="w-full rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+        >
+          {t('profile.signOut')}
+        </button>
 
         <button
           onClick={() => setShowDelete(true)}
@@ -586,11 +568,10 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
         >
           {t('profile.deleteAccount')}
         </button>
-      </div>
+      </main>
 
       {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} />}
       {showMyExpenses && <MyExpensesModal onClose={() => setShowMyExpenses(false)} />}
-      {showContacts && <ContactsModal onClose={() => setShowContacts(false)} />}
       {cropFile && (
         <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />
       )}

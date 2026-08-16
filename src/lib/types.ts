@@ -94,6 +94,22 @@ export type Contact = {
   contact?: Profile
 }
 
+export type ContactRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
+
+// Petición de contacto directa (sin pasar por invitar a una lista) — ver
+// migration_v17.sql. from_user_id la manda, to_user_id la recibe.
+export type ContactRequest = {
+  id: string
+  from_user_id: string
+  to_user_id: string
+  status: ContactRequestStatus
+  created_at: string
+  responded_at: string | null
+  // joined
+  from_profile?: Profile
+  to_profile?: Profile
+}
+
 export type ListWithMembership = List & {
   membership: ListMember
 }

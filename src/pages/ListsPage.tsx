@@ -10,7 +10,6 @@ import CreateListModal from '../components/CreateListModal'
 import GreetingSummary from '../components/GreetingSummary'
 import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
-import ProfileModal from '../components/ProfileModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
 import { colorForList } from '../lib/colors'
@@ -23,7 +22,6 @@ export default function ListsPage() {
   const { lists, invitations, itemStats, memberAvatars, loading, error, refetch, togglePin, reorderLists } =
     useLists()
   const [showCreate, setShowCreate] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
@@ -183,7 +181,7 @@ export default function ListsPage() {
 
   return (
     <div
-      className="min-h-screen pb-24 bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-28 bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       <header className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
@@ -204,7 +202,7 @@ export default function ListsPage() {
               {statusLine && <p className="truncate text-xs text-white/80">{statusLine}</p>}
             </div>
           </button>
-          <button onClick={() => setShowProfile(true)} className="relative rounded-full" aria-label={t('profile.title')}>
+          <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
             <Avatar
               username={profile?.username ?? '?'}
               avatarUrl={profile?.avatar_url}
@@ -291,7 +289,16 @@ export default function ListsPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+            // overflow-visible mientras se arrastra una lista, igual que en
+            // la tarjeta de notas (ver NotepadCard en ItemsPanel.tsx) — si
+            // no, en cuanto la lista se arrastraba fuera de este marco se
+            // volvía invisible de golpe, dando la sensación de que el
+            // arrastre se quedaba "pillado" ahí.
+            <div
+              className={`rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)] ${
+                reorder.draggingId ? 'overflow-visible' : 'overflow-hidden'
+              }`}
+            >
               {reorder.displayItems.map((l) => (
                 <ListRow
                   key={l.id}
@@ -351,7 +358,7 @@ export default function ListsPage() {
 
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
+        className="fixed bottom-24 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
         aria-label={t('lists.createFab')}
       >
         +
@@ -366,8 +373,6 @@ export default function ListsPage() {
           }}
         />
       )}
-
-      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
 
       {showSummary && (
         <GreetingSummary
