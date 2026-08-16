@@ -346,7 +346,7 @@ export default function ListDetailPage() {
                 </button>
               </div>
             )}
-            <ChatPanel listId={list.id} messages={messages} readOnly={isCompleted} />
+            <ChatPanel target={{ kind: 'list', listId: list.id }} messages={messages} readOnly={isCompleted} />
           </>
         )}
       </main>
