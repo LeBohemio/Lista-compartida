@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import ListsPage from './pages/ListsPage'
 import ListDetailPage from './pages/ListDetailPage'
 import ContactsPage from './pages/ContactsPage'
+import DirectChatPage from './pages/DirectChatPage'
 import SettingsPage from './pages/SettingsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import MainLayout from './components/MainLayout'
@@ -67,6 +68,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ListDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contacts/:userId/chat"
+        element={
+          <ProtectedRoute>
+            <DirectChatPage />
           </ProtectedRoute>
         }
       />

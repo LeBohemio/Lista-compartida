@@ -86,9 +86,37 @@ async function notifyUser(userId: string, field: NotifyField, payload: PushPaylo
 }
 
 async function handleMessages(record: Record<string, unknown>) {
-  const listId = record.list_id as string
+  const listId = record.list_id as string | null
+  const toUserId = record.to_user_id as string | null
   const senderId = record.sender_id as string | null
   if (!senderId) return
+
+  // Mensaje directo (sin lista de por medio) — ver migration_v18.sql. Un
+  // solo destinatario, así que no hace falta consultar list_members: se
+  // mira directamente si el destinatario tiene silenciada esa conversación
+  // en su propia fila de "contacts".
+  if (!listId && toUserId) {
+    const [{ data: sender }, { data: myContactRow }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('username').eq('id', senderId).maybeSingle(),
+      supabaseAdmin
+        .from('contacts')
+        .select('muted')
+        .eq('user_id', toUserId)
+        .eq('contact_user_id', senderId)
+        .maybeSingle(),
+    ])
+    if (!sender || myContactRow?.muted) return
+
+    const bodyText = (record.content as string | null) || (record.image_path ? '📷 Foto' : '')
+    await notifyUser(toUserId, 'notify_chat', {
+      title: sender.username,
+      body: bodyText,
+      url: `/contacts/${senderId}/chat`,
+      tag: `dm-${senderId}`,
+    })
+    return
+  }
+  if (!listId) return
 
   const [{ data: list }, { data: sender }, { data: members }] = await Promise.all([
     supabaseAdmin.from('lists').select('name').eq('id', listId).maybeSingle(),
