@@ -466,26 +466,45 @@ function ListRow({
     <div
       ref={onRowRef}
       onClick={inReorder ? undefined : onOpen}
-      onPointerDown={inReorder ? onDragPointerDown : undefined}
-      onPointerMove={inReorder ? onDragPointerMove : undefined}
-      onPointerUp={inReorder ? onDragPointerUp : undefined}
-      role="button"
-      tabIndex={0}
-      aria-label={inReorder ? t('lists.dragHandle') : undefined}
+      role={inReorder ? undefined : 'button'}
+      tabIndex={inReorder ? undefined : 0}
       className={`w-full p-4 text-left transition ${inReorder ? 'select-none' : ''} ${
         dragging
-          ? 'relative touch-none rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
+          ? 'relative rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
           : 'hover:bg-slate-50 dark:hover:bg-white/5'
       }`}
-      style={inReorder ? { cursor: 'grab' } : undefined}
       {...(inReorder ? {} : longPress)}
     >
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
           {inReorder && (
-            <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true">
+            // El asa es lo único que arrastra — el resto de la fila queda
+            // libre (igual que en las notas, ver ItemRow en ItemsPanel.tsx).
+            // touch-none va puesto aquí de forma ESTÁTICA (no depende de
+            // "dragging") porque tiene que estar así desde antes de tocar
+            // la pantalla para que el navegador lo respete desde el primer
+            // instante — si se aplica solo cuando ya se está arrastrando,
+            // el gesto de scroll nativo del móvil puede llegar a
+            // adelantarse y quedarse peleando con el arrastre, dejando la
+            // fila "pillada" si sueltas el dedo de forma rara.
+            <button
+              type="button"
+              onPointerDown={onDragPointerDown}
+              onPointerMove={onDragPointerMove}
+              onPointerUp={onDragPointerUp}
+              // Por si el navegador cancela el gesto por su cuenta (raro con
+              // touch-action:none puesto bien, pero puede pasar por cosas
+              // ajenas a nosotros: una llamada entrante, un gesto del
+              // sistema...) — sin esto, la fila se quedaba "pillada" en
+              // arrastre para siempre porque nunca llegaba un pointerup. Se
+              // trata igual que soltar el dedo normal.
+              onPointerCancel={onDragPointerUp}
+              aria-label={t('lists.dragHandle')}
+              className="-m-2 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+              style={{ cursor: 'grab' }}
+            >
               ⠿
-            </span>
+            </button>
           )}
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-[var(--color-surface)]"

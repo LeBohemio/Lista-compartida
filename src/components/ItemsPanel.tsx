@@ -707,6 +707,12 @@ function ItemRow({
               onPointerDown={onDragPointerDown}
               onPointerMove={onDragPointerMove}
               onPointerUp={onDragPointerUp}
+              // Por si el navegador cancela el gesto por su cuenta (raro con
+              // touch-action:none puesto bien, pero puede pasar por cosas
+              // ajenas a nosotros) — sin esto la nota se podía quedar
+              // "pillada" en arrastre para siempre porque nunca llegaba un
+              // pointerup. Se trata igual que soltar el dedo normal.
+              onPointerCancel={onDragPointerUp}
               aria-label={t('lists.dragHandle')}
               className="-m-2 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
               style={{ cursor: 'grab' }}
