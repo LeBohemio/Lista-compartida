@@ -24,7 +24,6 @@ export default function ListsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState<{ listId: string; name: string } | null>(null)
@@ -282,29 +281,14 @@ export default function ListsPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {t('lists.title')}
             </h2>
-            {showSearch ? (
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onBlur={() => {
-                  if (!searchQuery.trim()) setShowSearch(false)
-                }}
-                placeholder={t('lists.searchPlaceholder')}
-                className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowSearch(true)}
-                aria-label={t('common.search')}
-                title={t('common.search')}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-              >
-                🔍
-              </button>
-            )}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('lists.searchPlaceholder')}
+              aria-label={t('common.search')}
+              className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+            />
           </div>
 
           {!normalizedQuery && reorderMode && (
