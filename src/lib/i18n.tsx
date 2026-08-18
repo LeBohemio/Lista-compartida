@@ -292,6 +292,9 @@ const translations = {
     'settle.reject': 'Rechazar',
     'settle.withdraw': 'Retirar',
     'list.editTitle': 'Editar lista',
+    'list.photo': 'Foto de la lista',
+    'list.changePhoto': 'Cambiar foto',
+    'list.removePhoto': 'Quitar foto',
     'list.name': 'Nombre',
     'list.nameRequired': 'Ponle un nombre a la lista.',
     'account.deleteWarning':
@@ -728,6 +731,9 @@ const translations = {
     'settle.reject': 'Reject',
     'settle.withdraw': 'Withdraw',
     'list.editTitle': 'Edit list',
+    'list.photo': 'List photo',
+    'list.changePhoto': 'Change photo',
+    'list.removePhoto': 'Remove photo',
     'list.name': 'Name',
     'list.nameRequired': 'Give the list a name.',
     'account.deleteWarning':

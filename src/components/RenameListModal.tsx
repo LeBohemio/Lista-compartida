@@ -1,14 +1,16 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { PALETTE } from '../lib/colors'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
+import AvatarCropper from './AvatarCropper'
 
 export default function RenameListModal({
   listId,
   currentName,
   currentColor,
   currentCurrency,
+  currentPhotoUrl,
   onClose,
   onSaved,
 }: {
@@ -16,6 +18,7 @@ export default function RenameListModal({
   currentName: string
   currentColor: string | null
   currentCurrency: CurrencyCode
+  currentPhotoUrl: string | null
   onClose: () => void
   onSaved: () => void
 }) {
@@ -23,8 +26,57 @@ export default function RenameListModal({
   const [name, setName] = useState(currentName)
   const [color, setColor] = useState<string | null>(currentColor)
   const [currency, setCurrency] = useState<CurrencyCode>(currentCurrency)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(currentPhotoUrl)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handlePhotoFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError(null)
+    setCropFile(file)
+  }
+
+  // La foto se sube y se guarda al momento (no espera al "Guardar" del
+  // resto del formulario) — así el picker de la app de fotos del móvil, que
+  // puede tardar, no bloquea el resto de cambios ya hechos.
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null)
+    setError(null)
+    setUploadingPhoto(true)
+
+    const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    const { error: uploadErr } = await supabase.storage.from('list-photos').upload(path, blob, { contentType: 'image/jpeg' })
+    if (uploadErr) {
+      setUploadingPhoto(false)
+      setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
+      return
+    }
+
+    const { data: publicData } = supabase.storage.from('list-photos').getPublicUrl(path)
+    const { error: updateErr } = await supabase.from('lists').update({ photo_url: publicData.publicUrl }).eq('id', listId)
+    setUploadingPhoto(false)
+    if (updateErr) {
+      setError(updateErr.message)
+      return
+    }
+    setPhotoUrl(publicData.publicUrl)
+  }
+
+  const removePhoto = async () => {
+    setError(null)
+    setUploadingPhoto(true)
+    const { error: updateErr } = await supabase.from('lists').update({ photo_url: null }).eq('id', listId)
+    setUploadingPhoto(false)
+    if (updateErr) {
+      setError(updateErr.message)
+      return
+    }
+    setPhotoUrl(null)
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -44,12 +96,47 @@ export default function RenameListModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    // Fragmento en vez de anidar el AvatarCropper dentro del fondo que
+    // cierra al hacer clic: si estuviera dentro, cualquier clic dentro del
+    // recorte (arrastrar la foto, tocar el deslizador, confirmar) burbujea
+    // hasta ese fondo y cerraría TODO este modal de golpe en vez de
+    // quedarse aquí para seguir editando el resto.
+    <>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+        <div
+          className="w-full max-w-md rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+          onClick={(e) => e.stopPropagation()}
+        >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('list.editTitle')}</h2>
+
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-alt)] ring-1 ring-[var(--color-surface-border)]">
+            {photoUrl ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <img src={photoUrl} alt={t('list.photo')} className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-2xl" style={{ color: color ?? undefined }}>
+                ●
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="cursor-pointer text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
+              {uploadingPhoto ? t('common.saving') : t('list.changePhoto')}
+              <input type="file" accept="image/*" onChange={handlePhotoFile} disabled={uploadingPhoto} className="hidden" />
+            </label>
+            {photoUrl && (
+              <button
+                type="button"
+                onClick={removePhoto}
+                disabled={uploadingPhoto}
+                className="text-left text-sm text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+              >
+                {t('list.removePhoto')}
+              </button>
+            )}
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -116,7 +203,10 @@ export default function RenameListModal({
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+
+      {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />}
+    </>
   )
 }

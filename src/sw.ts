@@ -31,12 +31,26 @@ declare global {
 // notificationclick) es un estándar real y todos los navegadores con
 // soporte de Web Push lo implementan, pero el lib.dom.d.ts que trae
 // TypeScript no lo incluye todavía — lo definimos a mano.
+//
+// El campo "reply" (para el botón "Responder" con caja de texto integrada,
+// tipo "type: 'text'") es más nuevo y solo lo soportan Chrome/Edge en
+// Android y escritorio — en un navegador que no lo entienda, esa acción se
+// muestra igualmente como botón normal (sin caja de texto) y, al tocarla,
+// event.reply llega vacío; el código de más abajo trata ese caso abriendo
+// la conversación en la app, igual que si se hubiera tocado el aviso.
 interface NotificationAction {
   action: string
   title: string
   icon?: string
+  type?: 'text'
+  placeholder?: string
 }
 type ExtendedNotificationOptions = NotificationOptions & { actions?: NotificationAction[] }
+declare global {
+  interface NotificationEvent {
+    reply?: string
+  }
+}
 
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
@@ -177,23 +191,28 @@ async function refreshStoredSession(session: StoredSession): Promise<StoredSessi
   }
 }
 
-// Marca como leída (columna last_read_message_at) la conversación de la
-// notificación en la que se ha tocado "Marcar como leído" — sin abrir
-// ninguna ventana de la app, con una llamada REST directa a Supabase usando
-// la sesión guardada. Si algo falla (no hay sesión, no se pudo renovar el
-// token, sin conexión...) simplemente no se marca nada: la persona siempre
-// puede marcarla como leída abriendo la app normalmente.
-async function markConversationRead(convType: 'list' | 'dm', convId: string) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+// Sesión válida para hacer una llamada ahora mismo — la carga de IndexedDB
+// y, si el token ya caducó (o está a punto), la renueva primero. Null si no
+// hay sesión guardada o si la renovación falla (por ejemplo, sin conexión).
+async function getValidSession(): Promise<StoredSession | null> {
   let session = await loadStoredSession()
-  if (!session) return
-
+  if (!session) return null
   const nowSeconds = Math.floor(Date.now() / 1000)
   if (session.expiresAt - 60 < nowSeconds) {
-    const refreshed = await refreshStoredSession(session)
-    if (!refreshed) return
-    session = refreshed
+    session = await refreshStoredSession(session)
   }
+  return session
+}
+
+// PATCH genérico sobre la fila que representa "mi vista de esta
+// conversación" — list_members (lista) o contacts (directo) — usada tanto
+// para "Marcar como leído" como para "Silenciar". Si algo falla (no hay
+// sesión, no se pudo renovar el token, sin conexión...) no se marca nada:
+// la persona siempre puede hacerlo a mano abriendo la app.
+async function patchConversation(convType: 'list' | 'dm', convId: string, body: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+  const session = await getValidSession()
+  if (!session) return
 
   const restUrl =
     convType === 'list'
@@ -208,10 +227,52 @@ async function markConversationRead(convType: 'list' | 'dm', convId: string) {
       Authorization: `Bearer ${session.accessToken}`,
       Prefer: 'return=minimal',
     },
-    body: JSON.stringify({ last_read_message_at: new Date().toISOString() }),
+    body: JSON.stringify(body),
   }).catch(() => {
-    // sin conexión u otro fallo de red: no pasa nada, se queda sin marcar.
+    // sin conexión u otro fallo de red: se queda sin aplicar.
   })
+}
+
+async function markConversationRead(convType: 'list' | 'dm', convId: string) {
+  await patchConversation(convType, convId, { last_read_message_at: new Date().toISOString() })
+}
+
+async function muteConversation(convType: 'list' | 'dm', convId: string) {
+  await patchConversation(convType, convId, { muted: true })
+}
+
+// Manda el texto escrito en el propio botón "Responder" de la notificación
+// (Chrome/Edge en Android y escritorio) como un mensaje normal de chat, sin
+// abrir la app — igual que WhatsApp. Al responder, de paso se marca la
+// conversación como leída (igual que en WhatsApp: si has contestado, la has
+// leído).
+async function sendReplyMessage(convType: 'list' | 'dm', convId: string, content: string) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+  const session = await getValidSession()
+  if (!session) return
+
+  const insertBody =
+    convType === 'list'
+      ? { list_id: convId, to_user_id: null, sender_id: session.userId, content }
+      : { list_id: null, to_user_id: convId, sender_id: session.userId, content }
+
+  await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.accessToken}`,
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(insertBody),
+  }).catch(() => {
+    // sin conexión u otro fallo de red: el mensaje no llega a mandarse. No
+    // hay forma de avisar de esto sin abrir una ventana, así que se queda
+    // así — es el mismo riesgo que tiene cualquier envío desde una
+    // notificación en cualquier app.
+  })
+
+  await patchConversation(convType, convId, { last_read_message_at: new Date().toISOString() })
 }
 
 // --- Notificaciones push ---
@@ -222,20 +283,23 @@ async function markConversationRead(convType: 'list' | 'dm', convId: string) {
 // cuestión); "tag" agrupa avisos relacionados (si llegan dos del mismo chat
 // seguidos, el segundo sustituye al primero en vez de amontonarse).
 // "convType"/"convId" solo vienen en avisos de chat (lista o directo) e
-// identifican la conversación, para poder ofrecer el botón de acción
-// "Marcar como leído" sin tener que abrir la app.
+// identifican la conversación, para poder ofrecer los botones de acción sin
+// tener que abrir la app. "icon" es la foto de quien escribe (o de la
+// lista/grupo, si la tiene puesta) — si no viene, se usa el icono de la
+// app como hasta ahora.
 type PushPayload = {
   title: string
   body: string
   url?: string
   tag?: string
+  icon?: string
   convType?: 'list' | 'dm'
   convId?: string
 }
 
 const ACTION_LABELS = {
-  es: { markRead: '✓✓ Marcar como leído' },
-  en: { markRead: '✓✓ Mark as read' },
+  es: { reply: 'Responder', markRead: '✓✓ Marcar como leído', mute: 'Silenciar' },
+  en: { reply: 'Reply', markRead: '✓✓ Mark as read', mute: 'Mute' },
 }
 
 self.addEventListener('push', (event: PushEvent) => {
@@ -253,12 +317,25 @@ self.addEventListener('push', (event: PushEvent) => {
       if (payload.convType && payload.convId) {
         const stored = await loadStoredSession()
         const lang = stored?.language ?? 'es'
-        actions = [{ action: 'mark-read', title: ACTION_LABELS[lang].markRead }]
+        const labels = ACTION_LABELS[lang]
+        // Mismo orden que WhatsApp: responder, marcar como leído, silenciar.
+        // "Responder" ya NO pide el campo de texto integrado (type: 'text')
+        // — en el móvil donde lo probamos, ese campo hacía que el propio
+        // navegador descartase el botón entero (ni siquiera se veía como
+        // botón normal), dejando solo uno de los otros dos visibles. Como
+        // botón normal, "Responder" simplemente abre la conversación lista
+        // para escribir — se pierde la caja de texto dentro del aviso, pero
+        // el botón en sí es mucho más probable que se vea.
+        actions = [
+          { action: 'reply', title: labels.reply },
+          { action: 'mark-read', title: labels.markRead },
+          { action: 'mute', title: labels.mute },
+        ]
       }
 
       const options: ExtendedNotificationOptions = {
         body: payload.body,
-        icon: '/icons/icon-192.png',
+        icon: payload.icon || '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
         tag: payload.tag,
         data: { url: payload.url || '/', convType: payload.convType, convId: payload.convId },
@@ -282,6 +359,22 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
     return
   }
 
+  if (event.action === 'mute') {
+    if (data?.convType && data?.convId) {
+      event.waitUntil(muteConversation(data.convType, data.convId))
+    }
+    return
+  }
+
+  const reply = event.reply?.trim()
+  if (event.action === 'reply' && reply && data?.convType && data?.convId) {
+    event.waitUntil(sendReplyMessage(data.convType, data.convId, reply))
+    return
+  }
+
+  // Toque normal sobre el aviso, o "Responder" en un navegador que no
+  // soporta la caja de texto integrada (reply vacío): abrir/enfocar la app
+  // en la conversación, como hasta ahora.
   const targetUrl = data?.url || '/'
 
   event.waitUntil(

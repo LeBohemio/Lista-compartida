@@ -12,6 +12,8 @@ import ChatPanel from '../components/ChatPanel'
 import RenameListModal from '../components/RenameListModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
+import ContactCardSheet from '../components/ContactCardSheet'
+import type { Profile } from '../lib/types'
 
 type Tab = 'notas' | 'gastos' | 'chat'
 
@@ -47,6 +49,7 @@ export default function ListDetailPage() {
   const [showRename, setShowRename] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState(false)
+  const [cardTarget, setCardTarget] = useState<Profile | null>(null)
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -182,7 +185,16 @@ export default function ListDetailPage() {
             <button onClick={() => navigate('/lists')} className="text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               ‹
             </button>
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: listColor }} />
+            {list.photo_url ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <img
+                src={list.photo_url}
+                alt={list.name}
+                className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-[var(--color-surface-border)]"
+              />
+            ) : (
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: listColor }} />
+            )}
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="font-semibold text-slate-900 dark:text-slate-100">{list.name}</p>
@@ -220,7 +232,17 @@ export default function ListDetailPage() {
           {isOwner && (
             <button
               onClick={() => setShowInvite(true)}
-              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
+              // En claro es un botón "outline" (texto de color sobre fondo
+              // blanco/claro real, así que siempre hay contraste de sobra).
+              // En oscuro NO usamos texto de color sobre el fondo de la
+              // cabecera (--color-surface, calculado a partir del acento):
+              // con acentos de tono claro/cálido (amarillo, por ejemplo)
+              // ambos acaban pareciéndose y el botón se vuelve invisible.
+              // En su lugar, en oscuro pintamos el botón relleno (blanco
+              // sobre brand-600), el mismo patrón que ya usan el resto de
+              // botones principales de la app — funciona bien pase lo que
+              // pase con el acento elegido.
+              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
             >
               {t('list.inviteButton')}
             </button>
@@ -230,14 +252,28 @@ export default function ListDetailPage() {
         {showMembers && (
           <div className="mx-auto mt-3 max-w-2xl rounded-lg p-3 text-sm bg-[var(--color-surface)]">
             <ul className="space-y-2">
-              {members.map((m) => (
+              {members.map((m) => {
+                const isSelf = m.user_id === profile?.id
+                return (
                 <li key={m.user_id} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                    <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
-                    {m.profile?.username ?? m.user_id}
-                    {m.user_id === profile?.id ? ` ${t('expenses.you')}` : ''}
-                    {m.role === 'owner' ? t('list.ownerSuffix') : ''}
-                  </span>
+                  {isSelf || !m.profile ? (
+                    <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Avatar username={m.profile?.username ?? '?'} avatarUrl={m.profile?.avatar_url} size={24} />
+                      {m.profile?.username ?? m.user_id}
+                      {isSelf ? ` ${t('expenses.you')}` : ''}
+                      {m.role === 'owner' ? t('list.ownerSuffix') : ''}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCardTarget(m.profile!)}
+                      className="flex items-center gap-2 rounded text-left text-slate-700 hover:text-brand-600 dark:text-slate-200 dark:hover:text-brand-400"
+                    >
+                      <Avatar username={m.profile.username} avatarUrl={m.profile.avatar_url} size={24} enlargeOnClick={false} />
+                      {m.profile.username}
+                      {m.role === 'owner' ? t('list.ownerSuffix') : ''}
+                    </button>
+                  )}
                   <span className="flex items-center gap-2">
                     <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {m.status === 'accepted' ? t('member.statusActive') : t('member.statusPending')}
@@ -256,7 +292,8 @@ export default function ListDetailPage() {
                     )}
                   </span>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           </div>
         )}
@@ -366,6 +403,7 @@ export default function ListDetailPage() {
           currentName={list.name}
           currentColor={list.color}
           currentCurrency={list.currency}
+          currentPhotoUrl={list.photo_url}
           onClose={() => setShowRename(false)}
           onSaved={() => {
             setShowRename(false)
@@ -394,6 +432,8 @@ export default function ListDetailPage() {
           onConfirm={removeMember}
         />
       )}
+
+      {cardTarget && <ContactCardSheet targetProfile={cardTarget} onClose={() => setCardTarget(null)} />}
     </div>
   )
 }

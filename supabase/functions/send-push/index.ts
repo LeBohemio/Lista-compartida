@@ -41,9 +41,13 @@ type PushPayload = {
   body: string
   url?: string
   tag?: string
+  // Foto de quien escribe (chat directo) o de la lista/grupo, si la tiene
+  // puesta (ver migration_v21.sql) — se usa como icono del aviso en vez
+  // del icono genérico de la app.
+  icon?: string
   // Solo en avisos de chat: identifican la conversación para que el
-  // Service Worker pueda ofrecer el botón "Marcar como leído" sin tener
-  // que abrir la app (ver src/sw.ts).
+  // Service Worker pueda ofrecer los botones de acción sin tener que abrir
+  // la app (ver src/sw.ts).
   convType?: 'list' | 'dm'
   convId?: string
 }
@@ -102,7 +106,7 @@ async function handleMessages(record: Record<string, unknown>) {
   // en su propia fila de "contacts".
   if (!listId && toUserId) {
     const [{ data: sender }, { data: myContactRow }] = await Promise.all([
-      supabaseAdmin.from('profiles').select('username').eq('id', senderId).maybeSingle(),
+      supabaseAdmin.from('profiles').select('username, avatar_url').eq('id', senderId).maybeSingle(),
       supabaseAdmin
         .from('contacts')
         .select('muted')
@@ -121,6 +125,7 @@ async function handleMessages(record: Record<string, unknown>) {
       body: bodyText,
       url: `/contacts/${senderId}/chat`,
       tag: `dm-${senderId}`,
+      icon: sender.avatar_url || undefined,
       convType: 'dm',
       convId: senderId,
     })
@@ -129,7 +134,7 @@ async function handleMessages(record: Record<string, unknown>) {
   if (!listId) return
 
   const [{ data: list }, { data: sender }, { data: members }] = await Promise.all([
-    supabaseAdmin.from('lists').select('name').eq('id', listId).maybeSingle(),
+    supabaseAdmin.from('lists').select('name, photo_url').eq('id', listId).maybeSingle(),
     supabaseAdmin.from('profiles').select('username').eq('id', senderId).maybeSingle(),
     supabaseAdmin
       .from('list_members')
@@ -149,6 +154,10 @@ async function handleMessages(record: Record<string, unknown>) {
     body: `${sender.username}: ${bodyText}`,
     url: `/lists/${listId}?tab=chat`,
     tag: `chat-${listId}`,
+    // Si la lista tiene foto puesta (ver migration_v21.sql), se usa como
+    // icono del aviso — como el icono de un grupo en WhatsApp. Si no,
+    // showNotification se queda con el icono de la app (ver src/sw.ts).
+    icon: list.photo_url || undefined,
     convType: 'list',
     convId: listId,
   }

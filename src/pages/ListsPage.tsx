@@ -570,11 +570,21 @@ function ListRow({
               ⠿
             </button>
           )}
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-[var(--color-surface)]"
-            style={{ backgroundColor: colorForList(l), boxShadow: `0 0 0 1px ${colorForList(l)}55` }}
-            aria-hidden="true"
-          />
+          {l.photo_url ? (
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <img
+              src={l.photo_url}
+              alt=""
+              aria-hidden="true"
+              className="h-7 w-7 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-[var(--color-surface)]"
+            />
+          ) : (
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-[var(--color-surface)]"
+              style={{ backgroundColor: colorForList(l), boxShadow: `0 0 0 1px ${colorForList(l)}55` }}
+              aria-hidden="true"
+            />
+          )}
           <div className="min-w-0">
             <p className="truncate font-medium text-slate-900 dark:text-slate-100">
               {l.membership.pinned && <span className="mr-1">📌</span>}

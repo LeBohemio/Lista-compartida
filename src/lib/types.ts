@@ -51,6 +51,7 @@ export type List = {
   owner_id: string
   expenses_enabled: boolean
   color: string | null
+  photo_url: string | null
   currency: CurrencyCode
   archived_at: string | null
   last_activity_at: string
