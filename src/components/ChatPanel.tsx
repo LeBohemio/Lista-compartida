@@ -73,19 +73,42 @@ export default function ChatPanel({
   useEffect(() => {
     const missing = imagePaths.filter((p) => !imageUrls[p])
     if (missing.length === 0) return
-    supabase.storage
-      .from('chat-images')
-      .createSignedUrls(missing, 3600)
-      .then(({ data }) => {
-        if (!data) return
-        setImageUrls((prev) => {
-          const next = { ...prev }
-          for (const row of data) {
-            if (row.signedUrl && row.path) next[row.path] = row.signedUrl
+    let cancelled = false
+
+    // Justo después de que alguien envía una foto, pedir su URL firmada
+    // puede fallar la primera vez (el archivo acaba de subirse y el
+    // almacenamiento tarda un pelín en tenerlo listo para firmar) — sin
+    // reintentar, esa foto se quedaba rota hasta refrescar la página a
+    // mano, porque nada más volvía a disparar este efecto. Reintentamos
+    // un par de veces con una pequeña espera antes de rendirnos.
+    const attempt = (retriesLeft: number) => {
+      supabase.storage
+        .from('chat-images')
+        .createSignedUrls(missing, 3600)
+        .then(({ data }) => {
+          if (cancelled) return
+          if (data) {
+            setImageUrls((prev) => {
+              const next = { ...prev }
+              for (const row of data) {
+                if (row.signedUrl && row.path) next[row.path] = row.signedUrl
+              }
+              return next
+            })
           }
-          return next
+          const stillMissing = !data || data.some((row) => !row.signedUrl)
+          if (stillMissing && retriesLeft > 0) {
+            setTimeout(() => {
+              if (!cancelled) attempt(retriesLeft - 1)
+            }, 1200)
+          }
         })
-      })
+    }
+    attempt(3)
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imagePaths])
 

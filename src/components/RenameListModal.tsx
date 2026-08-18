@@ -80,25 +80,24 @@ export default function RenameListModal({
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.currency')}</label>
-            <div className="flex flex-wrap gap-2">
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+              className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+            >
               {CURRENCIES.map((c) => (
-                <button
-                  type="button"
-                  key={c.code}
-                  onClick={() => setCurrency(c.code)}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                    currency === c.code
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
-                  }`}
-                >
-                  {c.flag} {c.code}
-                </button>
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code} — {c.symbol}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-3">
             <button

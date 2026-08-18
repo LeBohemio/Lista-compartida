@@ -33,7 +33,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Listas en Común</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">NoteUs</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('auth.appTagline')}</p>
         </div>
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowForgot(true)}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 {t('auth.forgotPassword')}
               </button>
@@ -75,7 +75,11 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
@@ -88,7 +92,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           {t('auth.noAccount')}{' '}
-          <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
+          <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
             {t('auth.register')}
           </Link>
         </p>

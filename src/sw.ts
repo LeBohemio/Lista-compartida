@@ -70,7 +70,7 @@ type PushPayload = {
 }
 
 self.addEventListener('push', (event: PushEvent) => {
-  let payload: PushPayload = { title: 'Listas en Común', body: '' }
+  let payload: PushPayload = { title: 'NoteUs', body: '' }
   try {
     if (event.data) payload = { ...payload, ...event.data.json() }
   } catch {

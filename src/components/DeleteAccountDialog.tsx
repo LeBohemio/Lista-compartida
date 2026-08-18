@@ -35,7 +35,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
         className="w-full max-w-sm rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-2 text-lg font-semibold text-red-600">{t('profile.deleteAccount')}</h2>
+        <h2 className="mb-2 text-lg font-semibold text-red-600 dark:text-red-400">{t('profile.deleteAccount')}</h2>
         <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">{t('account.deleteWarning')}</p>
         <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
           {t('account.typeToConfirm', { word: confirmWord })}
@@ -48,7 +48,11 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           placeholder={confirmWord}
         />
 
-        {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-3">
           <button

@@ -2,7 +2,6 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
-import { PALETTE } from '../lib/colors'
 import Avatar from '../components/Avatar'
 import DeleteAccountDialog from '../components/DeleteAccountDialog'
 import MyExpensesModal from '../components/MyExpensesModal'
@@ -24,66 +23,63 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
 ]
 
 // Fondos suaves, pensados para no competir con el color de acento de
-// botones/burbujas. `null` representa "usar el fondo por defecto de la app".
-// Se muestran siempre las claritas y las oscuras juntas: quien use el tema
-// oscuro puede igualmente elegir un fondo clarito si le gusta más, y
-// viceversa — no se restringe según el tema activo.
-const BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; swatch: string }[] = [
+// botones/burbujas. `null` representa "usar el fondo por defecto de la app"
+// y va siempre primero. El resto está ordenado de más claro a más oscuro
+// (de blanco a negro), no por tono — así el orden se entiende de un
+// vistazo aunque cambien las tonalidades exactas. Quien use el tema oscuro
+// puede igualmente elegir un fondo clarito si le gusta más, y viceversa —
+// no se restringe según el tema activo.
+//
+// Antes había un color de acento y de fondo "amarillo" casi calcado del
+// "ámbar" de al lado (comprobado con un contraste de color: apenas se
+// distinguían, ni con un vistazo normal ni para quien tiene daltonismo) —
+// se ha quitado para no duplicar. Lo mismo con "violeta" (casi idéntico a
+// "índigo") y "teal" (casi idéntico a "esmeralda") en los acentos.
+const ALL_BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; swatch: string }[] = [
   { value: null, labelKey: 'bg.default', swatch: '#f1f5f9' },
+  { value: '#fffbea', labelKey: 'bg.yellow', swatch: '#fffbea' },
+  { value: '#eefaf1', labelKey: 'bg.green', swatch: '#eefaf1' },
   { value: '#fdf6ec', labelKey: 'bg.warm', swatch: '#fdf6ec' },
   { value: '#eef4ff', labelKey: 'bg.blue', swatch: '#eef4ff' },
-  { value: '#eefaf1', labelKey: 'bg.green', swatch: '#eefaf1' },
   { value: '#fdf0f6', labelKey: 'bg.pink', swatch: '#fdf0f6' },
   { value: '#f4f0ff', labelKey: 'bg.purple', swatch: '#f4f0ff' },
-  { value: '#fffbea', labelKey: 'bg.yellow', swatch: '#fffbea' },
-]
-
-const DARK_BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; swatch: string }[] = [
+  { value: '#2a2712', labelKey: 'bg.yellow', swatch: '#2a2712' },
+  { value: '#132a1c', labelKey: 'bg.green', swatch: '#132a1c' },
   { value: '#241f18', labelKey: 'bg.warm', swatch: '#241f18' },
   { value: '#15202e', labelKey: 'bg.blue', swatch: '#15202e' },
-  { value: '#132a1c', labelKey: 'bg.green', swatch: '#132a1c' },
-  { value: '#2a1720', labelKey: 'bg.pink', swatch: '#2a1720' },
   { value: '#1e1a2e', labelKey: 'bg.purple', swatch: '#1e1a2e' },
-  { value: '#2a2712', labelKey: 'bg.yellow', swatch: '#2a2712' },
+  { value: '#2a1720', labelKey: 'bg.pink', swatch: '#2a1720' },
   // Negro neutro (sin ningún tinte de color), algo más claro que el negro
   // puro para que no se coma los bordes/sombras — pensado para combinar
   // con el acento negro de abajo.
   { value: '#1c1c1e', labelKey: 'bg.black', swatch: '#1c1c1e' },
 ]
 
-// Todas las opciones de fondo van juntas en una sola fila (claritas y
-// oscuras seguidas), sin ninguna separación ni etiqueta entre ellas.
-const ALL_BACKGROUND_OPTIONS = [...BACKGROUND_OPTIONS, ...DARK_BACKGROUND_OPTIONS]
-
-// Versiones oscuras de los mismos 8 colores de acento, para cuando se
-// combina con un fondo oscuro. Van seguidas de las claritas, en la misma
-// fila, sin ninguna separación entre ellas.
-const DARK_ACCENT_PALETTE = [
-  '#312e81', // indigo oscuro
-  '#0c4a6e', // sky oscuro
-  '#065f46', // emerald oscuro
-  '#78350f', // amber oscuro
-  '#7f1d1d', // red oscuro
-  '#831843', // pink oscuro
-  '#4c1d95', // violet oscuro
-  '#134e4a', // teal oscuro
+// Los mismos 6 tonos de PALETTE (colors.ts) que no se confunden entre sí a
+// simple vista, en su versión clarita y en su versión oscura (para cuando
+// se combina con un fondo oscuro), ordenados de más claro a más oscuro y
+// terminando en negro puro. No se reordena ni se toca PALETTE en sí — ese
+// array decide el color de avatares/listas de cada persona a partir de su
+// nombre, así que cambiar su orden le cambiaría el color a gente que ya
+// tiene uno asignado.
+const ACCENT_LIGHT_TO_DARK: { light: string; dark: string }[] = [
+  { light: '#f59e0b', dark: '#78350f' }, // amber
+  { light: '#10b981', dark: '#065f46' }, // emerald
+  { light: '#0ea5e9', dark: '#0c4a6e' }, // sky
+  { light: '#ec4899', dark: '#831843' }, // pink
+  { light: '#ef4444', dark: '#7f1d1d' }, // red
+  { light: '#6366f1', dark: '#312e81' }, // indigo
 ]
-// El naranja/ámbar de PALETTE se queda tal cual, y añadimos un amarillo
-// aparte (no está en la paleta compartida de avatares para no reordenar
-// los colores que ya tiene asignados cada persona) justo al lado del
-// naranja, para que quien lo busque lo encuentre cerca.
-const YELLOW_ACCENT = '#eab308'
-const amberIndex = PALETTE.indexOf('#f59e0b')
-const LIGHT_ACCENT_COLORS =
-  amberIndex === -1
-    ? [...PALETTE, YELLOW_ACCENT]
-    : [...PALETTE.slice(0, amberIndex + 1), YELLOW_ACCENT, ...PALETTE.slice(amberIndex + 1)]
 // Negro puro, al final del todo — combinado con "Negro" en color de fondo
 // da un tema en escala de grises. shadesFromAccent() (ver theme.ts) trata
 // un acento sin saturación como gris puro en todos sus tonos, así que
 // funciona bien sin ningún caso especial.
 const BLACK_ACCENT = '#000000'
-const ALL_ACCENT_COLORS = [...LIGHT_ACCENT_COLORS, ...DARK_ACCENT_PALETTE, BLACK_ACCENT]
+const ALL_ACCENT_COLORS = [
+  ...ACCENT_LIGHT_TO_DARK.map((c) => c.light),
+  ...ACCENT_LIGHT_TO_DARK.map((c) => c.dark),
+  BLACK_ACCENT,
+]
 
 // Ajustes — antes era un modal (ProfileModal) al que se accedía desde el
 // avatar en "Mis listas"; ahora es una pantalla propia, con ruta y
@@ -329,7 +325,11 @@ export default function SettingsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">{profile.email}</p>
         </div>
 
-        {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            {error}
+          </p>
+        )}
 
         <div className="mb-6">
           <button
@@ -349,7 +349,7 @@ export default function SettingsPage() {
                 onClick={() => setTheme(opt.value)}
                 className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
                   profile.theme === opt.value
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
@@ -408,7 +408,7 @@ export default function SettingsPage() {
                   onClick={() => setLanguage(opt.value)}
                   className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
                     language === opt.value
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
                       : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                   }`}
                 >
@@ -446,7 +446,7 @@ export default function SettingsPage() {
                 disabled={pushBusy}
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
                   profile.notify_push_enabled
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
@@ -458,8 +458,8 @@ export default function SettingsPage() {
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                      profile.notify_push_enabled ? 'translate-x-4' : 'translate-x-0.5'
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      profile.notify_push_enabled ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
                 </span>
@@ -569,7 +569,7 @@ export default function SettingsPage() {
 
         <button
           onClick={() => signOut()}
-          className="w-full rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+          className="w-full rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
         >
           {t('profile.signOut')}
         </button>

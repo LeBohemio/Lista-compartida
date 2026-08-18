@@ -23,6 +23,8 @@ export default function ListsPage() {
     useLists()
   const [showCreate, setShowCreate] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState<{ listId: string; name: string } | null>(null)
@@ -37,6 +39,15 @@ export default function ListsPage() {
   const archivedLists = useMemo(
     () => lists.filter((l) => l.archived_at && !pendingDeleteIds.has(l.id)),
     [lists, pendingDeleteIds],
+  )
+
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const visibleActiveLists = useMemo(
+    () =>
+      normalizedQuery
+        ? activeLists.filter((l) => l.name.toLowerCase().includes(normalizedQuery))
+        : activeLists,
+    [activeLists, normalizedQuery],
   )
 
   const pendingNotesTotal = useMemo(
@@ -220,9 +231,15 @@ export default function ListsPage() {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            {error}
+          </p>
+        )}
         {actionError && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950">{actionError}</p>
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            {actionError}
+          </p>
         )}
 
         {invitations.length > 0 && (
@@ -261,13 +278,36 @@ export default function ListsPage() {
         )}
 
         <section>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {t('lists.title')}
             </h2>
+            {showSearch ? (
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => {
+                  if (!searchQuery.trim()) setShowSearch(false)
+                }}
+                placeholder={t('lists.searchPlaceholder')}
+                className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowSearch(true)}
+                aria-label={t('common.search')}
+                title={t('common.search')}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              >
+                🔍
+              </button>
+            )}
           </div>
 
-          {reorderMode && (
+          {!normalizedQuery && reorderMode && (
             <div className="mb-3 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
               <span>⠿ {t('reorder.bannerHint')}</span>
               <button onClick={() => setReorderMode(false)} className="font-semibold hover:underline">
@@ -288,6 +328,30 @@ export default function ListsPage() {
                 {t('lists.create')}
               </button>
             </div>
+          ) : normalizedQuery ? (
+            // Mientras se busca, mostramos la lista filtrada sin drag-and-drop
+            // (no tiene sentido reordenar un subconjunto) — el orden real no
+            // se toca para nada.
+            visibleActiveLists.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">{t('lists.emptySearch')}</p>
+            ) : (
+              <div className="overflow-hidden rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+                {visibleActiveLists.map((l) => (
+                  <ListRow
+                    key={l.id}
+                    list={l}
+                    isOwner={l.owner_id === profile?.id}
+                    stats={itemStats[l.id]}
+                    avatars={memberAvatars[l.id] ?? []}
+                    onOpen={() => navigate(`/lists/${l.id}`)}
+                    onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
+                    onDuplicate={() => duplicateList(l)}
+                    onComplete={() => requestComplete(l.id, l.name)}
+                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                  />
+                ))}
+              </div>
+            )
           ) : (
             // overflow-visible mientras se arrastra una lista, igual que en
             // la tarjeta de notas (ver NotepadCard en ItemsPanel.tsx) — si

@@ -62,7 +62,7 @@ export default function InviteMemberModal({
     const url = window.location.origin
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Listas en Común', text, url })
+        await navigator.share({ title: 'NoteUs', text, url })
       } catch {
         // el usuario canceló el share sheet
       }

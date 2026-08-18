@@ -4,7 +4,7 @@ export default function Logo({ size = 56, className = '' }: { size?: number; cla
       src="/icons/icon-512.png"
       width={size}
       height={size}
-      alt="Listas en Común"
+      alt="NoteUs"
       className={className}
       style={{ width: size, height: size }}
     />
