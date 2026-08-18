@@ -279,7 +279,10 @@ export default function ItemsPanel({
             <div className="mb-2 flex justify-end">
               <button
                 onClick={markAllDone}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-300"
+                // Mismo patrón que el botón "+Invitar" (ver ListDetailPage):
+                // relleno, no texto suelto sobre el fondo — así siempre hay
+                // contraste de sobra, elijas el acento que elijas.
+                className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
               >
                 {t('notes.markAllDone')}
               </button>

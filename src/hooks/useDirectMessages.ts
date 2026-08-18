@@ -71,11 +71,13 @@ export function useDirectMessages(peerId: string | undefined) {
         { event: '*', schema: 'public', table: 'messages', filter: `sender_id=eq.${user.id}` },
         () => fetchAll(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'contacts', filter: `user_id=eq.${user.id}` },
-        () => fetchAll(),
-      )
+      // OJO: NO suscribirse aquí a la tabla "contacts" — a diferencia de
+      // "messages", "contacts" no está añadida a la publicación de Realtime
+      // de Supabase (ver schema.sql), y pedir un cambio de una tabla fuera
+      // de esa publicación puede tumbar TODO el canal, incluidos los
+      // listeners de "messages" de arriba que sí funcionan — eso rompía la
+      // actualización en vivo del chat entero. clearChat() ya refresca a
+      // mano con fetchAll() nada más borrar, así que no hace falta más.
       .subscribe()
 
     return () => {
