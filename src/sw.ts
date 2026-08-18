@@ -298,8 +298,8 @@ type PushPayload = {
 }
 
 const ACTION_LABELS = {
-  es: { reply: 'Responder', markRead: '✓✓ Marcar como leído', mute: 'Silenciar' },
-  en: { reply: 'Reply', markRead: '✓✓ Mark as read', mute: 'Mute' },
+  es: { reply: 'Responder', markRead: 'Marcar como leído', mute: 'Silenciar' },
+  en: { reply: 'Reply', markRead: 'Mark as read', mute: 'Mute' },
 }
 
 self.addEventListener('push', (event: PushEvent) => {
@@ -379,17 +379,34 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
 
   event.waitUntil(
     (async () => {
-      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      // Si ya hay una pestaña de la app abierta, la reutilizamos y la
-      // llevamos a la URL del aviso en vez de abrir una ventana nueva.
-      for (const client of allClients) {
-        if ('focus' in client) {
-          await client.focus()
-          if ('navigate' in client) await (client as WindowClient).navigate(targetUrl)
-          return
+      // Cada paso puede fallar de formas que no dependen de nosotros — por
+      // ejemplo, Chrome en Android a veces "descarta" una pestaña en
+      // segundo plano para ahorrar memoria, y esa pestaña sigue apareciendo
+      // en matchAll() pero ya no admite navigate() de verdad. Antes, si eso
+      // fallaba, el toque en el aviso no hacía NADA (ni error visible ni
+      // app abierta). Ahora, cualquier fallo en el camino "reutilizar
+      // pestaña" cae en abrir una ventana nueva como último recurso, para
+      // que tocar el aviso siempre lleve a alguna parte.
+      try {
+        const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        for (const client of allClients) {
+          if (!('focus' in client)) continue
+          try {
+            const focused = await client.focus()
+            if ('navigate' in focused) {
+              await (focused as WindowClient).navigate(targetUrl)
+            }
+            return
+          } catch {
+            // esta pestaña concreta ya no responde — seguimos probando con
+            // la siguiente, si hay más, o caemos a abrir una ventana nueva.
+          }
         }
+      } catch {
+        // matchAll no debería fallar, pero por si acaso: igualmente
+        // probamos a abrir una ventana nueva más abajo.
       }
-      await self.clients.openWindow(targetUrl)
+      await self.clients.openWindow(targetUrl).catch(() => {})
     })(),
   )
 })
