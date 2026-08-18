@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -41,6 +49,17 @@ function insertPayload(target: ChatTarget) {
     : { list_id: null, to_user_id: target.peerId }
 }
 
+// Para poder darle a la persona los pasos exactos de SU navegador cuando
+// falla el permiso de micrófono, en vez de una instrucción genérica que no
+// encaja con lo que está viendo en pantalla.
+function detectPlatform(): 'android' | 'ios' | 'desktop' {
+  if (typeof navigator === 'undefined') return 'desktop'
+  const ua = navigator.userAgent
+  if (/Android/i.test(ua)) return 'android'
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios'
+  return 'desktop'
+}
+
 export default function ChatPanel({
   target,
   messages,
@@ -62,10 +81,18 @@ export default function ChatPanel({
 
   const [recording, setRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const [slideCancelHint, setSlideCancelHint] = useState(false)
+  const [micErrorKind, setMicErrorKind] = useState<'denied' | 'notfound' | 'other' | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Punto X donde empezó el gesto (para el "desliza para cancelar") y si ya
+  // se ha soltado el dedo antes de que el micrófono terminara de arrancar
+  // (el permiso del navegador tarda en resolver la primera vez).
+  const recordingStartXRef = useRef<number | null>(null)
+  const cancelledRef = useRef(false)
+  const pendingReleaseRef = useRef<'send' | 'cancel' | null>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -263,6 +290,7 @@ export default function ChatPanel({
   const startRecording = async () => {
     if (!user || recording) return
     setError(null)
+    setMicErrorKind(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       recordingStreamRef.current = stream
@@ -279,13 +307,26 @@ export default function ChatPanel({
       setRecording(true)
       setRecordingSeconds(0)
       recordingTimerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000)
-    } catch {
-      setError(t('chat.micError'))
+
+      // Si para cuando el micrófono por fin ha arrancado la persona ya
+      // había soltado el dedo (típico la primera vez: el permiso del
+      // navegador tarda en resolverse y el toque puede ser muy rápido), no
+      // dejamos la grabación colgada — se cierra ya mismo con lo que se
+      // decidió al soltar.
+      if (pendingReleaseRef.current) {
+        const action = pendingReleaseRef.current
+        pendingReleaseRef.current = null
+        stopRecording(action === 'send')
+      }
+    } catch (err) {
+      pendingReleaseRef.current = null
+      const name = (err as { name?: string } | undefined)?.name
+      setMicErrorKind(name === 'NotAllowedError' ? 'denied' : name === 'NotFoundError' ? 'notfound' : 'other')
     }
   }
 
-  // send=false → botón de papelera, descarta la grabación.
-  // send=true  → botón de enviar, sube el audio y crea el mensaje.
+  // send=false → se ha cancelado (deslizando), descarta la grabación.
+  // send=true  → se ha soltado sin cancelar, sube el audio y crea el mensaje.
   const stopRecording = (send: boolean) => {
     const recorder = mediaRecorderRef.current
     if (!recorder) return
@@ -301,6 +342,7 @@ export default function ChatPanel({
       }
       setRecording(false)
       setRecordingSeconds(0)
+      setSlideCancelHint(false)
 
       const chunks = audioChunksRef.current
       audioChunksRef.current = []
@@ -310,6 +352,53 @@ export default function ChatPanel({
     }
 
     if (recorder.state !== 'inactive') recorder.stop()
+  }
+
+  const CANCEL_THRESHOLD_PX = 80
+
+  // Mantener pulsado para grabar, soltar para enviar, deslizar hacia la
+  // izquierda para cancelar — igual que WhatsApp. Usamos Pointer Events con
+  // "capture" para seguir recibiendo el movimiento y la soltada aunque el
+  // dedo se salga del botón mientras se desliza.
+  const handleMicPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (sending || recording) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // algún navegador raro sin soporte de pointer capture: seguimos sin
+      // eso, simplemente no habrá gesto de deslizar para cancelar.
+    }
+    recordingStartXRef.current = e.clientX
+    cancelledRef.current = false
+    pendingReleaseRef.current = null
+    setSlideCancelHint(false)
+    void startRecording()
+  }
+
+  const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!recording || recordingStartXRef.current == null) return
+    const dx = e.clientX - recordingStartXRef.current
+    const shouldCancel = dx < -CANCEL_THRESHOLD_PX
+    cancelledRef.current = shouldCancel
+    setSlideCancelHint(shouldCancel)
+  }
+
+  const handleMicPointerUp = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // nada que liberar si no se llegó a capturar.
+    }
+    const shouldSend = !cancelledRef.current
+    recordingStartXRef.current = null
+    setSlideCancelHint(false)
+    if (recording) {
+      stopRecording(shouldSend)
+    } else {
+      // El micrófono todavía no ha terminado de arrancar (primer permiso):
+      // en cuanto lo haga, se cierra solo con esta misma decisión.
+      pendingReleaseRef.current = shouldSend ? 'send' : 'cancel'
+    }
   }
 
   const requestDeleteMessage = (messageId: string) => {
@@ -386,61 +475,58 @@ export default function ChatPanel({
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
               🔒 {t('chat.readOnlyHint')}
             </p>
-          ) : recording ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => stopRecording(false)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                aria-label={t('chat.cancelRecording')}
-                title={t('chat.cancelRecording')}
-              >
-                🗑
-              </button>
-              <div className="flex flex-1 items-center gap-2 rounded-full border px-4 py-2.5 border-[var(--color-surface-border)] bg-[var(--color-surface)]">
-                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-300">{t('chat.recording')}</span>
-                <span className="ml-auto text-sm tabular-nums text-slate-500 dark:text-slate-400">
-                  {formatDuration(recordingSeconds)}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => stopRecording(true)}
-                disabled={sending}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow ring-2 ring-white/40 dark:shadow-black/40 dark:ring-white/15 hover:bg-brand-700 disabled:opacity-50"
-                aria-label={t('chat.sendAudio')}
-                title={t('chat.sendAudio')}
-              >
-                ➤
-              </button>
-            </div>
           ) : (
+            // Un único <form> para toda la barra: el botón de micrófono
+            // tiene que seguir siendo EL MISMO elemento del DOM mientras
+            // dura el gesto de pulsar-mantener (si React lo desmontara al
+            // entrar en "recording", se perdería la captura del puntero a
+            // mitad de gesto). Por eso "recording" solo cambia lo que hay a
+            // su izquierda, nunca desmonta el formulario ni el botón.
             <form onSubmit={sendText} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={sending}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
-                aria-label={t('chat.attachPhoto')}
-              >
-                📷
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={sendImage}
-                className="hidden"
-              />
-              <input
-                type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder={t('chat.placeholder')}
-                className="flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
-              />
-              {text.trim() ? (
+              {recording ? (
+                <div className="flex flex-1 items-center gap-2 rounded-full border px-4 py-2.5 border-[var(--color-surface-border)] bg-[var(--color-surface)]">
+                  <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+                  {slideCancelHint ? (
+                    <span className="text-sm font-medium text-red-500">{t('chat.releaseToCancel')}</span>
+                  ) : (
+                    <>
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{t('chat.recording')}</span>
+                      <span className="tabular-nums text-sm text-slate-500 dark:text-slate-400">
+                        {formatDuration(recordingSeconds)}
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400">{t('chat.slideToCancel')}</span>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sending}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
+                    aria-label={t('chat.attachPhoto')}
+                  >
+                    📷
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={sendImage}
+                    className="hidden"
+                  />
+                  <input
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder={t('chat.placeholder')}
+                    className="flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+                  />
+                </>
+              )}
+
+              {!recording && text.trim() ? (
                 <button
                   type="submit"
                   disabled={sending}
@@ -452,11 +538,17 @@ export default function ChatPanel({
               ) : (
                 <button
                   type="button"
-                  onClick={startRecording}
-                  disabled={sending}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow ring-2 ring-white/40 dark:shadow-black/40 dark:ring-white/15 hover:bg-brand-700 disabled:opacity-50"
-                  aria-label={t('chat.attachAudio')}
-                  title={t('chat.attachAudio')}
+                  onPointerDown={handleMicPointerDown}
+                  onPointerMove={handleMicPointerMove}
+                  onPointerUp={handleMicPointerUp}
+                  onPointerCancel={handleMicPointerUp}
+                  disabled={sending && !recording}
+                  className={`flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow ring-2 ring-white/40 transition-transform dark:shadow-black/40 dark:ring-white/15 disabled:opacity-50 ${
+                    slideCancelHint ? 'bg-red-500' : 'bg-brand-600 hover:bg-brand-700'
+                  } ${recording ? 'scale-110' : ''}`}
+                  style={{ touchAction: 'none' }}
+                  aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
+                  title={recording ? t('chat.recording') : t('chat.attachAudio')}
                 >
                   🎤
                 </button>
@@ -513,6 +605,54 @@ export default function ChatPanel({
             className="max-h-full max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {micErrorKind && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => setMicErrorKind(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {micErrorKind === 'notfound' ? t('chat.micNotFoundTitle') : t('chat.micDeniedTitle')}
+            </h2>
+            <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+              {micErrorKind === 'notfound'
+                ? t('chat.micNotFoundBody')
+                : micErrorKind === 'other'
+                  ? t('chat.micError')
+                  : t(
+                      detectPlatform() === 'android'
+                        ? 'chat.micDeniedAndroid'
+                        : detectPlatform() === 'ios'
+                          ? 'chat.micDeniedIos'
+                          : 'chat.micDeniedDesktop',
+                    )}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMicErrorKind(null)}
+                className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {t('common.close')}
+              </button>
+              {micErrorKind === 'denied' && (
+                <button
+                  onClick={() => {
+                    setMicErrorKind(null)
+                    void startRecording()
+                  }}
+                  className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
+                >
+                  {t('chat.retry')}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
