@@ -77,6 +77,12 @@ export type ListMember = {
   // antiguas (de antes de esto) o en la fila del propio dueño al crear la
   // lista. Ver migration_v16.sql.
   invited_by: string | null
+  // "Borrar chat" (solo para mí): oculta los mensajes de antes de esta
+  // fecha en el chat de esta lista, solo en mi vista — a los demás
+  // miembros no les cambia nada. Si llega un mensaje nuevo después, el
+  // chat vuelve a verse con normalidad, como en WhatsApp. Ver
+  // migration_v22.sql.
+  chat_cleared_at: string | null
   // joined
   profile?: Profile
 }
@@ -97,6 +103,10 @@ export type Contact = {
   pinned: boolean
   muted: boolean
   last_read_message_at: string | null
+  // "Borrar chat" (solo para mí): igual que chat_cleared_at en
+  // ListMember, pero para la conversación directa con esta persona. Ver
+  // migration_v22.sql.
+  chat_cleared_at: string | null
   // joined
   contact?: Profile
 }

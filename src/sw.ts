@@ -31,26 +31,12 @@ declare global {
 // notificationclick) es un estándar real y todos los navegadores con
 // soporte de Web Push lo implementan, pero el lib.dom.d.ts que trae
 // TypeScript no lo incluye todavía — lo definimos a mano.
-//
-// El campo "reply" (para el botón "Responder" con caja de texto integrada,
-// tipo "type: 'text'") es más nuevo y solo lo soportan Chrome/Edge en
-// Android y escritorio — en un navegador que no lo entienda, esa acción se
-// muestra igualmente como botón normal (sin caja de texto) y, al tocarla,
-// event.reply llega vacío; el código de más abajo trata ese caso abriendo
-// la conversación en la app, igual que si se hubiera tocado el aviso.
 interface NotificationAction {
   action: string
   title: string
   icon?: string
-  type?: 'text'
-  placeholder?: string
 }
 type ExtendedNotificationOptions = NotificationOptions & { actions?: NotificationAction[] }
-declare global {
-  interface NotificationEvent {
-    reply?: string
-  }
-}
 
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
@@ -241,40 +227,6 @@ async function muteConversation(convType: 'list' | 'dm', convId: string) {
   await patchConversation(convType, convId, { muted: true })
 }
 
-// Manda el texto escrito en el propio botón "Responder" de la notificación
-// (Chrome/Edge en Android y escritorio) como un mensaje normal de chat, sin
-// abrir la app — igual que WhatsApp. Al responder, de paso se marca la
-// conversación como leída (igual que en WhatsApp: si has contestado, la has
-// leído).
-async function sendReplyMessage(convType: 'list' | 'dm', convId: string, content: string) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
-  const session = await getValidSession()
-  if (!session) return
-
-  const insertBody =
-    convType === 'list'
-      ? { list_id: convId, to_user_id: null, sender_id: session.userId, content }
-      : { list_id: null, to_user_id: convId, sender_id: session.userId, content }
-
-  await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${session.accessToken}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(insertBody),
-  }).catch(() => {
-    // sin conexión u otro fallo de red: el mensaje no llega a mandarse. No
-    // hay forma de avisar de esto sin abrir una ventana, así que se queda
-    // así — es el mismo riesgo que tiene cualquier envío desde una
-    // notificación en cualquier app.
-  })
-
-  await patchConversation(convType, convId, { last_read_message_at: new Date().toISOString() })
-}
-
 // --- Notificaciones push ---
 //
 // El payload lo manda nuestra Edge Function (supabase/functions/send-push)
@@ -298,8 +250,8 @@ type PushPayload = {
 }
 
 const ACTION_LABELS = {
-  es: { reply: 'Responder', markRead: 'Marcar como leído', mute: 'Silenciar' },
-  en: { reply: 'Reply', markRead: 'Mark as read', mute: 'Mute' },
+  es: { markRead: 'Marcar como leído', mute: 'Silenciar' },
+  en: { markRead: 'Mark as read', mute: 'Mute' },
 }
 
 self.addEventListener('push', (event: PushEvent) => {
@@ -318,16 +270,14 @@ self.addEventListener('push', (event: PushEvent) => {
         const stored = await loadStoredSession()
         const lang = stored?.language ?? 'es'
         const labels = ACTION_LABELS[lang]
-        // Mismo orden que WhatsApp: responder, marcar como leído, silenciar.
-        // "Responder" ya NO pide el campo de texto integrado (type: 'text')
-        // — en el móvil donde lo probamos, ese campo hacía que el propio
-        // navegador descartase el botón entero (ni siquiera se veía como
-        // botón normal), dejando solo uno de los otros dos visibles. Como
-        // botón normal, "Responder" simplemente abre la conversación lista
-        // para escribir — se pierde la caja de texto dentro del aviso, pero
-        // el botón en sí es mucho más probable que se vea.
+        // Se quitó el botón "Responder": no ofrecía nada que no hiciera ya
+        // tocar el aviso (sin caja de texto integrada, solo abría la
+        // conversación) y en algunos móviles no abría la app al tocarlo —
+        // una restricción del sistema al abrir ventanas desde un botón de
+        // acción, no algo arreglable desde aquí. Con solo estos dos, además,
+        // caben de sobra en el límite de botones visibles de cualquier
+        // dispositivo (antes, con 3, algunos solo mostraban 2 al azar).
         actions = [
-          { action: 'reply', title: labels.reply },
           { action: 'mark-read', title: labels.markRead },
           { action: 'mute', title: labels.mute },
         ]
@@ -366,15 +316,7 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
     return
   }
 
-  const reply = event.reply?.trim()
-  if (event.action === 'reply' && reply && data?.convType && data?.convId) {
-    event.waitUntil(sendReplyMessage(data.convType, data.convId, reply))
-    return
-  }
-
-  // Toque normal sobre el aviso, o "Responder" en un navegador que no
-  // soporta la caja de texto integrada (reply vacío): abrir/enfocar la app
-  // en la conversación, como hasta ahora.
+  // Toque normal sobre el aviso: abrir/enfocar la app en la conversación.
   //
   // URL absoluta (no relativa): clients.openWindow() debería resolver bien
   // una ruta relativa contra el origen del Service Worker, pero no todos

@@ -6,6 +6,8 @@ import { useDirectMessages } from '../hooks/useDirectMessages'
 import { supabase } from '../lib/supabaseClient'
 import ChatPanel from '../components/ChatPanel'
 import Avatar from '../components/Avatar'
+import ContextMenu from '../components/ContextMenu'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { Contact } from '../lib/types'
 
 export default function DirectChatPage() {
@@ -13,8 +15,10 @@ export default function DirectChatPage() {
   const { user, profile } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const { peerProfile, messages, loading, error } = useDirectMessages(peerId)
+  const { peerProfile, messages, loading, error, clearChat } = useDirectMessages(peerId)
   const [myContact, setMyContact] = useState<Contact | null>(null)
+  const [showMenu, setShowMenu] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   const fetchMyContact = useCallback(async () => {
     if (!user || !peerId) return
@@ -71,6 +75,11 @@ export default function DirectChatPage() {
     fetchMyContact()
   }
 
+  const handleClearChat = async () => {
+    setConfirmClear(false)
+    await clearChat()
+  }
+
   if (!peerId) return null
 
   if (loading) {
@@ -106,20 +115,55 @@ export default function DirectChatPage() {
             <Avatar username={peerProfile.username} avatarUrl={peerProfile.avatar_url} size={32} enlargeOnClick={false} />
             <p className="truncate font-semibold text-slate-900 dark:text-slate-100">{peerProfile.username}</p>
           </div>
-          {myContact && (
+          <div className="flex shrink-0 items-center gap-3">
+            {myContact && (
+              <button
+                onClick={toggleMuted}
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
+              >
+                {myContact.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
+              </button>
+            )}
             <button
-              onClick={toggleMuted}
-              className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
+              type="button"
+              onClick={() => setShowMenu(true)}
+              aria-label={t('common.more')}
+              className="text-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
-              {myContact.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
+              ⋮
             </button>
-          )}
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
         <ChatPanel target={{ kind: 'direct', peerId }} messages={messages} />
       </main>
+
+      {showMenu && (
+        <ContextMenu
+          onClose={() => setShowMenu(false)}
+          actions={[
+            {
+              label: t('chat.clearChat'),
+              icon: '🗑',
+              danger: true,
+              onSelect: () => setConfirmClear(true),
+            },
+          ]}
+        />
+      )}
+
+      {confirmClear && (
+        <ConfirmDialog
+          title={t('chat.clearChatTitle')}
+          message={t('chat.clearChatConfirm')}
+          confirmLabel={t('chat.clearChat')}
+          danger
+          onConfirm={handleClearChat}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
     </div>
   )
 }

@@ -349,7 +349,7 @@ export default function SettingsPage() {
                 onClick={() => setTheme(opt.value)}
                 className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
                   profile.theme === opt.value
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >
@@ -408,7 +408,7 @@ export default function SettingsPage() {
                   onClick={() => setLanguage(opt.value)}
                   className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
                     language === opt.value
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
                       : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                   }`}
                 >
@@ -446,7 +446,7 @@ export default function SettingsPage() {
                 disabled={pushBusy}
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
                   profile.notify_push_enabled
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
                     : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
                 }`}
               >

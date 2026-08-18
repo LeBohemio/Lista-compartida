@@ -11,6 +11,7 @@ import InviteMemberModal from '../components/InviteMemberModal'
 import ChatPanel from '../components/ChatPanel'
 import RenameListModal from '../components/RenameListModal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ContextMenu from '../components/ContextMenu'
 import Avatar from '../components/Avatar'
 import ContactCardSheet from '../components/ContactCardSheet'
 import type { Profile } from '../lib/types'
@@ -34,6 +35,7 @@ export default function ListDetailPage() {
     loading,
     error,
     refetch,
+    clearChat,
   } = useListData(listId)
   // Al tocar un aviso de notificación push (?tab=chat, por ejemplo) hay que
   // aterrizar directamente en esa pestaña, no siempre en "notas". Solo se
@@ -50,6 +52,8 @@ export default function ListDetailPage() {
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState(false)
   const [cardTarget, setCardTarget] = useState<Profile | null>(null)
+  const [showChatMenu, setShowChatMenu] = useState(false)
+  const [confirmClearChat, setConfirmClearChat] = useState(false)
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -374,17 +378,53 @@ export default function ListDetailPage() {
         {tab === 'chat' && (
           <>
             {myMembership && (
-              <div className="mb-3 flex justify-end">
+              <div className="mb-3 flex items-center justify-end gap-3">
                 <button
                   onClick={toggleMuted}
                   className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
                 >
                   {myMembership.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowChatMenu(true)}
+                  aria-label={t('common.more')}
+                  className="text-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  ⋮
+                </button>
               </div>
             )}
             <ChatPanel target={{ kind: 'list', listId: list.id }} messages={messages} readOnly={isCompleted} />
           </>
+        )}
+
+        {showChatMenu && (
+          <ContextMenu
+            onClose={() => setShowChatMenu(false)}
+            actions={[
+              {
+                label: t('chat.clearChat'),
+                icon: '🗑',
+                danger: true,
+                onSelect: () => setConfirmClearChat(true),
+              },
+            ]}
+          />
+        )}
+
+        {confirmClearChat && (
+          <ConfirmDialog
+            title={t('chat.clearChatTitle')}
+            message={t('chat.clearChatConfirm')}
+            confirmLabel={t('chat.clearChat')}
+            danger
+            onConfirm={async () => {
+              setConfirmClearChat(false)
+              await clearChat()
+            }}
+            onCancel={() => setConfirmClearChat(false)}
+          />
         )}
       </main>
 

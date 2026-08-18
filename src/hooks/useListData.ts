@@ -115,6 +115,21 @@ export function useListData(listId: string | undefined) {
   const myMembership = members.find((m) => m.user_id === user?.id) ?? null
   const acceptedMembers = members.filter((m) => m.status === 'accepted')
 
+  // "Borrar chat" (solo para mí): oculta los mensajes de antes de la fecha
+  // guardada en mi propia fila de list_members. Ver migration_v22.sql.
+  const chatClearedAt = myMembership?.chat_cleared_at ?? null
+  const visibleMessages = chatClearedAt ? messages.filter((m) => m.created_at > chatClearedAt) : messages
+
+  const clearChat = useCallback(async () => {
+    if (!listId || !user) return
+    await supabase
+      .from('list_members')
+      .update({ chat_cleared_at: new Date().toISOString() })
+      .eq('list_id', listId)
+      .eq('user_id', user.id)
+    await fetchAll()
+  }, [listId, user, fetchAll])
+
   return {
     list,
     members,
@@ -123,9 +138,11 @@ export function useListData(listId: string | undefined) {
     items,
     expenses,
     settlements,
-    messages,
+    messages: visibleMessages,
+    chatClearedAt,
     loading,
     error,
     refetch: fetchAll,
+    clearChat,
   }
 }

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/Avatar'
@@ -12,6 +12,7 @@ import type { ContactRequestsData } from '../hooks/useContactRequests'
 export default function ContactsPage() {
   const { user, profile } = useAuth()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const { contacts, incoming, outgoing, loading, error: loadError, refetch } =
     useOutletContext<ContactRequestsData>()
 
@@ -300,6 +301,18 @@ export default function ContactsPage() {
                         {c.contact!.username}
                         {c.muted && <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>}
                       </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/contacts/${c.contact_user_id}/chat`)
+                        }}
+                        aria-label={t('card.openChat')}
+                        title={t('card.openChat')}
+                        className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                      >
+                        💬
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => {

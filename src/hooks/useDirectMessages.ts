@@ -17,6 +17,7 @@ export function useDirectMessages(peerId: string | undefined) {
   const { user } = useAuth()
   const [peerProfile, setPeerProfile] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [chatClearedAt, setChatClearedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,8 +25,14 @@ export function useDirectMessages(peerId: string | undefined) {
     if (!peerId || !user) return
     setError(null)
 
-    const [peerRes, messagesRes] = await Promise.all([
+    const [peerRes, myContactRes, messagesRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', peerId).maybeSingle(),
+      supabase
+        .from('contacts')
+        .select('chat_cleared_at')
+        .eq('user_id', user.id)
+        .eq('contact_user_id', peerId)
+        .maybeSingle(),
       supabase
         .from('messages')
         .select('*, sender:profiles!messages_sender_id_fkey(*)')
@@ -37,8 +44,11 @@ export function useDirectMessages(peerId: string | undefined) {
     if (peerRes.error) setError(peerRes.error.message)
     else if (messagesRes.error) setError(messagesRes.error.message)
 
+    const clearedAt = (myContactRes.data as { chat_cleared_at: string | null } | null)?.chat_cleared_at ?? null
+    setChatClearedAt(clearedAt)
     setPeerProfile((peerRes.data as Profile) ?? null)
-    setMessages((messagesRes.data as unknown as Message[]) ?? [])
+    const allMessages = (messagesRes.data as unknown as Message[]) ?? []
+    setMessages(clearedAt ? allMessages.filter((m) => m.created_at > clearedAt) : allMessages)
     setLoading(false)
   }, [peerId, user])
 
@@ -61,6 +71,11 @@ export function useDirectMessages(peerId: string | undefined) {
         { event: '*', schema: 'public', table: 'messages', filter: `sender_id=eq.${user.id}` },
         () => fetchAll(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contacts', filter: `user_id=eq.${user.id}` },
+        () => fetchAll(),
+      )
       .subscribe()
 
     return () => {
@@ -68,5 +83,15 @@ export function useDirectMessages(peerId: string | undefined) {
     }
   }, [peerId, user, fetchAll])
 
-  return { peerProfile, messages, loading, error, refetch: fetchAll }
+  const clearChat = useCallback(async () => {
+    if (!peerId || !user) return
+    await supabase
+      .from('contacts')
+      .update({ chat_cleared_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('contact_user_id', peerId)
+    await fetchAll()
+  }, [peerId, user, fetchAll])
+
+  return { peerProfile, messages, chatClearedAt, loading, error, refetch: fetchAll, clearChat }
 }
