@@ -221,9 +221,29 @@ export default function ChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioPaths])
 
+  // Al entrar en una conversación hay que aterrizar YA en el mensaje más
+  // reciente (como cualquier app de chat), no ir viéndolo deslizarse desde
+  // arriba — así que la primera vez que hay mensajes cargados, el salto es
+  // instantáneo. Si mientras tanto llegan mensajes nuevos con el chat ya
+  // abierto, ahí sí queremos el deslizamiento suave de toda la vida.
+  const conversationKey = target.kind === 'list' ? `list:${target.listId}` : `direct:${target.peerId}`
+  const landedRef = useRef<string | null>(null)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [visibleMessages.length])
+    if (visibleMessages.length === 0) return
+    const isFirstLanding = landedRef.current !== conversationKey
+    if (isFirstLanding) landedRef.current = conversationKey
+    bottomRef.current?.scrollIntoView({ behavior: isFirstLanding ? 'auto' : 'smooth' })
+  }, [visibleMessages.length, conversationKey])
+
+  // Las fotos y notas de voz llegan con su URL firmada un poco después del
+  // primer render (ver los efectos de arriba) y cambian la altura de la
+  // conversación al cargar — sin este segundo salto (sin animación, para no
+  // ser intrusivo), ese cambio de altura podía dejar el aterrizaje inicial
+  // a media conversación en vez de al final del todo.
+  useEffect(() => {
+    if (landedRef.current !== conversationKey) return
+    bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+  }, [imageUrls, audioUrls, conversationKey])
 
   // Si la persona sale de la conversación (o del navegador desde otra
   // pestaña) mientras estaba grabando, no queremos dejar el micrófono
