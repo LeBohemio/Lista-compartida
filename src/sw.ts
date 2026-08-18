@@ -11,6 +11,33 @@ declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null } | string>
 }
 
+// tsconfig.sw.json (deliberadamente) no incluye "types": ["vite/client"] —
+// ver el comentario de arriba sobre por qué sw.ts se compila en su propio
+// proyecto de TypeScript — así que import.meta.env no tiene tipo aquí sin
+// esto. Vite sí sustituye estos valores en tiempo de build igual que en el
+// resto de la app (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY ya se usan
+// así en src/lib/supabaseClient.ts).
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_SUPABASE_URL?: string
+      VITE_SUPABASE_ANON_KEY?: string
+    }
+  }
+}
+
+// El API de "botones de acción" en una notificación (NotificationAction,
+// el campo "actions" de las opciones, y el campo "action" del evento
+// notificationclick) es un estándar real y todos los navegadores con
+// soporte de Web Push lo implementan, pero el lib.dom.d.ts que trae
+// TypeScript no lo incluye todavía — lo definimos a mano.
+interface NotificationAction {
+  action: string
+  title: string
+  icon?: string
+}
+type ExtendedNotificationOptions = NotificationOptions & { actions?: NotificationAction[] }
+
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
 import { CacheFirst } from 'workbox-strategies'
@@ -55,18 +82,160 @@ registerRoute(
   }),
 )
 
+// --- Sesión guardada para poder actuar en segundo plano ---
+//
+// El botón "Marcar como leído" de una notificación (ver más abajo) necesita
+// poder escribir en la base de datos SIN abrir la app — si no hay ninguna
+// pestaña abierta, el Service Worker no tiene acceso al cliente de Supabase
+// de la página (que guarda la sesión en localStorage, que un Service Worker
+// no puede leer). La solución: la app, cada vez que su sesión cambia
+// (entrar, salir, refresco automático del token), se lo cuenta al Service
+// Worker por postMessage (ver src/context/AuthContext.tsx), y aquí lo
+// guardamos en IndexedDB (eso sí es accesible desde el Service Worker) para
+// poder usarlo luego aunque la página esté cerrada.
+const AUTH_DB_NAME = 'noteus-sw-auth'
+const AUTH_STORE_NAME = 'session'
+const AUTH_KEY = 'current'
+
+type StoredSession = {
+  accessToken: string
+  refreshToken: string
+  expiresAt: number // epoch en segundos
+  userId: string
+  language: 'es' | 'en'
+}
+
+function openAuthDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(AUTH_DB_NAME, 1)
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(AUTH_STORE_NAME)
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function saveStoredSession(session: StoredSession | null) {
+  const db = await openAuthDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(AUTH_STORE_NAME, 'readwrite')
+    if (session) tx.objectStore(AUTH_STORE_NAME).put(session, AUTH_KEY)
+    else tx.objectStore(AUTH_STORE_NAME).delete(AUTH_KEY)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+  db.close()
+}
+
+async function loadStoredSession(): Promise<StoredSession | null> {
+  const db = await openAuthDb()
+  const session = await new Promise<StoredSession | null>((resolve, reject) => {
+    const tx = db.transaction(AUTH_STORE_NAME, 'readonly')
+    const req = tx.objectStore(AUTH_STORE_NAME).get(AUTH_KEY)
+    req.onsuccess = () => resolve((req.result as StoredSession | undefined) ?? null)
+    req.onerror = () => reject(req.error)
+  })
+  db.close()
+  return session
+}
+
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  const msg = event.data as { type?: string; session?: StoredSession | null } | undefined
+  if (msg?.type === 'AUTH_SESSION') {
+    event.waitUntil(saveStoredSession(msg.session ?? null))
+  }
+})
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+// El access token dura poco (normalmente 1h) — si la app lleva cerrada más
+// tiempo que eso, hay que renovarlo con el refresh token antes de poder usar
+// la API de Supabase, igual que hace el propio supabase-js dentro de la app.
+async function refreshStoredSession(session: StoredSession): Promise<StoredSession | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: session.refreshToken }),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number }
+    if (!json.access_token || !json.refresh_token) return null
+    const next: StoredSession = {
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token,
+      expiresAt: Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600),
+      userId: session.userId,
+      language: session.language,
+    }
+    await saveStoredSession(next)
+    return next
+  } catch {
+    return null
+  }
+}
+
+// Marca como leída (columna last_read_message_at) la conversación de la
+// notificación en la que se ha tocado "Marcar como leído" — sin abrir
+// ninguna ventana de la app, con una llamada REST directa a Supabase usando
+// la sesión guardada. Si algo falla (no hay sesión, no se pudo renovar el
+// token, sin conexión...) simplemente no se marca nada: la persona siempre
+// puede marcarla como leída abriendo la app normalmente.
+async function markConversationRead(convType: 'list' | 'dm', convId: string) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+  let session = await loadStoredSession()
+  if (!session) return
+
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  if (session.expiresAt - 60 < nowSeconds) {
+    const refreshed = await refreshStoredSession(session)
+    if (!refreshed) return
+    session = refreshed
+  }
+
+  const restUrl =
+    convType === 'list'
+      ? `${SUPABASE_URL}/rest/v1/list_members?list_id=eq.${convId}&user_id=eq.${session.userId}`
+      : `${SUPABASE_URL}/rest/v1/contacts?user_id=eq.${session.userId}&contact_user_id=eq.${convId}`
+
+  await fetch(restUrl, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.accessToken}`,
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ last_read_message_at: new Date().toISOString() }),
+  }).catch(() => {
+    // sin conexión u otro fallo de red: no pasa nada, se queda sin marcar.
+  })
+}
+
 // --- Notificaciones push ---
 //
 // El payload lo manda nuestra Edge Function (supabase/functions/send-push)
-// como JSON: { title, body, url, tag }. "url" es a dónde navegar al tocar
-// el aviso (por ejemplo, directo al chat de la lista en cuestión); "tag"
-// agrupa avisos relacionados (si llegan dos del mismo chat seguidos, el
-// segundo sustituye al primero en vez de amontonarse).
+// como JSON: { title, body, url, tag, convType, convId }. "url" es a dónde
+// navegar al tocar el aviso (por ejemplo, directo al chat de la lista en
+// cuestión); "tag" agrupa avisos relacionados (si llegan dos del mismo chat
+// seguidos, el segundo sustituye al primero en vez de amontonarse).
+// "convType"/"convId" solo vienen en avisos de chat (lista o directo) e
+// identifican la conversación, para poder ofrecer el botón de acción
+// "Marcar como leído" sin tener que abrir la app.
 type PushPayload = {
   title: string
   body: string
   url?: string
   tag?: string
+  convType?: 'list' | 'dm'
+  convId?: string
+}
+
+const ACTION_LABELS = {
+  es: { markRead: '✓✓ Marcar como leído' },
+  en: { markRead: '✓✓ Mark as read' },
 }
 
 self.addEventListener('push', (event: PushEvent) => {
@@ -79,19 +248,41 @@ self.addEventListener('push', (event: PushEvent) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: payload.tag,
-      data: { url: payload.url || '/' },
-    }),
+    (async () => {
+      let actions: NotificationAction[] | undefined
+      if (payload.convType && payload.convId) {
+        const stored = await loadStoredSession()
+        const lang = stored?.language ?? 'es'
+        actions = [{ action: 'mark-read', title: ACTION_LABELS[lang].markRead }]
+      }
+
+      const options: ExtendedNotificationOptions = {
+        body: payload.body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: payload.tag,
+        data: { url: payload.url || '/', convType: payload.convType, convId: payload.convId },
+        actions,
+      }
+      await self.registration.showNotification(payload.title, options)
+    })(),
   )
 })
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const targetUrl = (event.notification.data as { url?: string } | undefined)?.url || '/'
+  const data = event.notification.data as
+    | { url?: string; convType?: 'list' | 'dm'; convId?: string }
+    | undefined
+
+  if (event.action === 'mark-read') {
+    if (data?.convType && data?.convId) {
+      event.waitUntil(markConversationRead(data.convType, data.convId))
+    }
+    return
+  }
+
+  const targetUrl = data?.url || '/'
 
   event.waitUntil(
     (async () => {

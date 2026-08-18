@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
       setSession(data.session)
+      postSessionToServiceWorker(data.session)
       if (data.session?.user) {
         loadProfile(data.session.user.id).finally(() => setLoading(false))
       } else {
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
+      postSessionToServiceWorker(newSession)
       if (newSession?.user) {
         loadProfile(newSession.user.id)
       } else {
@@ -110,6 +112,38 @@ function getAuthErrorLanguage(): 'en' | 'es' {
   if (typeof window === 'undefined') return 'es'
   const stored = window.localStorage.getItem('listas-en-comun-language')
   return stored === 'en' ? 'en' : 'es'
+}
+
+// Le cuenta al Service Worker cuál es la sesión activa ahora mismo, para que
+// pueda marcar conversaciones como leídas desde el botón de una notificación
+// aunque la app esté cerrada (ver el comentario junto a AUTH_DB_NAME en
+// src/sw.ts — el Service Worker no puede leer el localStorage de la página,
+// así que es la propia app la que se lo tiene que mandar cada vez que
+// cambia: entrar, salir, o que supabase-js refresque el token en segundo
+// plano). Si no hay sesión (o no hay Service Worker todavía) se manda
+// "null" para que el aviso guardado se borre y no se intente usar un token
+// de una sesión ya cerrada.
+function postSessionToServiceWorker(session: Session | null) {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+
+  const payload = session?.access_token && session.refresh_token && session.user
+    ? {
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+        expiresAt: session.expires_at ?? Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
+        userId: session.user.id,
+        language: getAuthErrorLanguage(),
+      }
+    : null
+
+  navigator.serviceWorker.ready
+    .then((registration) => {
+      registration.active?.postMessage({ type: 'AUTH_SESSION', session: payload })
+    })
+    .catch(() => {
+      // Sin Service Worker activo (por ejemplo, en un navegador sin soporte
+      // o justo durante el primer arranque) no hay nada que avisar.
+    })
 }
 
 function translateAuthError(message: string): string {

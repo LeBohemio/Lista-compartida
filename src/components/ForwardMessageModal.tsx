@@ -75,12 +75,36 @@ export default function ForwardMessageModal({
       }
     }
 
+    let newAudioPath: string | null = null
+    if (message.audio_path) {
+      const { data: blob, error: downloadErr } = await supabase.storage
+        .from('chat-audio')
+        .download(message.audio_path)
+      if (downloadErr || !blob) {
+        setError(t('forward.errorCopyAudio'))
+        setSendingTo(null)
+        return
+      }
+      const ext = message.audio_path.split('.').pop() || 'webm'
+      newAudioPath = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('chat-audio')
+        .upload(newAudioPath, blob, { contentType: blob.type || 'audio/webm' })
+      if (uploadErr) {
+        setError(t('forward.errorCopyAudio'))
+        setSendingTo(null)
+        return
+      }
+    }
+
     const { error: insertErr } = await supabase.from('messages').insert({
       list_id: target.kind === 'list' ? target.listId : null,
       to_user_id: target.kind === 'direct' ? target.peerId : null,
       sender_id: user.id,
       content: message.content,
       image_path: newImagePath,
+      audio_path: newAudioPath,
+      audio_duration_seconds: newAudioPath ? message.audio_duration_seconds : null,
     })
 
     setSendingTo(null)

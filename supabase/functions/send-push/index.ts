@@ -41,6 +41,11 @@ type PushPayload = {
   body: string
   url?: string
   tag?: string
+  // Solo en avisos de chat: identifican la conversación para que el
+  // Service Worker pueda ofrecer el botón "Marcar como leído" sin tener
+  // que abrir la app (ver src/sw.ts).
+  convType?: 'list' | 'dm'
+  convId?: string
 }
 
 // Manda el aviso a TODOS los dispositivos suscritos de un usuario, si su
@@ -107,12 +112,17 @@ async function handleMessages(record: Record<string, unknown>) {
     ])
     if (!sender || myContactRow?.muted) return
 
-    const bodyText = (record.content as string | null) || (record.image_path ? '📷 Foto' : '')
+    const bodyText =
+      (record.content as string | null) ||
+      (record.image_path ? '📷 Foto' : null) ||
+      (record.audio_path ? '🎤 Nota de voz' : '')
     await notifyUser(toUserId, 'notify_chat', {
       title: sender.username,
       body: bodyText,
       url: `/contacts/${senderId}/chat`,
       tag: `dm-${senderId}`,
+      convType: 'dm',
+      convId: senderId,
     })
     return
   }
@@ -130,12 +140,17 @@ async function handleMessages(record: Record<string, unknown>) {
   ])
   if (!list || !sender || !members) return
 
-  const bodyText = (record.content as string | null) || (record.image_path ? '📷 Foto' : '')
+  const bodyText =
+      (record.content as string | null) ||
+      (record.image_path ? '📷 Foto' : null) ||
+      (record.audio_path ? '🎤 Nota de voz' : '')
   const payload: PushPayload = {
     title: list.name,
     body: `${sender.username}: ${bodyText}`,
     url: `/lists/${listId}?tab=chat`,
     tag: `chat-${listId}`,
+    convType: 'list',
+    convId: listId,
   }
   // Quien tenga silenciado el chat DE ESTA LISTA (ver migration_v15.sql) no
   // recibe el aviso, aunque tenga notify_chat activado en general.
@@ -182,7 +197,7 @@ async function handleListMembers(record: Record<string, unknown>) {
   if (!list) return
 
   await notifyUser(userId, 'notify_invites', {
-    title: 'Listas en Común',
+    title: 'NoteUs',
     body: `Te han invitado a "${list.name}"`,
     url: `/lists/${listId}`,
     tag: `invite-${listId}`,
