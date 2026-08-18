@@ -191,6 +191,8 @@ const translations = {
       'Te hemos mandado un email de confirmación a la nueva dirección. Hasta que no lo confirmes, seguirás entrando con la actual.',
     'chat.empty': 'Todavía no hay mensajes. ¡Escribe el primero!',
     'chat.attachPhoto': 'Adjuntar foto',
+    'chat.takePhoto': 'Hacer una foto',
+    'chat.choosePhoto': 'Elegir de la galería',
     'chat.placeholder': 'Escribe un mensaje…',
     'chat.send': 'Enviar',
     'chat.closeViewer': 'Cerrar',
@@ -204,10 +206,14 @@ const translations = {
     'chat.releaseToCancel': 'Suelta para cancelar',
     'chat.micError': 'No se pudo acceder al micrófono. Revisa los permisos del navegador.',
     'chat.micDeniedTitle': 'Falta el permiso del micrófono',
-    'chat.micDeniedAndroid':
-      'En Chrome: toca el candado 🔒 (o los tres puntos ⋮) junto a la dirección de la página → Permisos del sitio → Micrófono → Permitir. Luego vuelve aquí y toca "Reintentar".',
-    'chat.micDeniedIos':
-      'En el iPhone: abre Ajustes → busca Safari (o el navegador que uses) → Micrófono → actívalo para este sitio. Si instalaste NoteUs en la pantalla de inicio, revisa también Ajustes → NoteUs. Luego vuelve aquí y toca "Reintentar".',
+    'chat.micDeniedAndroidApp':
+      'Ve a Ajustes del teléfono → Aplicaciones → NoteUs → Permisos → Micrófono → Permitir. Luego vuelve aquí y toca "Reintentar".',
+    'chat.micDeniedAndroidBrowser':
+      'En Chrome: toca el candado 🔒 (o los tres puntos ⋮) junto a la dirección de la página → Permisos del sitio → Micrófono → Permitir. Luego vuelve aquí y toca "Reintentar". Consejo: si añades NoteUs a la pantalla de inicio (instalarla como app), este permiso se gestionará luego desde los Ajustes de Aplicaciones del teléfono directamente, como con cualquier otra app.',
+    'chat.micDeniedIosApp':
+      'Ve a Ajustes → NoteUs → Micrófono → actívalo. Luego vuelve aquí y toca "Reintentar".',
+    'chat.micDeniedIosBrowser':
+      'En el iPhone: abre Ajustes → busca Safari (o el navegador que uses) → Micrófono → actívalo para este sitio. Luego vuelve aquí y toca "Reintentar". Consejo: si añades NoteUs a la pantalla de inicio (instalarla como app), luego este permiso se gestiona desde Ajustes → NoteUs directamente.',
     'chat.micDeniedDesktop':
       'Toca el candado 🔒 junto a la dirección de la página → Permisos del sitio → Micrófono → Permitir. Luego vuelve aquí y pulsa "Reintentar".',
     'chat.micNotFoundTitle': 'No se encuentra ningún micrófono',
@@ -630,6 +636,8 @@ const translations = {
       "We've sent a confirmation email to the new address. Until you confirm it, you'll keep signing in with the current one.",
     'chat.empty': 'No messages yet. Write the first one!',
     'chat.attachPhoto': 'Attach photo',
+    'chat.takePhoto': 'Take a photo',
+    'chat.choosePhoto': 'Choose from gallery',
     'chat.placeholder': 'Write a message…',
     'chat.send': 'Send',
     'chat.closeViewer': 'Close',
@@ -643,10 +651,13 @@ const translations = {
     'chat.releaseToCancel': 'Release to cancel',
     'chat.micError': "Couldn't access the microphone. Check your browser permissions.",
     'chat.micDeniedTitle': 'Microphone permission needed',
-    'chat.micDeniedAndroid':
-      'In Chrome: tap the lock icon 🔒 (or the three dots ⋮) next to the page address → Site settings → Microphone → Allow. Then come back here and tap "Retry".',
-    'chat.micDeniedIos':
-      'On iPhone: open Settings → find Safari (or whichever browser you use) → Microphone → turn it on for this site. If you installed NoteUs on your home screen, also check Settings → NoteUs. Then come back here and tap "Retry".',
+    'chat.micDeniedAndroidApp':
+      'Go to your phone\'s Settings → Apps → NoteUs → Permissions → Microphone → Allow. Then come back here and tap "Retry".',
+    'chat.micDeniedAndroidBrowser':
+      'In Chrome: tap the lock icon 🔒 (or the three dots ⋮) next to the page address → Site settings → Microphone → Allow. Then come back here and tap "Retry". Tip: if you add NoteUs to your home screen (install it as an app), this permission will then be managed from your phone\'s App Settings directly, like any other app.',
+    'chat.micDeniedIosApp': 'Go to Settings → NoteUs → Microphone → turn it on. Then come back here and tap "Retry".',
+    'chat.micDeniedIosBrowser':
+      'On iPhone: open Settings → find Safari (or whichever browser you use) → Microphone → turn it on for this site. Then come back here and tap "Retry". Tip: if you add NoteUs to your home screen (install it as an app), this permission will then be managed from Settings → NoteUs directly.',
     'chat.micDeniedDesktop':
       'Tap the lock icon 🔒 next to the page address → Site settings → Microphone → Allow. Then come back here and press "Retry".',
     'chat.micNotFoundTitle': 'No microphone found',

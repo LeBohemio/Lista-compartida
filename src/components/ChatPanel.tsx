@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { useLanguage } from '../lib/i18n'
+import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
@@ -60,6 +60,28 @@ function detectPlatform(): 'android' | 'ios' | 'desktop' {
   return 'desktop'
 }
 
+// Si la persona instaló NoteUs en la pantalla de inicio (en vez de tenerla
+// abierta como una pestaña más del navegador), Android/iOS la tratan como
+// una app de verdad: el permiso de micrófono se gestiona luego desde los
+// Ajustes de aplicaciones del propio teléfono, no desde los ajustes del
+// navegador — que es justo lo que se pidió ("autorizar a la aplicación").
+// display-mode:standalone (Android/Chrome) y navigator.standalone (iOS
+// Safari) son las dos formas de saberlo.
+function isStandalonePwa(): boolean {
+  if (typeof window === 'undefined') return false
+  const standaloneMedia = window.matchMedia?.('(display-mode: standalone)').matches
+  const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  return Boolean(standaloneMedia || iosStandalone)
+}
+
+function micDeniedInstructionKey(): TranslationKey {
+  const platform = detectPlatform()
+  const standalone = isStandalonePwa()
+  if (platform === 'android') return standalone ? 'chat.micDeniedAndroidApp' : 'chat.micDeniedAndroidBrowser'
+  if (platform === 'ios') return standalone ? 'chat.micDeniedIosApp' : 'chat.micDeniedIosBrowser'
+  return 'chat.micDeniedDesktop'
+}
+
 export default function ChatPanel({
   target,
   messages,
@@ -77,7 +99,8 @@ export default function ChatPanel({
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const [recording, setRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
@@ -98,6 +121,7 @@ export default function ChatPanel({
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const [lastPendingId, setLastPendingId] = useState<string | null>(null)
   const [menuTarget, setMenuTarget] = useState<Message | null>(null)
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null)
   const [copiedFeedback, setCopiedFeedback] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
@@ -242,7 +266,8 @@ export default function ChatPanel({
     if (uploadErr) {
       setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
       setSending(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (galleryInputRef.current) galleryInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
       return
     }
 
@@ -251,7 +276,8 @@ export default function ChatPanel({
       .insert({ ...insertPayload(target), sender_id: user.id, image_path: path, content: text.trim() || null })
 
     setSending(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (galleryInputRef.current) galleryInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
     if (insertErr) {
       setError(insertErr.message)
       return
@@ -502,15 +528,29 @@ export default function ChatPanel({
                 <>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowPhotoMenu(true)}
                     disabled={sending}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
                     aria-label={t('chat.attachPhoto')}
                   >
                     📷
                   </button>
+                  {/* Dos inputs separados en vez de uno solo: dejar que el
+                      propio navegador decida si ofrece cámara y galería
+                      juntas (con o sin el atributo "capture") es poco
+                      fiable — según el teléfono, a veces solo deja hacer
+                      foto y a veces solo elegir de la galería. Con dos
+                      botones explícitos, cada uno fuerza su propio modo. */}
                   <input
-                    ref={fileInputRef}
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={sendImage}
+                    className="hidden"
+                  />
+                  <input
+                    ref={galleryInputRef}
                     type="file"
                     accept="image/*"
                     onChange={sendImage}
@@ -576,6 +616,16 @@ export default function ChatPanel({
         />
       )}
 
+      {showPhotoMenu && (
+        <ContextMenu
+          onClose={() => setShowPhotoMenu(false)}
+          actions={[
+            { label: t('chat.takePhoto'), icon: '📷', onSelect: () => cameraInputRef.current?.click() },
+            { label: t('chat.choosePhoto'), icon: '🖼️', onSelect: () => galleryInputRef.current?.click() },
+          ]}
+        />
+      )}
+
       {forwardTarget && (
         <ForwardMessageModal
           message={forwardTarget}
@@ -625,13 +675,7 @@ export default function ChatPanel({
                 ? t('chat.micNotFoundBody')
                 : micErrorKind === 'other'
                   ? t('chat.micError')
-                  : t(
-                      detectPlatform() === 'android'
-                        ? 'chat.micDeniedAndroid'
-                        : detectPlatform() === 'ios'
-                          ? 'chat.micDeniedIos'
-                          : 'chat.micDeniedDesktop',
-                    )}
+                  : t(micDeniedInstructionKey())}
             </p>
             <div className="flex gap-2">
               <button
