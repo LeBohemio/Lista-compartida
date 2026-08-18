@@ -28,13 +28,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 bg-[var(--color-surface-alt)]">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 px-4">
       <LanguageToggle />
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-sm" />
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">NoteUs</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('auth.appTagline')}</p>
+          <Logo size={56} className="mx-auto mb-3 rounded-2xl shadow-lg ring-2 ring-white/30" />
+          <h1 className="text-2xl font-semibold text-white">NoteUs</h1>
+          <p className="mt-1 text-sm text-white/80">{t('auth.appTagline')}</p>
         </div>
 
         <form
@@ -90,9 +90,9 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-6 text-center text-sm text-white/80">
           {t('auth.noAccount')}{' '}
-          <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
+          <Link to="/register" className="font-semibold text-white underline underline-offset-2 hover:text-white/90">
             {t('auth.register')}
           </Link>
         </p>

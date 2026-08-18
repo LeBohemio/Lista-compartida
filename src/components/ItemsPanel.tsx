@@ -279,7 +279,7 @@ export default function ItemsPanel({
             <div className="mb-2 flex justify-end">
               <button
                 onClick={markAllDone}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-300"
               >
                 {t('notes.markAllDone')}
               </button>
