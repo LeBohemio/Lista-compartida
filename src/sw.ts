@@ -375,38 +375,38 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   // Toque normal sobre el aviso, o "Responder" en un navegador que no
   // soporta la caja de texto integrada (reply vacío): abrir/enfocar la app
   // en la conversación, como hasta ahora.
-  const targetUrl = data?.url || '/'
+  //
+  // URL absoluta (no relativa): clients.openWindow() debería resolver bien
+  // una ruta relativa contra el origen del Service Worker, pero no todos
+  // los navegadores/webviews lo hacen igual de bien — quitamos esa
+  // ambigüedad de en medio.
+  const targetUrl = new URL(data?.url || '/', self.location.origin).toString()
 
   event.waitUntil(
     (async () => {
-      // Cada paso puede fallar de formas que no dependen de nosotros — por
-      // ejemplo, Chrome en Android a veces "descarta" una pestaña en
-      // segundo plano para ahorrar memoria, y esa pestaña sigue apareciendo
-      // en matchAll() pero ya no admite navigate() de verdad. Antes, si eso
-      // fallaba, el toque en el aviso no hacía NADA (ni error visible ni
-      // app abierta). Ahora, cualquier fallo en el camino "reutilizar
-      // pestaña" cae en abrir una ventana nueva como último recurso, para
-      // que tocar el aviso siempre lleve a alguna parte.
+      // clients.openWindow() solo puede abrir una ventana nueva mientras
+      // sigue "vivo" el gesto de haber tocado el aviso — si de por medio
+      // pasan varios pasos asíncronos que fallan, el navegador puede acabar
+      // rechazándolo en silencio. Por eso aquí NO se intenta "reutilizar
+      // pestaña" con reintentos encadenados: se mira una sola vez si hay
+      // alguna pestaña abierta y, si no la hay (o falla), se va derecho a
+      // abrir una ventana nueva, sin pasos de más entre medias.
+      let handled = false
       try {
         const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        for (const client of allClients) {
-          if (!('focus' in client)) continue
-          try {
-            const focused = await client.focus()
-            if ('navigate' in focused) {
-              await (focused as WindowClient).navigate(targetUrl)
-            }
-            return
-          } catch {
-            // esta pestaña concreta ya no responde — seguimos probando con
-            // la siguiente, si hay más, o caemos a abrir una ventana nueva.
-          }
+        const existing = allClients.find((c) => 'focus' in c)
+        if (existing) {
+          const focused = await existing.focus()
+          if ('navigate' in focused) await (focused as WindowClient).navigate(targetUrl)
+          handled = true
         }
       } catch {
-        // matchAll no debería fallar, pero por si acaso: igualmente
-        // probamos a abrir una ventana nueva más abajo.
+        // no había pestaña utilizable, o algo falló al reutilizarla —
+        // caemos a abrir una ventana nueva de todos modos.
       }
-      await self.clients.openWindow(targetUrl).catch(() => {})
+      if (!handled) {
+        await self.clients.openWindow(targetUrl).catch(() => {})
+      }
     })(),
   )
 })
