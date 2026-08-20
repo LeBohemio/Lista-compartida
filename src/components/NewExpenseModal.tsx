@@ -32,6 +32,12 @@ export default function NewExpenseModal({
   currency,
   members,
   editing,
+  // Valores de partida para un gasto NUEVO (distinto de "editing", que es
+  // para modificar uno ya existente) — se usa, por ejemplo, al crear un
+  // gasto a partir de los productos marcados en la lista de la compra (ver
+  // ItemsPanel.tsx): se rellena el formulario, pero la persona lo revisa y
+  // confirma igual que cualquier otro gasto, no se guarda solo.
+  initial,
   onClose,
   onCreated,
 }: {
@@ -39,6 +45,7 @@ export default function NewExpenseModal({
   currency: CurrencyCode
   members: ListMember[]
   editing?: Expense
+  initial?: { description?: string; totalAmount?: number; category?: ExpenseCategory }
   onClose: () => void
   onCreated: () => void
 }) {
@@ -54,13 +61,16 @@ export default function NewExpenseModal({
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(editing?.ocr_confidence ?? null)
   const [ocrChecked, setOcrChecked] = useState(false)
 
-  const [description, setDescription] = useState(editing?.description ?? '')
+  const [description, setDescription] = useState(editing?.description ?? initial?.description ?? '')
   const [category, setCategory] = useState<ExpenseCategory>(() => {
     if (editing) return editing.category
+    if (initial?.category) return initial.category
     const stored = localStorage.getItem(`lastCategory:${listId}`) as ExpenseCategory | null
     return stored && EXPENSE_CATEGORIES.some((c) => c.value === stored) ? stored : 'otros'
   })
-  const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
+  const [amountInput, setAmountInput] = useState(
+    editing ? editing.total_amount.toFixed(2) : initial?.totalAmount ? initial.totalAmount.toFixed(2) : '',
+  )
   const [noDebt, setNoDebt] = useState(editing?.no_debt ?? false)
   const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
   const [splitMode, setSplitMode] = useState<SplitMode>(() => {

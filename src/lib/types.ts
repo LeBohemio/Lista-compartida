@@ -167,6 +167,7 @@ export type Item = {
   content: string
   done: boolean
   due_date: string | null
+  price: number | null
   position: number | null
   created_by: string | null
   created_at: string

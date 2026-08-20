@@ -419,6 +419,9 @@ export default function ListDetailPage() {
             items={items}
             soloList={soloList}
             readOnly={isCompleted}
+            currency={list.currency}
+            members={members}
+            expensesEnabled={list.expenses_enabled}
             onCompleteList={isOwner && !isCompleted ? () => setConfirmComplete(true) : undefined}
           />
         )}

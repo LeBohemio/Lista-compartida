@@ -15,11 +15,14 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
 import { useDragReorder } from '../hooks/useDragReorder'
+import { formatCurrency } from '../lib/balances'
+import { currencySymbol, type CurrencyCode } from '../lib/currencies'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
 import ContextMenu from './ContextMenu'
-import type { Item, ItemSuggestion } from '../lib/types'
+import NewExpenseModal from './NewExpenseModal'
+import type { Item, ItemSuggestion, ListMember } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
 const SEARCH_THRESHOLD = 8
@@ -53,12 +56,21 @@ export default function ItemsPanel({
   items,
   soloList,
   readOnly,
+  currency,
+  members,
+  expensesEnabled,
   onCompleteList,
 }: {
   listId: string
   items: Item[]
   soloList: boolean
   readOnly?: boolean
+  // Los 3 siguientes son solo para "crear gasto con lo comprado" — ver más
+  // abajo. La lista de la compra no necesitaba saber nada de esto hasta
+  // ahora, así que son props nuevas.
+  currency: CurrencyCode
+  members: ListMember[]
+  expensesEnabled: boolean
   // Solo se pasa cuando quien mira la lista puede completarla (el dueño, y
   // la lista no está ya completada) — así el botón de abajo solo aparece
   // quien puede pulsarlo de verdad. Abre la misma confirmación que el botón
@@ -71,6 +83,8 @@ export default function ItemsPanel({
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [dueDateTarget, setDueDateTarget] = useState<Item | null>(null)
+  const [priceTarget, setPriceTarget] = useState<Item | null>(null)
+  const [showConvert, setShowConvert] = useState(false)
   const [confirmEmpty, setConfirmEmpty] = useState(false)
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
   const [search, setSearch] = useState('')
@@ -89,6 +103,17 @@ export default function ItemsPanel({
   const searching = search.trim().length > 0
   const doneItems = useMemo(() => visibleItems.filter((i) => i.done).sort(sortByPosition), [visibleItems])
   const pendingItems = useMemo(() => visibleItems.filter((i) => !i.done).sort(sortByPosition), [visibleItems])
+
+  // Para el total y el botón de "crear gasto" usamos SIEMPRE la lista
+  // completa (notDeleted), no la filtrada por la búsqueda — así no se
+  // esconden ni cambian mientras escribes en el buscador.
+  const pricedItems = useMemo(() => notDeleted.filter((i) => i.price != null), [notDeleted])
+  const totalPriced = useMemo(() => pricedItems.reduce((sum, i) => sum + Number(i.price), 0), [pricedItems])
+  const doneBoughtItems = useMemo(() => notDeleted.filter((i) => i.done && i.price != null), [notDeleted])
+  const doneBoughtTotal = useMemo(
+    () => doneBoughtItems.reduce((sum, i) => sum + Number(i.price), 0),
+    [doneBoughtItems],
+  )
 
   const persistOrder = async (ordered: Item[]) => {
     await Promise.all(ordered.map((it, idx) => supabase.from('items').update({ position: idx }).eq('id', it.id)))
@@ -188,6 +213,23 @@ export default function ItemsPanel({
     await supabase.from('items').update({ due_date: dueDate }).eq('id', itemId)
   }
 
+  const setPrice = async (itemId: string, price: number | null) => {
+    await supabase.from('items').update({ price }).eq('id', itemId)
+  }
+
+  // Al crear el gasto a partir de lo comprado, quitamos el precio de esas
+  // notas para que no se puedan volver a convertir sin querer en un
+  // segundo gasto duplicado — la nota se queda tal cual (marcada como
+  // hecha), solo se limpia el precio.
+  const clearBoughtPrices = async () => {
+    await supabase
+      .from('items')
+      .update({ price: null })
+      .eq('list_id', listId)
+      .eq('done', true)
+      .not('price', 'is', null)
+  }
+
   const requestDelete = (itemId: string) => {
     setPendingDeleteIds((prev) => new Set(prev).add(itemId))
     setLastPendingId(itemId)
@@ -233,6 +275,18 @@ export default function ItemsPanel({
 
   return (
     <div>
+      {/* Total de lo que lleva precio puesto (comprado o no) — pensado como
+          un presupuesto de la lista, no como el gasto ya hecho (eso es
+          "doneBoughtTotal", que es lo que se usa al crear el gasto). */}
+      {pricedItems.length > 0 && (
+        <div className="mb-4 flex items-baseline justify-between rounded-xl px-4 py-3 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('notes.priceTotal')}</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {formatCurrency(totalPriced, currency, language)}
+          </span>
+        </div>
+      )}
+
       {items.length > SEARCH_THRESHOLD && (
         <input
           type="text"
@@ -275,17 +329,32 @@ export default function ItemsPanel({
               🔒 {t('notes.readOnlyHint')}
             </p>
           )}
-          {!readOnly && pendingItems.length > 0 && (
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={markAllDone}
-                // Mismo patrón que el botón "+Invitar" (ver ListDetailPage):
-                // relleno, no texto suelto sobre el fondo — así siempre hay
-                // contraste de sobra, elijas el acento que elijas.
-                className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
-              >
-                {t('notes.markAllDone')}
-              </button>
+          {!readOnly && (pendingItems.length > 0 || (expensesEnabled && doneBoughtItems.length > 0)) && (
+            <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
+              {/* Convierte de un toque lo ya comprado (marcado + con precio)
+                  en un gasto, con el importe y una descripción con los
+                  productos ya rellenos — pero siempre abre el formulario
+                  para revisar antes de guardar, igual que el resto de
+                  gastos, nunca se crea solo. */}
+              {expensesEnabled && doneBoughtItems.length > 0 && (
+                <button
+                  onClick={() => setShowConvert(true)}
+                  className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+                >
+                  {t('notes.createExpenseFromDone')}
+                </button>
+              )}
+              {pendingItems.length > 0 && (
+                <button
+                  onClick={markAllDone}
+                  // Mismo patrón que el botón "+Invitar" (ver ListDetailPage):
+                  // relleno, no texto suelto sobre el fondo — así siempre hay
+                  // contraste de sobra, elijas el acento que elijas.
+                  className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+                >
+                  {t('notes.markAllDone')}
+                </button>
+              )}
             </div>
           )}
 
@@ -313,6 +382,8 @@ export default function ItemsPanel({
                 onToggle={toggleDone}
                 onDelete={requestDelete}
                 onOpenDueDate={() => setDueDateTarget(item)}
+                onOpenPrice={() => setPriceTarget(item)}
+                currency={currency}
               />
             ))}
 
@@ -362,6 +433,8 @@ export default function ItemsPanel({
                 onToggle={toggleDone}
                 onDelete={requestDelete}
                 onOpenDueDate={() => setDueDateTarget(item)}
+                onOpenPrice={() => setPriceTarget(item)}
+                currency={currency}
               />
             ))}
           </NotepadCard>
@@ -419,6 +492,18 @@ export default function ItemsPanel({
         />
       )}
 
+      {priceTarget && (
+        <PriceSheet
+          item={priceTarget}
+          currency={currency}
+          onClose={() => setPriceTarget(null)}
+          onSave={(price) => {
+            setPrice(priceTarget.id, price)
+            setPriceTarget(null)
+          }}
+        />
+      )}
+
       {showAddSheet && (
         <AddNoteSheet
           content={content}
@@ -429,6 +514,29 @@ export default function ItemsPanel({
           onSubmit={addItem}
           onSuggestion={addSuggestion}
           onClose={() => setShowAddSheet(false)}
+        />
+      )}
+
+      {showConvert && (
+        <NewExpenseModal
+          listId={listId}
+          currency={currency}
+          members={members}
+          initial={{
+            description: t('notes.expenseDescription', {
+              items:
+                doneBoughtItems.length > 6
+                  ? `${doneBoughtItems.slice(0, 6).map((i) => i.content).join(', ')}…`
+                  : doneBoughtItems.map((i) => i.content).join(', '),
+            }),
+            totalAmount: doneBoughtTotal,
+            category: 'compras',
+          }}
+          onClose={() => setShowConvert(false)}
+          onCreated={async () => {
+            setShowConvert(false)
+            await clearBoughtPrices()
+          }}
         />
       )}
     </div>
@@ -612,6 +720,64 @@ function DueDateSheet({
   )
 }
 
+function PriceSheet({
+  item,
+  currency,
+  onClose,
+  onSave,
+}: {
+  item: Item
+  currency: CurrencyCode
+  onClose: () => void
+  onSave: (price: number | null) => void
+}) {
+  const { t } = useLanguage()
+  const [value, setValue] = useState(item.price != null ? item.price.toFixed(2) : '')
+
+  const parsed = Number.parseFloat(value.replace(',', '.'))
+  const valid = Number.isFinite(parsed) && parsed >= 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {t('menu.price')} ({currencySymbol(currency)})
+        </h2>
+        <p className="mb-4 truncate text-sm text-slate-500 dark:text-slate-400">{item.content}</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={t('notes.pricePlaceholder')}
+          className="mb-5 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+        />
+        <div className="flex gap-3">
+          {item.price != null && (
+            <button
+              onClick={() => onSave(null)}
+              className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              {t('notes.removePrice')}
+            </button>
+          )}
+          <button
+            onClick={() => onSave(Math.round(parsed * 100) / 100)}
+            disabled={!valid}
+            className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {t('common.save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ItemRow({
   item,
   soloList,
@@ -633,6 +799,8 @@ function ItemRow({
   onToggle,
   onDelete,
   onOpenDueDate,
+  onOpenPrice,
+  currency,
 }: {
   item: Item
   soloList: boolean
@@ -654,6 +822,8 @@ function ItemRow({
   onToggle: (item: Item) => void
   onDelete: (id: string) => void
   onOpenDueDate: () => void
+  onOpenPrice: () => void
+  currency: CurrencyCode
 }) {
   const { t, language } = useLanguage()
   const [draft, setDraft] = useState(item.content)
@@ -684,7 +854,7 @@ function ItemRow({
   // las rayitas del fondo. Quién la añadió ya no ocupa su propia línea —
   // ahora es solo una foto pegada al lateral derecho del propio texto (ver
   // más abajo).
-  const hasSecondaryLine = !!item.due_date
+  const hasSecondaryLine = !!item.due_date || item.price != null
 
   return (
     <div
@@ -780,6 +950,11 @@ function ItemRow({
                 {t('notes.due')}: {formatDueDate(item.due_date, language)}
               </span>
             )}
+            {item.price != null && (
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {formatCurrency(item.price, currency, language)}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -792,6 +967,11 @@ function ItemRow({
               ? [
                   { label: t('menu.editNote'), icon: '✎', onSelect: startEdit },
                   { label: t('menu.dueDate'), icon: '📅', onSelect: onOpenDueDate },
+                  {
+                    label: item.price != null ? `${t('menu.price')}: ${formatCurrency(item.price, currency, language)}` : t('menu.price'),
+                    icon: '💰',
+                    onSelect: onOpenPrice,
+                  },
                 ]
               : []),
             ...(!readOnly && onSortDate && onSortAlpha && onEnterCustomOrder
