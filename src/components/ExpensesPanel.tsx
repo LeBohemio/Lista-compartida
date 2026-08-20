@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { formatCurrency } from '../lib/balances'
 import type { CurrencyCode } from '../lib/currencies'
-import type { Expense, ListMember, Settlement } from '../lib/types'
+import type { Expense, ExpenseCategory, ListMember, Settlement } from '../lib/types'
 import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
 import Avatar from './Avatar'
@@ -42,12 +42,21 @@ export default function ExpensesPanel({
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | null>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const [lastPendingId, setLastPendingId] = useState<string | null>(null)
 
   const visibleExpenses = expenses.filter((e) => !pendingDeleteIds.has(e.id))
+
+  // Total gastado en la lista, sin más — no es lo mismo que el balance (qué
+  // le debe cada uno a quién), así que se muestra aparte y bien visible,
+  // arriba del todo.
+  const totalSpent = useMemo(
+    () => visibleExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0),
+    [visibleExpenses],
+  )
 
   const categoryTotals = useMemo(() => {
     const sums = new Map<string, number>()
@@ -59,27 +68,31 @@ export default function ExpensesPanel({
       .sort((a, b) => b.total - a.total)
   }, [visibleExpenses])
 
+  // El histórico solo lleva pagos YA confirmados — uno pendiente de
+  // confirmar ya se ve (y se puede confirmar/rechazar) en el aviso de
+  // arriba, dentro de BalanceSummary. Meterlo también aquí, sin poder
+  // actuar sobre él, era duplicar la misma información dos veces.
   const ledger: LedgerRow[] = [
     ...visibleExpenses.map((e) => ({ kind: 'expense' as const, date: e.created_at, data: e })),
-    ...settlements.map((s) => ({ kind: 'settlement' as const, date: s.created_at, data: s })),
+    ...settlements.filter((s) => s.confirmed_at).map((s) => ({ kind: 'settlement' as const, date: s.created_at, data: s })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  const filteredLedger = search.trim()
-    ? ledger.filter((row) => {
-        const q = search.trim().toLowerCase()
-        if (row.kind === 'expense') {
-          return (
-            (row.data.description ?? '').toLowerCase().includes(q) ||
-            (row.data.payer?.username ?? '').toLowerCase().includes(q)
-          )
-        }
-        return (
-          (row.data.note ?? '').toLowerCase().includes(q) ||
-          (row.data.from_profile?.username ?? '').toLowerCase().includes(q) ||
-          (row.data.to_profile?.username ?? '').toLowerCase().includes(q)
-        )
-      })
-    : ledger
+  const filteredLedger = ledger.filter((row) => {
+    if (categoryFilter && (row.kind !== 'expense' || row.data.category !== categoryFilter)) return false
+    if (!search.trim()) return true
+    const q = search.trim().toLowerCase()
+    if (row.kind === 'expense') {
+      return (
+        (row.data.description ?? '').toLowerCase().includes(q) ||
+        (row.data.payer?.username ?? '').toLowerCase().includes(q)
+      )
+    }
+    return (
+      (row.data.note ?? '').toLowerCase().includes(q) ||
+      (row.data.from_profile?.username ?? '').toLowerCase().includes(q) ||
+      (row.data.to_profile?.username ?? '').toLowerCase().includes(q)
+    )
+  })
 
   const toggleExpand = async (expense: Expense) => {
     if (expandedId === expense.id) {
@@ -145,6 +158,19 @@ export default function ExpensesPanel({
         </div>
       )}
 
+      {/* Total gastado en la lista — a propósito separado y por encima del
+          balance: son dos preguntas distintas ("¿cuánto llevamos gastado?"
+          vs. "¿quién le debe a quién?") que antes solo se podían responder
+          mirando el balance, que en realidad no contesta a la primera. */}
+      {visibleExpenses.length > 0 && (
+        <div className="mb-4 flex items-baseline justify-between rounded-xl px-4 py-3 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('expenses.totalSpent')}</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {formatCurrency(totalSpent, currency, language)}
+          </span>
+        </div>
+      )}
+
       <BalanceSummary
         listId={listId}
         currency={currency}
@@ -158,21 +184,41 @@ export default function ExpensesPanel({
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {t('expenses.byCategory')}
           </h3>
+          {/* Ahora se puede tocar una categoría para filtrar el histórico
+              de abajo por ella (antes eran solo informativas, sin ninguna
+              acción al tocarlas, lo cual no era lo esperable visualmente). */}
           <div className="flex flex-wrap gap-2">
             {categoryTotals.map((c) => (
-              <span
+              <button
+                type="button"
                 key={c.value}
-                className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-600 bg-[var(--color-surface-alt)] dark:text-slate-300"
+                onClick={() => setCategoryFilter((cur) => (cur === c.value ? null : c.value))}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  categoryFilter === c.value
+                    ? 'bg-brand-600 text-white'
+                    : 'text-slate-600 bg-[var(--color-surface-alt)] hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
               >
                 {c.icon} {t(c.labelKey)}: {formatCurrency(c.total, currency, language)}
-              </span>
+              </button>
             ))}
           </div>
         </div>
       )}
 
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('expenses.historic')}</h3>
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('expenses.historic')}</h3>
+          <p className="text-xs text-slate-400">{t('expenses.historicSubtitle')}</p>
+        </div>
+        {categoryFilter && (
+          <button
+            onClick={() => setCategoryFilter(null)}
+            className="shrink-0 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+          >
+            ✕ {t('expenses.clearCategoryFilter')}
+          </button>
+        )}
       </div>
 
       {ledger.length > SEARCH_THRESHOLD && (
@@ -186,7 +232,9 @@ export default function ExpensesPanel({
       )}
 
       {filteredLedger.length === 0 ? (
-        search.trim() ? (
+        categoryFilter ? (
+          <p className="py-8 text-center text-sm text-slate-400">{t('expenses.emptyCategoryFilter')}</p>
+        ) : search.trim() ? (
           <p className="py-8 text-center text-sm text-slate-400">{t('expenses.emptySearch')}</p>
         ) : (
           <div className="py-8 text-center">
@@ -293,7 +341,11 @@ export default function ExpensesPanel({
                   </div>
                 )}
               </div>
-            ) : row.data.confirmed_at ? (
+            ) : (
+              // Solo llegan aquí liquidaciones YA confirmadas (ver el
+              // filtro al construir "ledger" más arriba) — la que está
+              // pendiente de confirmar se ve, con sus propios botones, en
+              // el aviso de arriba (BalanceSummary), no aquí.
               <div
                 key={`s-${row.data.id}`}
                 className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
@@ -312,27 +364,6 @@ export default function ExpensesPanel({
                   </p>
                 </div>
                 <span className="font-semibold text-green-800 dark:text-green-400">{formatCurrency(row.data.amount, currency, language)}</span>
-              </div>
-            ) : (
-              <div
-                key={`s-${row.data.id}`}
-                className="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3 ring-1 ring-amber-100 dark:bg-amber-950/30 dark:ring-amber-900"
-              >
-                <div>
-                  <p className="text-sm text-amber-800 dark:text-amber-400">
-                    ⏳{' '}
-                    {t('expenses.settledMessage', {
-                      from: row.data.from_profile?.username ?? '—',
-                      to: row.data.to_profile?.username ?? '—',
-                    })}{' '}
-                    · {t('settle.pendingSectionTitle')}
-                    {row.data.note ? ` · ${row.data.note}` : ''}
-                  </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-500">
-                    {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
-                  </p>
-                </div>
-                <span className="font-semibold text-amber-800 dark:text-amber-400">{formatCurrency(row.data.amount, currency, language)}</span>
               </div>
             ),
           )}
