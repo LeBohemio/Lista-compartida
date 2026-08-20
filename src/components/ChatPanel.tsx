@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { supabase } from '../lib/supabaseClient'
@@ -26,6 +27,29 @@ function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(s / 60)
   const seconds = s % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function isSameDay(a: string, b: string) {
+  const da = new Date(a)
+  const db = new Date(b)
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
+}
+
+// Separadores de fecha entre grupos de mensajes de días distintos, como en
+// cualquier app de chat — "Hoy" y "Ayer" en vez de la fecha completa cuando
+// aplica, para que sea más fácil de leer de un vistazo.
+function formatDayLabel(dateStr: string, t: (key: TranslationKey) => string, language: 'es' | 'en') {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (isSameDay(dateStr, now.toISOString())) return t('chat.today')
+  if (isSameDay(dateStr, yesterday.toISOString())) return t('chat.yesterday')
+  return date.toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  })
 }
 
 // A quién pertenece esta conversación: el chat de una lista (como hasta
@@ -92,7 +116,7 @@ export default function ChatPanel({
   readOnly?: boolean
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +125,12 @@ export default function ChatPanel({
   const bottomRef = useRef<HTMLDivElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
+  // Foto elegida (de cámara o galería) pendiente de confirmar: se muestra
+  // en una hoja con vista previa y un texto opcional antes de subirla y
+  // mandarla de verdad — antes se enviaba sola en cuanto se elegía el
+  // archivo, sin poder revisarla ni añadir nada.
+  const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null)
 
   const [recording, setRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
@@ -110,6 +140,11 @@ export default function ChatPanel({
   const audioChunksRef = useRef<Blob[]>([])
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Umbral antes de que un pulsar-mantener en el micrófono empiece a grabar
+  // de verdad: un toque suelto (más corto que esto) no hace nada en
+  // absoluto, ni siquiera pide permiso — solo si el dedo sigue apoyado
+  // pasado este tiempo se arranca el micrófono.
+  const micHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Punto X donde empezó el gesto (para el "desliza para cancelar") y si ya
   // se ha soltado el dedo antes de que el micrófono terminara de arrancar
   // (el permiso del navegador tarda en resolver la primera vez).
@@ -251,9 +286,31 @@ export default function ChatPanel({
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      if (micHoldTimerRef.current) clearTimeout(micHoldTimerRef.current)
       recordingStreamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
+
+  // La caja de escribir crece con el texto (hasta un máximo, luego hace
+  // scroll dentro) en vez de quedarse en una sola línea — así un mensaje
+  // largo se ve entero mientras se escribe, sin desplazarse por dentro de
+  // una línea diminuta.
+  const COMPOSER_MAX_HEIGHT_PX = 120
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT_PX)}px`
+  }, [text])
+
+  // Enter manda el mensaje (como siempre); Mayús+Enter mete un salto de
+  // línea, para poder escribir mensajes de varias líneas cuando hace falta.
+  const handleComposerKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (text.trim() && !sending) e.currentTarget.form?.requestSubmit()
+    }
+  }
 
   const sendText = async (e: FormEvent) => {
     e.preventDefault()
@@ -271,12 +328,36 @@ export default function ChatPanel({
     setText('')
   }
 
-  const sendImage = async (e: ChangeEvent<HTMLInputElement>) => {
+  // Al elegir una foto (de cámara o galería) no se manda sola: se guarda
+  // como "pendiente" y se muestra en una hoja de confirmación con vista
+  // previa, donde se puede añadir un texto antes de mandarla de verdad.
+  const onSelectImage = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !user) return
+    if (!file) return
+    setPendingImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl)
+      return { file, previewUrl: URL.createObjectURL(file) }
+    })
+  }
+
+  const resetImageInputs = () => {
+    if (galleryInputRef.current) galleryInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
+  }
+
+  const cancelPendingImage = () => {
+    if (sending) return
+    if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl)
+    setPendingImage(null)
+    resetImageInputs()
+  }
+
+  const confirmSendImage = async () => {
+    if (!pendingImage || !user) return
     setError(null)
     setSending(true)
 
+    const file = pendingImage.file
     const ext = file.name.split('.').pop() || 'jpg'
     const path = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const { error: uploadErr } = await supabase.storage
@@ -286,8 +367,6 @@ export default function ChatPanel({
     if (uploadErr) {
       setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
       setSending(false)
-      if (galleryInputRef.current) galleryInputRef.current.value = ''
-    if (cameraInputRef.current) cameraInputRef.current.value = ''
       return
     }
 
@@ -296,8 +375,9 @@ export default function ChatPanel({
       .insert({ ...insertPayload(target), sender_id: user.id, image_path: path, content: text.trim() || null })
 
     setSending(false)
-    if (galleryInputRef.current) galleryInputRef.current.value = ''
-    if (cameraInputRef.current) cameraInputRef.current.value = ''
+    URL.revokeObjectURL(pendingImage.previewUrl)
+    setPendingImage(null)
+    resetImageInputs()
     if (insertErr) {
       setError(insertErr.message)
       return
@@ -401,6 +481,7 @@ export default function ChatPanel({
   }
 
   const CANCEL_THRESHOLD_PX = 80
+  const MIC_HOLD_THRESHOLD_MS = 200
 
   // Mantener pulsado para grabar, soltar para enviar, deslizar hacia la
   // izquierda para cancelar — igual que WhatsApp. Usamos Pointer Events con
@@ -418,7 +499,12 @@ export default function ChatPanel({
     cancelledRef.current = false
     pendingReleaseRef.current = null
     setSlideCancelHint(false)
-    void startRecording()
+    // No arrancamos a grabar al instante: esperamos un poco a ver si de
+    // verdad es un "mantener pulsado" y no un toque suelto.
+    micHoldTimerRef.current = setTimeout(() => {
+      micHoldTimerRef.current = null
+      void startRecording()
+    }, MIC_HOLD_THRESHOLD_MS)
   }
 
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
@@ -434,6 +520,17 @@ export default function ChatPanel({
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
       // nada que liberar si no se llegó a capturar.
+    }
+    if (micHoldTimerRef.current) {
+      // Se ha soltado antes de que se cumpliera el umbral: el micrófono no
+      // ha llegado a arrancar (ni se ha pedido permiso), así que un toque
+      // suelto no hace absolutamente nada.
+      clearTimeout(micHoldTimerRef.current)
+      micHoldTimerRef.current = null
+      recordingStartXRef.current = null
+      cancelledRef.current = false
+      setSlideCancelHint(false)
+      return
     }
     const shouldSend = !cancelledRef.current
     recordingStartXRef.current = null
@@ -495,19 +592,29 @@ export default function ChatPanel({
           <p className="py-8 text-center text-sm text-slate-400">{t('chat.empty')}</p>
         ) : (
           visibleMessages.map((m, idx) => {
+            const prev = idx > 0 ? visibleMessages[idx - 1] : null
             const isMine = m.sender_id === user?.id
-            const isFirstInGroup = idx === 0 || visibleMessages[idx - 1].sender_id !== m.sender_id
+            const isFirstInGroup = !prev || prev.sender_id !== m.sender_id
+            const showDateDivider = !prev || !isSameDay(prev.created_at, m.created_at)
             return (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                isMine={isMine}
-                isFirstInGroup={isFirstInGroup}
-                imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
-                audioUrl={m.audio_path ? audioUrls[m.audio_path] : undefined}
-                onLongPress={() => setMenuTarget(m)}
-                onOpenImage={setViewerUrl}
-              />
+              <div key={m.id}>
+                {showDateDivider && (
+                  <div className="my-3 flex justify-center">
+                    <span className="rounded-full px-3 py-1 text-[11px] font-medium text-slate-500 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)] dark:text-slate-300">
+                      {formatDayLabel(m.created_at, t, language)}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble
+                  message={m}
+                  isMine={isMine}
+                  isFirstInGroup={isFirstInGroup}
+                  imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
+                  audioUrl={m.audio_path ? audioUrls[m.audio_path] : undefined}
+                  onLongPress={() => setMenuTarget(m)}
+                  onOpenImage={setViewerUrl}
+                />
+              </div>
             )
           })
         )}
@@ -566,22 +673,24 @@ export default function ChatPanel({
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    onChange={sendImage}
+                    onChange={onSelectImage}
                     className="hidden"
                   />
                   <input
                     ref={galleryInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={sendImage}
+                    onChange={onSelectImage}
                     className="hidden"
                   />
-                  <input
-                    type="text"
+                  <textarea
+                    ref={composerRef}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleComposerKeyDown}
                     placeholder={t('chat.placeholder')}
-                    className="flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+                    rows={1}
+                    className="max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl border px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
                   />
                 </>
               )}
@@ -644,6 +753,50 @@ export default function ChatPanel({
             { label: t('chat.choosePhoto'), icon: '🖼️', onSelect: () => galleryInputRef.current?.click() },
           ]}
         />
+      )}
+
+      {pendingImage && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={cancelPendingImage}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-4 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={pendingImage.previewUrl}
+              alt={t('chat.photoAlt')}
+              className="mb-3 max-h-[55vh] w-full rounded-lg object-contain"
+            />
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={t('chat.captionPlaceholder')}
+              className="mb-3 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+            />
+            {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={cancelPendingImage}
+                disabled={sending}
+                className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmSendImage}
+                disabled={sending}
+                className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                {sending ? t('common.saving') : t('chat.send')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {forwardTarget && (
