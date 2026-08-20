@@ -10,6 +10,23 @@ import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom' | 'percent'
 
+// Al editar un gasto, ¿el reparto que ya tenía era "a partes iguales"? Si
+// lo era, queremos que el formulario arranque en modo "equal" (no
+// "custom" a ciegas como antes) — así, si solo se cambia el importe total,
+// el reparto se sigue recalculando igualitario en vez de quedarse
+// congelado con los números viejos. splitEqually reparte el resto de
+// céntimos de uno en uno entre las primeras personas, así que dos partes
+// "iguales" pueden diferir como mucho en 1 céntimo entre sí — de ahí la
+// tolerancia de abajo en vez de exigir que sean exactamente idénticas.
+function looksLikeEqualSplit(shares: { user_id: string | null; amount: number }[], memberIds: string[]): boolean {
+  if (shares.length !== memberIds.length || shares.length === 0) return false
+  const memberIdSet = new Set(memberIds)
+  const cents = shares.map((s) => (s.user_id && memberIdSet.has(s.user_id) ? Math.round(s.amount * 100) : null))
+  if (cents.some((c) => c === null)) return false
+  const values = cents as number[]
+  return Math.max(...values) - Math.min(...values) <= 1
+}
+
 export default function NewExpenseModal({
   listId,
   currency,
@@ -46,7 +63,19 @@ export default function NewExpenseModal({
   const [amountInput, setAmountInput] = useState(editing ? editing.total_amount.toFixed(2) : '')
   const [noDebt, setNoDebt] = useState(editing?.no_debt ?? false)
   const [paidBy, setPaidBy] = useState(editing?.paid_by ?? user?.id ?? '')
-  const [splitMode, setSplitMode] = useState<SplitMode>(editing ? 'custom' : 'equal')
+  const [splitMode, setSplitMode] = useState<SplitMode>(() => {
+    if (!editing?.shares) return 'equal'
+    return looksLikeEqualSplit(editing.shares, acceptedMembers.map((m) => m.user_id)) ? 'equal' : 'custom'
+  })
+  // El selector de "Igual / Porcentaje / Personalizado" empieza escondido
+  // detrás de un enlace cuando el reparto es igual — es, con diferencia, lo
+  // que se usa casi siempre, así que no hace falta verlo cada vez. Si el
+  // gasto que se está editando NO era igualitario, se muestra ya
+  // desplegado, para no esconder en qué modo está de verdad.
+  const [showSplitOptions, setShowSplitOptions] = useState<boolean>(() => {
+    if (!editing?.shares) return false
+    return !looksLikeEqualSplit(editing.shares, acceptedMembers.map((m) => m.user_id))
+  })
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(() => {
     if (!editing?.shares) return {}
     const initial: Record<string, string> = {}
@@ -377,41 +406,59 @@ export default function NewExpenseModal({
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {noDebt ? t('expenses.contributionSplit') : t('expenses.split')}
             </label>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setSplitMode('equal')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                  splitMode === 'equal'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
-                }`}
-              >
-                {t('expenses.splitEqual')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSplitMode('percent')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                  splitMode === 'percent'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
-                }`}
-              >
-                {t('expenses.splitPercent')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSplitMode('custom')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                  splitMode === 'custom'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
-                }`}
-              >
-                {t('expenses.splitCustom')}
-              </button>
-            </div>
+            {/* La mayoría de los gastos se reparten a partes iguales, así
+                que ese es el único que se ve al principio — "Porcentaje" y
+                "Personalizado" se quedan escondidos detrás de un enlace, en
+                vez de mostrar los 3 modos siempre con el mismo peso
+                visual. */}
+            {showSplitOptions ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSplitMode('equal')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                    splitMode === 'equal'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                  }`}
+                >
+                  {t('expenses.splitEqual')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitMode('percent')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                    splitMode === 'percent'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                  }`}
+                >
+                  {t('expenses.splitPercent')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitMode('custom')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                    splitMode === 'custom'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
+                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                  }`}
+                >
+                  {t('expenses.splitCustom')}
+                </button>
+              </div>
+            ) : (
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm text-slate-600 dark:text-slate-300">{t('expenses.splitEqual')}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSplitOptions(true)}
+                  className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  {t('expenses.splitOtherWay')}
+                </button>
+              </div>
+            )}
 
             <div className="space-y-2">
               {acceptedMembers.map((m) => (
