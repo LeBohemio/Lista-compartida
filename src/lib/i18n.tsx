@@ -10,7 +10,12 @@ import type { Language } from './types'
 // golpe para que el selector de idioma ya sea útil.
 const translations = {
   es: {
-    'nav.notes': 'Notas',
+    // "Tareas" (no "Notas"): es la pestaña de casillas/lista de la compra
+    // de DENTRO de una lista — a propósito distinta de "Notas" (nav.tabNotes
+    // más abajo), que es la nueva pestaña de notas de texto libre. Antes las
+    // dos se llamaban "Notas" y generaba confusión real sobre dónde había
+    // apuntado cada cosa.
+    'nav.notes': 'Tareas',
     'nav.expenses': 'Gastos',
     'nav.chat': 'Chat',
     'nav.tabLists': 'Listas',
@@ -487,7 +492,7 @@ const translations = {
     'avatarPicker.pixelArtAnimales': 'Pixel Art Animales',
   },
   en: {
-    'nav.notes': 'Notes',
+    'nav.notes': 'Tasks',
     'nav.expenses': 'Expenses',
     'nav.chat': 'Chat',
     'nav.tabLists': 'Lists',
