@@ -322,7 +322,7 @@ export default function ChatPanel({
       .insert({ ...insertPayload(target), sender_id: user.id, content: text.trim() })
     setSending(false)
     if (err) {
-      setError(err.message)
+      setError(err.code === '42501' ? t('chat.blockedError') : err.message)
       return
     }
     setText('')
@@ -379,7 +379,7 @@ export default function ChatPanel({
     setPendingImage(null)
     resetImageInputs()
     if (insertErr) {
-      setError(insertErr.message)
+      setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
       return
     }
     setText('')
@@ -410,7 +410,7 @@ export default function ChatPanel({
     })
 
     setSending(false)
-    if (insertErr) setError(insertErr.message)
+    if (insertErr) setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
   }
 
   const startRecording = async () => {
@@ -739,7 +739,14 @@ export default function ChatPanel({
               : []),
             { label: t('menu.forward'), icon: '↪️', onSelect: () => setForwardTarget(menuTarget) },
             ...(menuTarget.sender_id === user?.id
-              ? [{ label: t('menu.delete'), icon: '🗑', danger: true, onSelect: () => requestDeleteMessage(menuTarget.id) }]
+              ? [
+                  {
+                    label: t('chat.deleteForEveryone'),
+                    icon: '🗑',
+                    danger: true,
+                    onSelect: () => requestDeleteMessage(menuTarget.id),
+                  },
+                ]
               : []),
           ]}
         />

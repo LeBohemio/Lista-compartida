@@ -107,6 +107,12 @@ export type Contact = {
   // ListMember, pero para la conversación directa con esta persona. Ver
   // migration_v22.sql.
   chat_cleared_at: string | null
+  // Bloqueado por ti (no compartido con la otra persona): mientras tenga
+  // fecha, ni tú ni ella podéis mandaros mensajes directos nuevos ni
+  // invitaros a listas o notas nuevas. Lo que ya existía antes de
+  // bloquear (listas compartidas, historial de chat) no cambia. Ver
+  // migration_v26.sql.
+  blocked_at: string | null
   // joined
   contact?: Profile
 }

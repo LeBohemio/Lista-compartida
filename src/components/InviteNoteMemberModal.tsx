@@ -71,7 +71,13 @@ export default function InviteNoteMemberModal({
     })
     setAddingContactId(null)
     if (insertErr) {
-      setError(insertErr.code === '23505' ? t('invite.errorAlreadyMember') : insertErr.message)
+      setError(
+        insertErr.code === '23505'
+          ? t('invite.errorAlreadyMember')
+          : insertErr.code === '42501'
+            ? t('invite.errorBlocked')
+            : insertErr.message,
+      )
       return
     }
     setSuccess(t('invite.successSent', { name: contact.contact.username }))
@@ -116,6 +122,8 @@ export default function InviteNoteMemberModal({
     if (insertErr) {
       if (insertErr.code === '23505') {
         setError(t('invite.errorAlreadyMember'))
+      } else if (insertErr.code === '42501') {
+        setError(t('invite.errorBlocked'))
       } else {
         setError(insertErr.message)
       }

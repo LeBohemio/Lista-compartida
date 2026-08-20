@@ -112,6 +112,7 @@ export default function ContactsPage() {
     if (rpcErr) {
       if (rpcErr.message.includes('ALREADY_CONTACT')) setAddError(t('contacts.errorAlreadyContact'))
       else if (rpcErr.message.includes('SELF_REQUEST')) setAddError(t('contacts.errorSelf'))
+      else if (rpcErr.message.includes('BLOCKED')) setAddError(t('contacts.errorBlocked'))
       else if (rpcErr.code === '23505') setAddError(t('contacts.errorPendingExists'))
       else setAddError(rpcErr.message)
       return
@@ -300,6 +301,11 @@ export default function ContactsPage() {
                         {c.pinned && <span className="mr-1">📌</span>}
                         {c.contact!.username}
                         {c.muted && <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>}
+                        {c.blocked_at && (
+                          <span className="ml-1 align-middle text-xs text-slate-400" title={t('contacts.blockedBadge')}>
+                            🚫
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"

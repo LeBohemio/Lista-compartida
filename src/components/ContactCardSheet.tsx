@@ -45,6 +45,7 @@ export default function ContactCardSheet({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [confirmBlock, setConfirmBlock] = useState(false)
   const [showCreateList, setShowCreateList] = useState(false)
 
   const fetchState = useCallback(async () => {
@@ -121,6 +122,43 @@ export default function ContactCardSheet({
     notify()
   }
 
+  const confirmBlockContact = async () => {
+    if (state.kind !== 'contact' || !user) return
+    setBusy(true)
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('contacts')
+      .update({ blocked_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('contact_user_id', targetProfile.id)
+    setBusy(false)
+    setConfirmBlock(false)
+    if (updErr) {
+      setError(updErr.message)
+      return
+    }
+    fetchState()
+    notify()
+  }
+
+  const unblockContact = async () => {
+    if (state.kind !== 'contact' || !user) return
+    setBusy(true)
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('contacts')
+      .update({ blocked_at: null })
+      .eq('user_id', user.id)
+      .eq('contact_user_id', targetProfile.id)
+    setBusy(false)
+    if (updErr) {
+      setError(updErr.message)
+      return
+    }
+    fetchState()
+    notify()
+  }
+
   const confirmRemoveContact = async () => {
     setBusy(true)
     setError(null)
@@ -142,7 +180,7 @@ export default function ContactCardSheet({
     const { error: rpcErr } = await supabase.rpc('send_contact_request', { p_to_user_id: targetProfile.id })
     setBusy(false)
     if (rpcErr) {
-      setError(rpcErr.message)
+      setError(rpcErr.message.includes('BLOCKED') ? t('contacts.errorBlocked') : rpcErr.message)
       return
     }
     fetchState()
@@ -218,8 +256,17 @@ export default function ContactCardSheet({
 
           {state.kind === 'contact' && (
             <div className="space-y-2">
-              <CardAction icon="💬" label={t('card.openChat')} onClick={openChat} />
-              <CardAction icon="📋" label={t('card.createList')} onClick={() => setShowCreateList(true)} />
+              {state.contact.blocked_at && (
+                <p className="mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                  🚫 {t('card.blockedHint')}
+                </p>
+              )}
+              {!state.contact.blocked_at && (
+                <>
+                  <CardAction icon="💬" label={t('card.openChat')} onClick={openChat} />
+                  <CardAction icon="📋" label={t('card.createList')} onClick={() => setShowCreateList(true)} />
+                </>
+              )}
               <CardAction
                 icon="📌"
                 label={state.contact.pinned ? t('card.unpin') : t('card.pin')}
@@ -231,6 +278,13 @@ export default function ContactCardSheet({
                 label={state.contact.muted ? t('card.unmute') : t('card.mute')}
                 onClick={toggleMuted}
                 disabled={busy}
+              />
+              <CardAction
+                icon="🚫"
+                label={state.contact.blocked_at ? t('card.unblock') : t('card.block')}
+                onClick={state.contact.blocked_at ? unblockContact : () => setConfirmBlock(true)}
+                disabled={busy}
+                danger={!state.contact.blocked_at}
               />
               <CardAction
                 icon="🗑"
@@ -307,6 +361,17 @@ export default function ContactCardSheet({
           danger
           onCancel={() => setConfirmRemove(false)}
           onConfirm={confirmRemoveContact}
+        />
+      )}
+
+      {confirmBlock && (
+        <ConfirmDialog
+          title={t('card.blockConfirmTitle', { name: targetProfile.username })}
+          message={t('card.blockConfirmBody')}
+          confirmLabel={busy ? t('card.blocking') : t('card.block')}
+          danger
+          onCancel={() => setConfirmBlock(false)}
+          onConfirm={confirmBlockContact}
         />
       )}
 
