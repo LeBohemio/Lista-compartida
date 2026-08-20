@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -53,6 +53,13 @@ export default function NewExpenseModal({
   const { t, language } = useLanguage()
   const acceptedMembers = useMemo(() => members.filter((m) => m.status === 'accepted'), [members])
   const isEditing = !!editing
+
+  // Dos inputs separados (cámara y galería) en vez de uno solo con
+  // "capture=environment" — ese atributo forzaba la cámara y no dejaba
+  // elegir una foto ya hecha. Mismo patrón que ya funciona en el chat
+  // (ChatPanel.tsx).
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -305,13 +312,31 @@ export default function NewExpenseModal({
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('expenses.receiptPhoto')} {isEditing ? t('expenses.receiptReplaceOptional') : t('expenses.receiptOptional')}
             </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
+              >
+                📷 {t('expenses.takePhoto')}
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
+              >
+                🖼️ {t('expenses.choosePhoto')}
+              </button>
+            </div>
             <input
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handleFile}
-              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-300 dark:file:bg-brand-950/40 dark:file:text-brand-400"
+              className="hidden"
             />
+            <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
             {!previewUrl && isEditing && editing?.receipt_image_path && (
               <p className="mt-2 text-xs text-slate-400">{t('expenses.receiptSavedHint')}</p>
             )}
