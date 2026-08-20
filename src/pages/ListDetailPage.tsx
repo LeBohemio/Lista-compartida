@@ -10,8 +10,10 @@ import ExpensesPanel from '../components/ExpensesPanel'
 import InviteMemberModal from '../components/InviteMemberModal'
 import ChatPanel from '../components/ChatPanel'
 import RenameListModal from '../components/RenameListModal'
+import ChangeListPhotoModal from '../components/ChangeListPhotoModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
+import Toast from '../components/Toast'
 import Avatar from '../components/Avatar'
 import ContactCardSheet from '../components/ContactCardSheet'
 import type { Profile } from '../lib/types'
@@ -49,11 +51,31 @@ export default function ListDetailPage() {
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
+  const [showChangePhoto, setShowChangePhoto] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   const [confirmComplete, setConfirmComplete] = useState(false)
   const [cardTarget, setCardTarget] = useState<Profile | null>(null)
   const [showChatMenu, setShowChatMenu] = useState(false)
   const [confirmClearChat, setConfirmClearChat] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Las acciones que se quedan solo para quien creó la lista (eliminar
+  // miembros, marcar como completada/reactivar) ya no ocultan el botón al
+  // resto de miembros — lo ven, pero al tocarlo les sale este aviso en vez
+  // de hacer el cambio. Ver migration_v24.sql para lo que sí se abrió a
+  // cualquier miembro (foto, invitar, activar gastos).
+  const showOwnerOnlyToast = (message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToastMessage(message)
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), 2500)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    }
+  }, [])
 
   const unreadCount = useMemo(() => {
     if (!user || !myMembership) return 0
@@ -139,8 +161,16 @@ export default function ListDetailPage() {
   const listColor = colorForList(list)
   const isCompleted = !!list.archived_at
 
+  // Activar gastos: abierto a cualquier miembro (antes solo al dueño) — va
+  // por una función RPC en vez de un update directo a "lists" para no tener
+  // que abrir el resto de columnas de la tabla a nadie más que al dueño.
+  // Ver migration_v24.sql.
   const enableExpenses = async () => {
-    await supabase.from('lists').update({ expenses_enabled: true }).eq('id', list.id)
+    const { error: err } = await supabase.rpc('enable_list_expenses', { p_list_id: list.id })
+    if (err) {
+      showOwnerOnlyToast(err.message)
+      return
+    }
     refetch()
   }
 
@@ -189,16 +219,28 @@ export default function ListDetailPage() {
             <button onClick={() => navigate('/lists')} className="text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               ‹
             </button>
-            {list.photo_url ? (
-              // eslint-disable-next-line jsx-a11y/alt-text
-              <img
-                src={list.photo_url}
-                alt={list.name}
-                className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-[var(--color-surface-border)]"
-              />
-            ) : (
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: listColor }} />
-            )}
+            {/* La foto de la lista ahora la puede cambiar cualquier
+                miembro, no solo el dueño (ver migration_v24.sql) — por eso
+                es un botón para todos, a diferencia del ✎ de más abajo
+                (nombre/color/moneda), que sigue siendo solo del dueño. */}
+            <button
+              type="button"
+              onClick={() => setShowChangePhoto(true)}
+              className="shrink-0"
+              aria-label={t('list.changePhoto')}
+              title={t('list.changePhoto')}
+            >
+              {list.photo_url ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <img
+                  src={list.photo_url}
+                  alt={list.name}
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-[var(--color-surface-border)]"
+                />
+              ) : (
+                <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: listColor }} />
+              )}
+            </button>
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="font-semibold text-slate-900 dark:text-slate-100">{list.name}</p>
@@ -217,40 +259,51 @@ export default function ListDetailPage() {
                     ✎
                   </button>
                 )}
-                {isOwner && (
-                  <button
-                    onClick={() => (isCompleted ? reactivateList() : setConfirmComplete(true))}
-                    className="rounded-full border border-brand-200 px-2 py-0.5 text-sm font-semibold text-brand-600 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-400 dark:hover:bg-brand-950/40"
-                    aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
-                    title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
-                  >
-                    {isCompleted ? '↩' : '✓'}
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (!isOwner) {
+                      showOwnerOnlyToast(t('list.ownerOnlyComplete'))
+                      return
+                    }
+                    if (isCompleted) {
+                      reactivateList()
+                    } else {
+                      setConfirmComplete(true)
+                    }
+                  }}
+                  className="rounded-full border border-brand-200 px-2 py-0.5 text-sm font-semibold text-brand-600 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-400 dark:hover:bg-brand-950/40"
+                  aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                  title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                >
+                  {isCompleted ? '↩' : '✓'}
+                </button>
               </div>
               <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">
                 {acceptedMembers.length} {acceptedMembers.length === 1 ? t('list.member') : t('list.membersPlural')}
               </button>
             </div>
           </div>
-          {isOwner && (
-            <button
-              onClick={() => setShowInvite(true)}
-              // En claro es un botón "outline" (texto de color sobre fondo
-              // blanco/claro real, así que siempre hay contraste de sobra).
-              // En oscuro NO usamos texto de color sobre el fondo de la
-              // cabecera (--color-surface, calculado a partir del acento):
-              // con acentos de tono claro/cálido (amarillo, por ejemplo)
-              // ambos acaban pareciéndose y el botón se vuelve invisible.
-              // En su lugar, en oscuro pintamos el botón relleno (blanco
-              // sobre brand-600), el mismo patrón que ya usan el resto de
-              // botones principales de la app — funciona bien pase lo que
-              // pase con el acento elegido.
-              className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
-            >
-              {t('list.inviteButton')}
-            </button>
-          )}
+          {/* Invitar ahora está abierto a cualquier miembro, no solo al
+              dueño (ver migration_v24.sql) — como esta pantalla solo se
+              llega a pintar siendo ya miembro aceptado (si no, arriba se
+              muestra la pantalla de invitación pendiente), no hace falta
+              comprobación extra aquí. */}
+          <button
+            onClick={() => setShowInvite(true)}
+            // En claro es un botón "outline" (texto de color sobre fondo
+            // blanco/claro real, así que siempre hay contraste de sobra).
+            // En oscuro NO usamos texto de color sobre el fondo de la
+            // cabecera (--color-surface, calculado a partir del acento):
+            // con acentos de tono claro/cálido (amarillo, por ejemplo)
+            // ambos acaban pareciéndose y el botón se vuelve invisible.
+            // En su lugar, en oscuro pintamos el botón relleno (blanco
+            // sobre brand-600), el mismo patrón que ya usan el resto de
+            // botones principales de la app — funciona bien pase lo que
+            // pase con el acento elegido.
+            className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+          >
+            {t('list.inviteButton')}
+          </button>
         </div>
 
         {showMembers && (
@@ -282,10 +335,12 @@ export default function ListDetailPage() {
                     <span className={`text-xs ${m.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {m.status === 'accepted' ? t('member.statusActive') : t('member.statusPending')}
                     </span>
-                    {isOwner && m.role !== 'owner' && (
+                    {m.role !== 'owner' && (
                       <button
                         onClick={() =>
-                          setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? t('list.thisUser') })
+                          isOwner
+                            ? setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? t('list.thisUser') })
+                            : showOwnerOnlyToast(t('list.ownerOnlyRemoveMember'))
                         }
                         className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
                         aria-label={t('list.removeMember')}
@@ -320,14 +375,16 @@ export default function ListDetailPage() {
             >
               {t('nav.expenses')}
             </button>
-          ) : isOwner ? (
+          ) : (
+            // Abierto a cualquier miembro (ver migration_v24.sql) — no
+            // solo al dueño como antes.
             <button
               onClick={enableExpenses}
               className="flex-1 rounded-lg border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 border-[var(--color-surface-border)] dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
             >
               {t('list.enableExpensesShort')}
             </button>
-          ) : null}
+          )}
           <button
             onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
@@ -348,11 +405,12 @@ export default function ListDetailPage() {
         {isCompleted && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 bg-[var(--color-surface)] dark:text-slate-300">
             <span>🔒 {t('lists.readOnlyBanner')}</span>
-            {isOwner && (
-              <button onClick={reactivateList} className="shrink-0 font-semibold text-brand-600 hover:underline dark:text-brand-400">
-                {t('menu.reactivate')}
-              </button>
-            )}
+            <button
+              onClick={() => (isOwner ? reactivateList() : showOwnerOnlyToast(t('list.ownerOnlyComplete')))}
+              className="shrink-0 font-semibold text-brand-600 hover:underline dark:text-brand-400"
+            >
+              {t('menu.reactivate')}
+            </button>
           </div>
         )}
         {tab === 'notas' && (
@@ -474,6 +532,20 @@ export default function ListDetailPage() {
       )}
 
       {cardTarget && <ContactCardSheet targetProfile={cardTarget} onClose={() => setCardTarget(null)} />}
+
+      {showChangePhoto && (
+        <ChangeListPhotoModal
+          listId={list.id}
+          currentPhotoUrl={list.photo_url}
+          onClose={() => setShowChangePhoto(false)}
+          onSaved={() => {
+            setShowChangePhoto(false)
+            refetch()
+          }}
+        />
+      )}
+
+      {toastMessage && <Toast message={toastMessage} />}
     </div>
   )
 }

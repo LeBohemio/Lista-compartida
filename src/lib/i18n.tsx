@@ -450,6 +450,8 @@ const translations = {
     'list.removeMember': 'Eliminar miembro',
     'list.removeMemberConfirm':
       '¿Eliminar a {name} de esta lista? Dejará de tener acceso a las notas, gastos y chat.',
+    'list.ownerOnlyRemoveMember': 'Solo quien creó la lista puede eliminar miembros.',
+    'list.ownerOnlyComplete': 'Solo quien creó la lista puede marcarla como completada.',
     'member.statusActive': 'Activo',
     'member.statusPending': 'Invitación pendiente',
     'list.errorDelete': 'No se pudo eliminar la lista: {message}',
@@ -917,6 +919,8 @@ const translations = {
     'list.thisUser': 'this user',
     'list.removeMember': 'Remove member',
     'list.removeMemberConfirm': "Remove {name} from this list? They'll lose access to its notes, expenses, and chat.",
+    'list.ownerOnlyRemoveMember': 'Only the list creator can remove members.',
+    'list.ownerOnlyComplete': 'Only the list creator can mark it as completed.',
     'member.statusActive': 'Active',
     'member.statusPending': 'Pending invitation',
     'list.errorDelete': "Couldn't delete the list: {message}",

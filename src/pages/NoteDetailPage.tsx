@@ -19,7 +19,6 @@ export default function NoteDetailPage() {
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [saving, setSaving] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
@@ -50,10 +49,8 @@ export default function NoteDetailPage() {
 
   const scheduleSave = (patch: { title?: string; body?: string }, timerRef: typeof titleTimerRef) => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    setSaving(true)
-    timerRef.current = setTimeout(async () => {
-      await updateNote(patch)
-      setSaving(false)
+    timerRef.current = setTimeout(() => {
+      updateNote(patch)
     }, AUTOSAVE_DELAY_MS)
   }
 
@@ -121,9 +118,6 @@ export default function NoteDetailPage() {
               {acceptedMembers.length} {acceptedMembers.length === 1 ? t('list.member') : t('list.membersPlural')}
             </button>
           </div>
-          <span className="shrink-0 text-xs text-slate-400">
-            {saving ? t('apuntes.saving') : t('apuntes.saved')}
-          </span>
           {isOwner && (
             <button
               onClick={() => setShowInvite(true)}

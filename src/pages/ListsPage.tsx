@@ -12,6 +12,7 @@ import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
+import Toast from '../components/Toast'
 import { colorForList } from '../lib/colors'
 import type { ListWithMembership, Profile } from '../lib/types'
 
@@ -506,8 +507,18 @@ function ListRow({
   const { t } = useLanguage()
   const [showMenu, setShowMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const longPress = useLongPress(() => setShowMenu(true))
   const progressPct = stats && stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : null
+
+  // Marcar como completada / reactivar se queda solo para quien creó la
+  // lista — el botón ya no se oculta para el resto de miembros, pero al
+  // tocarlo les sale este aviso en vez de hacer el cambio. Ver
+  // migration_v24.sql.
+  const showOwnerOnlyToast = () => {
+    setToastMessage(t('list.ownerOnlyComplete'))
+    setTimeout(() => setToastMessage(null), 2500)
+  }
 
   const inReorder = reorderMode && !!onDragPointerDown
   return (
@@ -638,15 +649,17 @@ function ListRow({
             ...(onSortDate && onSortAlpha && onEnterCustomOrder
               ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
               : []),
-            ...(isOwner && onComplete
-              ? [{ label: t('menu.complete'), icon: '✓', onSelect: onComplete }]
+            ...(onComplete
+              ? [{ label: t('menu.complete'), icon: '✓', onSelect: () => (isOwner ? onComplete() : showOwnerOnlyToast()) }]
               : []),
-            ...(isOwner && onReactivate
-              ? [{ label: t('menu.reactivate'), icon: '↩', onSelect: onReactivate }]
+            ...(onReactivate
+              ? [{ label: t('menu.reactivate'), icon: '↩', onSelect: () => (isOwner ? onReactivate() : showOwnerOnlyToast()) }]
               : []),
           ]}
         />
       )}
+
+      {toastMessage && <Toast message={toastMessage} />}
 
       {showSortMenu && onSortDate && onSortAlpha && onEnterCustomOrder && (
         <ContextMenu
