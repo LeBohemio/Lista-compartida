@@ -8,6 +8,8 @@ import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ListsPage from './pages/ListsPage'
 import ListDetailPage from './pages/ListDetailPage'
+import NotesPage from './pages/NotesPage'
+import NoteDetailPage from './pages/NoteDetailPage'
 import ContactsPage from './pages/ContactsPage'
 import DirectChatPage from './pages/DirectChatPage'
 import SettingsPage from './pages/SettingsPage'
@@ -59,6 +61,7 @@ function App() {
         }
       >
         <Route path="/lists" element={<ListsPage />} />
+        <Route path="/notes" element={<NotesPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
@@ -76,6 +79,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DirectChatPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notes/:noteId"
+        element={
+          <ProtectedRoute>
+            <NoteDetailPage />
           </ProtectedRoute>
         }
       />

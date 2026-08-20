@@ -17,6 +17,19 @@ function ListsIcon({ className }: { className?: string }) {
   )
 }
 
+// Nota común (ver migration_v23.sql): una hoja con líneas de texto, para
+// distinguirla de un vistazo del icono de listas (que es una lista con
+// checks).
+function NotesIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+      <path d="M14 3.5V7a1 1 0 0 0 1 1h3.5" />
+      <path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4" />
+    </svg>
+  )
+}
+
 function ContactsIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -44,6 +57,7 @@ function SettingsIcon({ className }: { className?: string }) {
 
 const TABS: { to: string; Icon: typeof ListsIcon; labelKey: TranslationKey }[] = [
   { to: '/lists', Icon: ListsIcon, labelKey: 'nav.tabLists' },
+  { to: '/notes', Icon: NotesIcon, labelKey: 'nav.tabNotes' },
   { to: '/contacts', Icon: ContactsIcon, labelKey: 'nav.tabContacts' },
   { to: '/settings', Icon: SettingsIcon, labelKey: 'nav.tabSettings' },
 ]

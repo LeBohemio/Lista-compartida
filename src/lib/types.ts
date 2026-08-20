@@ -131,6 +131,36 @@ export type ListWithMembership = List & {
   membership: ListMember
 }
 
+// Notas comunes: algo aparte de las listas (ver migration_v23.sql) — un
+// título + un texto libre que se comparte con quien invites, igual que una
+// lista pero sin items/gastos/chat de por medio. El texto se autoguarda
+// mientras escribes, no hace falta pulsar nada.
+export type Note = {
+  id: string
+  title: string
+  body: string
+  owner_id: string
+  last_activity_at: string
+  created_at: string
+}
+
+export type NoteMember = {
+  note_id: string
+  user_id: string
+  role: MemberRole
+  status: MemberStatus
+  invited_identifier: string
+  created_at: string
+  responded_at: string | null
+  invited_by: string | null
+  // joined
+  profile?: Profile
+}
+
+export type NoteWithMembership = Note & {
+  membership: NoteMember
+}
+
 export type Item = {
   id: string
   list_id: string
