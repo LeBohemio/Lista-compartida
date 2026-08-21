@@ -70,14 +70,14 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="min-h-screen pb-24 bg-[var(--color-surface-alt)]">
-      <header className="bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
+    <div className="min-h-screen pb-32">
+      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 pb-4 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <h1 className="text-xl font-bold">{t('apuntes.tabTitle')}</h1>
+          <h1 className="font-display font-medium text-slate-900 dark:text-slate-100">{t('apuntes.tabTitle')}</h1>
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium hover:bg-white/25"
+            className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
           >
             + {t('apuntes.createShort')}
           </button>
@@ -98,14 +98,14 @@ export default function NotesPage() {
 
         {invitations.length > 0 && (
           <section className="mb-6">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-[var(--color-brand-600)]">
               {t('apuntes.pendingTitle')}
             </h2>
             <div className="space-y-2">
               {invitations.map((inv) => (
                 <div
                   key={inv.id}
-                  className="flex items-center justify-between gap-2 rounded-lg p-3 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
+                  className="glass-panel flex items-center justify-between gap-2 rounded-2xl p-3"
                 >
                   <p className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">
                     {inv.title}
@@ -113,13 +113,13 @@ export default function NotesPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => respondInvitation(inv.id, false)}
-                      className="rounded-lg border px-3 py-1.5 text-sm text-slate-600 hover:bg-white border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
+                      className="rounded-full border px-3 py-1.5 text-sm text-slate-600 border-[var(--color-glass-border)] dark:text-slate-300"
                     >
                       {t('lists.reject')}
                     </button>
                     <button
                       onClick={() => respondInvitation(inv.id, true)}
-                      className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                      className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
                     >
                       {t('lists.accept')}
                     </button>
@@ -132,7 +132,7 @@ export default function NotesPage() {
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <h2 className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {t('apuntes.tabTitle')}
             </h2>
             <input
@@ -141,7 +141,7 @@ export default function NotesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('lists.searchPlaceholder')}
               aria-label={t('common.search')}
-              className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+              className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             />
           </div>
 
@@ -165,7 +165,7 @@ export default function NotesPage() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') navigate(`/notes/${n.id}`)
                       }}
-                      className="flex w-full items-start gap-3 rounded-xl p-3.5 text-left ring-1 transition hover:shadow-md bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
+                      className="glass-panel flex w-full items-start gap-3 rounded-2xl p-3.5 text-left transition"
                     >
                       <span className="mt-0.5 shrink-0 text-xl">📝</span>
                       <span className="min-w-0 flex-1">

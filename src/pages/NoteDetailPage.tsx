@@ -80,7 +80,7 @@ export default function NoteDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-slate-400">{t('list.loading')}</p>
       </div>
     )
@@ -88,7 +88,7 @@ export default function NoteDetailPage() {
 
   if (error || !note) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center bg-[var(--color-surface-alt)]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
         <p className="text-slate-600 dark:text-slate-300">{t('list.errorLoad')}</p>
         <button onClick={() => navigate('/notes')} className="text-brand-600 underline dark:text-brand-400">
           {t('apuntes.tabTitle')}
@@ -99,10 +99,10 @@ export default function NoteDetailPage() {
 
   return (
     <div
-      className="min-h-screen bg-[var(--color-surface-alt)]"
+      className="min-h-screen"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="sticky top-0 z-10 border-b bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur border-[var(--color-surface-border)] dark:from-[var(--color-surface)] dark:to-[var(--color-surface)]">
+      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 py-3 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
           <button
             onClick={() => navigate('/notes')}
@@ -121,7 +121,7 @@ export default function NoteDetailPage() {
           {isOwner && (
             <button
               onClick={() => setShowInvite(true)}
-              className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+              className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
             >
               {t('list.inviteButton')}
             </button>
@@ -129,7 +129,7 @@ export default function NoteDetailPage() {
         </div>
 
         {showMembers && (
-          <div className="mx-auto mt-3 max-w-2xl rounded-lg p-3 text-sm bg-[var(--color-surface)]">
+          <div className="glass-panel mx-auto mt-3 max-w-2xl rounded-2xl p-3 text-sm">
             <ul className="space-y-2">
               {members.map((m) => {
                 const isSelf = m.user_id === user?.id
@@ -164,29 +164,31 @@ export default function NoteDetailPage() {
         )}
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-5">
-        <input
-          type="text"
-          value={title}
-          onChange={handleTitleChange}
-          onFocus={() => (titleFocusedRef.current = true)}
-          onBlur={() => {
-            titleFocusedRef.current = false
-          }}
-          placeholder={t('apuntes.titlePlaceholder')}
-          className="mb-3 w-full border-0 border-b bg-transparent px-0 pb-2 text-xl font-bold text-slate-900 focus:outline-none focus:ring-0 border-[var(--color-surface-border)] dark:text-slate-100"
-        />
-        <textarea
-          value={body}
-          onChange={handleBodyChange}
-          onFocus={() => (bodyFocusedRef.current = true)}
-          onBlur={() => {
-            bodyFocusedRef.current = false
-          }}
-          placeholder={t('apuntes.bodyPlaceholder')}
-          rows={16}
-          className="w-full resize-none rounded-lg border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
-        />
+      <main className="mx-auto max-w-2xl px-3 py-5">
+        <div className="glass-panel rounded-[26px] px-4 pb-4 pt-4">
+          <input
+            type="text"
+            value={title}
+            onChange={handleTitleChange}
+            onFocus={() => (titleFocusedRef.current = true)}
+            onBlur={() => {
+              titleFocusedRef.current = false
+            }}
+            placeholder={t('apuntes.titlePlaceholder')}
+            className="mb-3 w-full border-0 border-b bg-transparent px-0 pb-3 font-display text-lg font-medium text-slate-900 focus:outline-none focus:ring-0 border-[var(--color-glass-border)] dark:text-slate-100"
+          />
+          <textarea
+            value={body}
+            onChange={handleBodyChange}
+            onFocus={() => (bodyFocusedRef.current = true)}
+            onBlur={() => {
+              bodyFocusedRef.current = false
+            }}
+            placeholder={t('apuntes.bodyPlaceholder')}
+            rows={16}
+            className="w-full resize-none border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
+          />
+        </div>
       </main>
 
       {showInvite && (
