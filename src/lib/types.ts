@@ -184,6 +184,9 @@ export type Item = {
   created_by: string | null
   created_at: string
   done_at: string | null
+  // "Categorías vivas" (ver migration_v29.sql / itemCategories.ts): se
+  // calcula sola al crear la nota, a partir de su texto.
+  category: string | null
   // joined
   creator?: Profile
 }

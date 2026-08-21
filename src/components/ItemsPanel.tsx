@@ -17,6 +17,13 @@ import { useLongPress } from '../hooks/useLongPress'
 import { useDragReorder } from '../hooks/useDragReorder'
 import { formatCurrency } from '../lib/balances'
 import { currencySymbol, type CurrencyCode } from '../lib/currencies'
+import {
+  ITEM_CATEGORY_ORDER,
+  ITEM_CATEGORY_META,
+  detectItemCategory,
+  itemCategoryOf,
+  type ItemCategoryId,
+} from '../lib/itemCategories'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
@@ -90,6 +97,7 @@ export default function ItemsPanel({
   const [search, setSearch] = useState('')
   const [showAddSheet, setShowAddSheet] = useState(false)
   const [reorderMode, setReorderMode] = useState(false)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<ItemCategoryId>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
@@ -103,6 +111,29 @@ export default function ItemsPanel({
   const searching = search.trim().length > 0
   const doneItems = useMemo(() => visibleItems.filter((i) => i.done).sort(sortByPosition), [visibleItems])
   const pendingItems = useMemo(() => visibleItems.filter((i) => !i.done).sort(sortByPosition), [visibleItems])
+
+  // "Categorías vivas": mientras se busca o se está reordenando a mano, se
+  // enseña la vista plana de siempre (para no complicar el arrastre ni el
+  // escaneo de resultados de búsqueda) — el agrupado solo se ve en la vista
+  // normal, en reposo.
+  const groupedView = !searching && !reorderMode
+  const categoryBuckets = useMemo(() => {
+    const buckets = new Map<ItemCategoryId, { id: ItemCategoryId; items: Item[] }>()
+    for (const id of ITEM_CATEGORY_ORDER) buckets.set(id, { id, items: [] })
+    for (const item of [...pendingItems, ...doneItems]) {
+      buckets.get(itemCategoryOf(item.category))!.items.push(item)
+    }
+    return ITEM_CATEGORY_ORDER.map((id) => buckets.get(id)!).filter((b) => b.items.length > 0)
+  }, [pendingItems, doneItems])
+
+  const toggleCategoryCollapsed = (id: ItemCategoryId) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   // Para el total y el botón de "crear gasto" usamos SIEMPRE la lista
   // completa (notDeleted), no la filtrada por la búsqueda — así no se
@@ -168,7 +199,9 @@ export default function ItemsPanel({
   const createItem = async (rawContent: string) => {
     const trimmed = rawContent.trim()
     if (!trimmed || !user) return
-    await supabase.from('items').insert({ list_id: listId, content: trimmed, created_by: user.id })
+    await supabase
+      .from('items')
+      .insert({ list_id: listId, content: trimmed, created_by: user.id, category: detectItemCategory(trimmed) })
     await supabase.rpc('bump_item_suggestion', { p_list_id: listId, p_content: trimmed })
     fetchSuggestions()
   }
@@ -329,35 +362,132 @@ export default function ItemsPanel({
               🔒 {t('notes.readOnlyHint')}
             </p>
           )}
-          {!readOnly && (pendingItems.length > 0 || (expensesEnabled && doneBoughtItems.length > 0)) && (
-            <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
-              {/* Convierte de un toque lo ya comprado (marcado + con precio)
-                  en un gasto, con el importe y una descripción con los
-                  productos ya rellenos — pero siempre abre el formulario
-                  para revisar antes de guardar, igual que el resto de
-                  gastos, nunca se crea solo. */}
-              {expensesEnabled && doneBoughtItems.length > 0 && (
-                <button
-                  onClick={() => setShowConvert(true)}
-                  className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
-                >
-                  {t('notes.createExpenseFromDone')}
-                </button>
-              )}
-              {pendingItems.length > 0 && (
-                <button
-                  onClick={markAllDone}
-                  // Mismo patrón que el botón "+Invitar" (ver ListDetailPage):
-                  // relleno, no texto suelto sobre el fondo — así siempre hay
-                  // contraste de sobra, elijas el acento que elijas.
-                  className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
-                >
-                  {t('notes.markAllDone')}
-                </button>
-              )}
-            </div>
-          )}
+          {!readOnly &&
+            (pendingItems.length > 0 ||
+              (expensesEnabled && doneBoughtItems.length > 0) ||
+              (groupedView && doneItems.length > 0)) && (
+              <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
+                {/* Convierte de un toque lo ya comprado (marcado + con precio)
+                    en un gasto, con el importe y una descripción con los
+                    productos ya rellenos — pero siempre abre el formulario
+                    para revisar antes de guardar, igual que el resto de
+                    gastos, nunca se crea solo. */}
+                {expensesEnabled && doneBoughtItems.length > 0 && (
+                  <button
+                    onClick={() => setShowConvert(true)}
+                    className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+                  >
+                    {t('notes.createExpenseFromDone')}
+                  </button>
+                )}
+                {pendingItems.length > 0 && (
+                  <button
+                    onClick={markAllDone}
+                    // Mismo patrón que el botón "+Invitar" (ver ListDetailPage):
+                    // relleno, no texto suelto sobre el fondo — así siempre hay
+                    // contraste de sobra, elijas el acento que elijas.
+                    className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+                  >
+                    {t('notes.markAllDone')}
+                  </button>
+                )}
+                {/* En la vista agrupada por categoría ya no hay un único
+                    divisor "Hecho" al final (cada categoría enseña sus
+                    propias notas compradas mezcladas con las pendientes) —
+                    así que "vaciar comprados" se mueve aquí arriba, junto al
+                    resto de acciones globales de la lista. En la vista plana
+                    (buscando o reordenando) se sigue viendo donde siempre,
+                    en su propio divisor dentro de la tarjeta. */}
+                {groupedView && doneItems.length > 0 && (
+                  <button
+                    onClick={() => setConfirmEmpty(true)}
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    {t('notes.emptyDone')}
+                  </button>
+                )}
+              </div>
+            )}
 
+          {groupedView ? (
+            <div className="space-y-2.5">
+              {categoryBuckets.map((bucket) => {
+                const meta = ITEM_CATEGORY_META[bucket.id]
+                const doneCount = bucket.items.filter((i) => i.done).length
+                const total = bucket.items.length
+                const collapsed = collapsedCategories.has(bucket.id)
+                return (
+                  <div
+                    key={bucket.id}
+                    className="overflow-hidden rounded-2xl ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleCategoryCollapsed(bucket.id)}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left"
+                    >
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: `var(${meta.colorVar})` }}
+                        aria-hidden="true"
+                      />
+                      <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {t(meta.labelKey)}
+                      </span>
+                      <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                        {doneCount}/{total}
+                      </span>
+                      <span
+                        className={`shrink-0 text-[10px] text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+                        aria-hidden="true"
+                      >
+                        ▾
+                      </span>
+                    </button>
+                    <div className="mx-3.5 mb-2 h-[3px] overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${total > 0 ? (doneCount / total) * 100 : 0}%`,
+                          background: `var(${meta.colorVar})`,
+                        }}
+                      />
+                    </div>
+                    {!collapsed && (
+                      <div>
+                        {bucket.items.map((item) => (
+                          <ItemRow
+                            key={item.id}
+                            item={item}
+                            soloList={soloList}
+                            editing={editingId === item.id}
+                            dragging={false}
+                            draggable={false}
+                            readOnly={readOnly}
+                            onRowRef={() => {}}
+                            onDragPointerDown={() => {}}
+                            onDragPointerMove={() => {}}
+                            onDragPointerUp={() => {}}
+                            onSortDate={() => applySort('date')}
+                            onSortAlpha={() => applySort('alpha')}
+                            onEnterCustomOrder={() => setReorderMode(true)}
+                            onStartEdit={() => setEditingId(item.id)}
+                            onSaveEdit={(val) => saveEdit(item.id, val)}
+                            onCancelEdit={() => setEditingId(null)}
+                            onToggle={toggleDone}
+                            onDelete={requestDelete}
+                            onOpenDueDate={() => setDueDateTarget(item)}
+                            onOpenPrice={() => setPriceTarget(item)}
+                            currency={currency}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
           <NotepadCard isDragging={isDraggingItem}>
             {pendingReorder.displayItems.map((item) => (
               <ItemRow
@@ -438,6 +568,7 @@ export default function ItemsPanel({
               />
             ))}
           </NotepadCard>
+          )}
 
           {/* Cuando ya está todo marcado, no hace falta ir a buscar el ✓
               pequeño de la cabecera — se ofrece completar la lista aquí

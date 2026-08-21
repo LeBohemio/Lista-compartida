@@ -45,6 +45,44 @@
   --mesh-a: #cdd8ff;
   --mesh-b: #dcfff0;
   --mesh-c: #ffe3f0;
+
+  /*
+   * "Categorías vivas" (ver estudio de diseño / itemCategories.ts): color
+   * fijo por categoría de nota de la compra — a propósito NO depende del
+   * acento personalizado, son colores "de mundo real" (verde para fruta y
+   * verdura, ámbar para lácteos…) para reconocerlas de un vistazo sin leer.
+   */
+  --cat-fruta: #4c7a34;
+  --cat-fruta-tint: #e6efdb;
+  --cat-lacteos: #a8791f;
+  --cat-lacteos-tint: #f4ead2;
+  --cat-carne: #a44f37;
+  --cat-carne-tint: #f3e0d9;
+  --cat-panaderia: #8a5a37;
+  --cat-panaderia-tint: #eee0d2;
+  --cat-limpieza: #2b7e79;
+  --cat-limpieza-tint: #dceeed;
+  --cat-bebidas: #79466a;
+  --cat-bebidas-tint: #ecdfe8;
+  --cat-varios: #7c7d88;
+  --cat-varios-tint: #e6e6ea;
+}
+
+html.dark {
+  --cat-fruta: #8fc46a;
+  --cat-fruta-tint: #263420;
+  --cat-lacteos: #e0b45c;
+  --cat-lacteos-tint: #362c17;
+  --cat-carne: #e0917a;
+  --cat-carne-tint: #3a241d;
+  --cat-panaderia: #d3a578;
+  --cat-panaderia-tint: #332619;
+  --cat-limpieza: #6fc9c2;
+  --cat-limpieza-tint: #1c3230;
+  --cat-bebidas: #cc93bb;
+  --cat-bebidas-tint: #34212f;
+  --cat-varios: #a9a9b6;
+  --cat-varios-tint: #2b2b33;
 }
 
 html, body, #root {
