@@ -1,35 +1,49 @@
-// Selección de mensajes con la cita del mensaje al que se responde (ver
-// migration_v28.sql: reply_to_message_id). Si por lo que sea ese join falla
-// (por ejemplo, si la caché de PostgREST tarda en enterarse de la relación
-// nueva justo después de aplicar la migración, o cualquier otro fallo
-// puntual de ese "select" concreto), MESSAGES_SELECT_BASIC sirve de
-// respaldo: los mismos mensajes, sin la cita — así un problema aislado en
-// esa parte del chat no se lleva por delante la carga de TODA la lista o
-// del chat directo con un contacto (bug real visto en producción: al fallar
-// el join, useListData.ts/useDirectMessages.ts marcaban error general y la
-// pantalla entera decía "no se pudo cargar la lista").
-export const MESSAGES_SELECT_WITH_REPLY =
-  '*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_message_id_fkey(id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username))'
+import { supabase } from './supabaseClient'
+import type { Message } from './types'
 
+// Antes se pedía la cita del mensaje al que se responde (reply_to) con un
+// JOIN de PostgREST sobre la propia tabla "messages"
+// (reply_to:messages!messages_reply_to_message_id_fkey(...)). En
+// producción eso daba siempre "Could not find a relationship between
+// 'messages' and 'messages' in the schema cache" — comprobado que la
+// clave foránea existe de verdad en la base de datos (select sobre
+// pg_constraint) y que forzar un reload de la caché del esquema (NOTIFY
+// pgrst, 'reload schema') no lo arregla — así que sea lo que sea lo que le
+// pasa a ese proyecto en concreto con este tipo de relación (una tabla
+// referenciándose a sí misma), lo más seguro es no depender de que
+// PostgREST la reconozca.
+//
+// Por eso ahora los mensajes se piden SIN esa cita (MESSAGES_SELECT_BASIC,
+// un select normal, sin autorreferencia) y attachReplyPreviews() añade la
+// cita aparte, con una segunda consulta sencilla por ids (un IN(...), sin
+// ningún JOIN sobre la propia tabla) — funciona pase lo que pase con la
+// caché de relaciones de PostgREST.
 export const MESSAGES_SELECT_BASIC = '*, sender:profiles!messages_sender_id_fkey(*)'
 
-/**
- * Ejecuta una consulta de mensajes intentando primero traer la cita de
- * "responder a" y, si esa consulta concreta falla, reintenta sin ella en
- * vez de propagar el error hacia arriba. `runQuery` recibe el texto del
- * `select(...)` a usar y debe devolver la consulta ya construida (sin haber
- * hecho todavía el `await`), para poder repetirla con el select de
- * respaldo.
- */
-export async function fetchMessagesResilient<T>(
-  runQuery: (selectClause: string) => PromiseLike<{ data: T | null; error: { message: string } | null }>,
-) {
-  const withReply = await runQuery(MESSAGES_SELECT_WITH_REPLY)
-  if (!withReply.error) return withReply
+const REPLY_PREVIEW_SELECT = 'id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username)'
 
-  console.warn(
-    '[messages] Falló el join de "responder a" (reply_to) — reintentando sin la cita para no bloquear el chat:',
-    withReply.error.message,
+/**
+ * Rellena el campo "reply_to" de una lista de mensajes ya cargados (los
+ * que tengan reply_to_message_id) con una consulta aparte. No hace falta
+ * ninguna policy RLS nueva: solo se puede citar un mensaje de la MISMA
+ * conversación (lista o chat directo), así que si ya podías ver los
+ * mensajes de la lista, también puedes ver el que citan — las mismas
+ * políticas que dejan ver messagesRes ya dejan ver esto.
+ */
+export async function attachReplyPreviews(messages: Message[]): Promise<Message[]> {
+  const ids = Array.from(
+    new Set(messages.map((m) => m.reply_to_message_id).filter((id): id is string => Boolean(id))),
   )
-  return runQuery(MESSAGES_SELECT_BASIC)
+  if (ids.length === 0) return messages
+
+  const { data, error } = await supabase.from('messages').select(REPLY_PREVIEW_SELECT).in('id', ids)
+  if (error || !data) {
+    console.warn('[messages] No se pudieron cargar las citas de "responder a":', error?.message)
+    return messages
+  }
+
+  const byId = new Map((data as unknown as NonNullable<Message['reply_to']>[]).map((row) => [row.id, row]))
+  return messages.map((m) =>
+    m.reply_to_message_id ? { ...m, reply_to: byId.get(m.reply_to_message_id) ?? null } : m,
+  )
 }

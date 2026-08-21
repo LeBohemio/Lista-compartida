@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Expense, Item, List, ListMember, Message, Settlement } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
-import { fetchMessagesResilient } from '../lib/messagesQuery'
+import { attachReplyPreviews, MESSAGES_SELECT_BASIC } from '../lib/messagesQuery'
 
 export function useListData(listId: string | undefined) {
   const { user } = useAuth()
@@ -45,19 +45,19 @@ export function useListData(listId: string | undefined) {
         )
         .eq('list_id', listId)
         .order('created_at', { ascending: false }),
-      fetchMessagesResilient((selectClause) =>
-        supabase.from('messages').select(selectClause).eq('list_id', listId).order('created_at', { ascending: true }),
-      ),
+      supabase
+        .from('messages')
+        .select(MESSAGES_SELECT_BASIC)
+        .eq('list_id', listId)
+        .order('created_at', { ascending: true }),
     ])
 
     // OJO: el error de "messages" queda fuera de este bloqueo a propósito.
-    // Antes, si esa consulta fallaba (por ejemplo, algo puntual del join de
-    // "responder a" nada más aplicar una migración), la lista ENTERA
-    // dejaba de cargar con un "no se pudo cargar la lista" — aunque notas y
-    // gastos estuvieran perfectamente disponibles. Ahora, si de verdad no
-    // se pueden traer los mensajes ni siquiera con el respaldo de
-    // fetchMessagesResilient, el chat se queda vacío pero el resto de la
-    // lista funciona con normalidad.
+    // Antes, si esa consulta fallaba, la lista ENTERA dejaba de cargar con
+    // un "no se pudo cargar la lista" — aunque notas y gastos estuvieran
+    // perfectamente disponibles. Ahora, si de verdad no se pueden traer
+    // los mensajes, el chat se queda vacío pero el resto de la lista
+    // funciona con normalidad.
     const firstError = listRes.error || membersRes.error || itemsRes.error || expensesRes.error || settlementsRes.error
     if (firstError) {
       setError(firstError.message)
@@ -73,7 +73,8 @@ export function useListData(listId: string | undefined) {
     setItems((itemsRes.data as unknown as Item[]) ?? [])
     setExpenses((expensesRes.data as unknown as Expense[]) ?? [])
     setSettlements((settlementsRes.data as unknown as Settlement[]) ?? [])
-    setMessages((messagesRes.data as unknown as Message[]) ?? [])
+    const baseMessages = (messagesRes.data as unknown as Message[]) ?? []
+    setMessages(await attachReplyPreviews(baseMessages))
     setLoading(false)
   }, [listId])
 
