@@ -312,7 +312,7 @@ export default function ItemsPanel({
           un presupuesto de la lista, no como el gasto ya hecho (eso es
           "doneBoughtTotal", que es lo que se usa al crear el gasto). */}
       {pricedItems.length > 0 && (
-        <div className="mb-4 flex items-baseline justify-between rounded-xl px-4 py-3 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+        <div className="glass-panel mb-4 flex items-baseline justify-between rounded-2xl px-4 py-3">
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('notes.priceTotal')}</span>
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
             {formatCurrency(totalPriced, currency, language)}
@@ -419,7 +419,7 @@ export default function ItemsPanel({
                 return (
                   <div
                     key={bucket.id}
-                    className="overflow-hidden rounded-2xl ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
+                    className="glass-panel overflow-hidden rounded-2xl"
                   >
                     <button
                       type="button"
@@ -591,7 +591,7 @@ export default function ItemsPanel({
           onClick={() => setShowAddSheet(true)}
           aria-label={t('notes.addTitle')}
           title={t('notes.addTitle')}
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-2xl text-white shadow-[0_16px_30px_-10px_var(--color-glow)] ring-1 ring-[var(--color-glass-border)]"
         >
           +
         </button>

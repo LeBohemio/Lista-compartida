@@ -220,11 +220,11 @@ export default function ListDetailPage() {
 
   return (
     <div
-      className="min-h-screen pb-16 bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-16"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       <header
-        className="sticky top-0 z-10 border-b bg-gradient-to-r from-white to-brand-50/50 px-4 py-3 backdrop-blur border-[var(--color-surface-border)] dark:from-[var(--color-surface)] dark:to-[var(--color-surface)]"
+        className="glass-panel sticky top-3 z-10 mx-3 overflow-hidden rounded-[26px] px-4 pb-3.5 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]"
         style={{ borderTopColor: listColor, borderTopWidth: 3 }}
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between">
@@ -248,7 +248,7 @@ export default function ListDetailPage() {
                 <img
                   src={list.photo_url}
                   alt={list.name}
-                  className="h-8 w-8 rounded-full object-cover ring-1 ring-[var(--color-surface-border)]"
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-[var(--color-glass-border)]"
                 />
               ) : (
                 <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: listColor }} />
@@ -256,7 +256,7 @@ export default function ListDetailPage() {
             </button>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-semibold text-slate-900 dark:text-slate-100">{list.name}</p>
+                <p className="font-display font-medium text-slate-900 dark:text-slate-100">{list.name}</p>
                 {isCompleted && (
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                     {t('lists.completedBadge')}
@@ -265,7 +265,7 @@ export default function ListDetailPage() {
                 {isOwner && (
                   <button
                     onClick={() => setShowRename(true)}
-                    className="rounded-full border border-slate-200 px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
                     aria-label={t('list.editTitle')}
                     title={t('list.editTitle')}
                   >
@@ -284,7 +284,7 @@ export default function ListDetailPage() {
                       setConfirmComplete(true)
                     }
                   }}
-                  className="rounded-full border border-brand-200 px-2 py-0.5 text-sm font-semibold text-brand-600 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-400 dark:hover:bg-brand-950/40"
+                  className="rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
                   aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                   title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                 >
@@ -300,27 +300,19 @@ export default function ListDetailPage() {
               dueño (ver migration_v24.sql) — como esta pantalla solo se
               llega a pintar siendo ya miembro aceptado (si no, arriba se
               muestra la pantalla de invitación pendiente), no hace falta
-              comprobación extra aquí. */}
+              comprobación extra aquí. Botón siempre relleno con degradado
+              (antes era "outline" en claro y relleno en oscuro) — un solo
+              tratamiento que funciona con cualquier acento elegido. */}
           <button
             onClick={() => setShowInvite(true)}
-            // En claro es un botón "outline" (texto de color sobre fondo
-            // blanco/claro real, así que siempre hay contraste de sobra).
-            // En oscuro NO usamos texto de color sobre el fondo de la
-            // cabecera (--color-surface, calculado a partir del acento):
-            // con acentos de tono claro/cálido (amarillo, por ejemplo)
-            // ambos acaban pareciéndose y el botón se vuelve invisible.
-            // En su lugar, en oscuro pintamos el botón relleno (blanco
-            // sobre brand-600), el mismo patrón que ya usan el resto de
-            // botones principales de la app — funciona bien pase lo que
-            // pase con el acento elegido.
-            className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-transparent dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700"
+            className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
           >
             {t('list.inviteButton')}
           </button>
         </div>
 
         {showMembers && (
-          <div className="mx-auto mt-3 max-w-2xl rounded-lg p-3 text-sm bg-[var(--color-surface)]">
+          <div className="glass-panel mx-auto mt-3 max-w-2xl rounded-2xl p-3 text-sm">
             <ul className="space-y-2">
               {members.map((m) => {
                 const isSelf = m.user_id === profile?.id
@@ -370,11 +362,13 @@ export default function ListDetailPage() {
           </div>
         )}
 
-        <div className="mx-auto mt-3 flex max-w-2xl gap-1">
+        <div className="mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-black/5 p-1 dark:bg-white/5">
           <button
             onClick={() => setTab('notas')}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'notas' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
+            className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
+              tab === 'notas'
+                ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
+                : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             {t('nav.notes')}
@@ -382,8 +376,10 @@ export default function ListDetailPage() {
           {list.expenses_enabled ? (
             <button
               onClick={() => setTab('gastos')}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                tab === 'gastos' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
+              className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
+                tab === 'gastos'
+                  ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
+                  : 'text-slate-600 dark:text-slate-300'
               }`}
             >
               {t('nav.expenses')}
@@ -393,20 +389,22 @@ export default function ListDetailPage() {
             // solo al dueño como antes.
             <button
               onClick={enableExpenses}
-              className="flex-1 rounded-lg border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600 border-[var(--color-surface-border)] dark:text-slate-400 dark:hover:border-brand-600 dark:hover:text-brand-400"
+              className="flex-1 rounded-full border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-[var(--color-brand-400)] hover:text-[var(--color-brand-600)] border-[var(--color-glass-border)] dark:text-slate-400"
             >
               {t('list.enableExpensesShort')}
             </button>
           )}
           <button
             onClick={() => setTab('chat')}
-            className={`relative flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              tab === 'chat' ? 'bg-brand-600 text-white' : 'text-slate-600 bg-[var(--color-surface)] dark:text-slate-300'
+            className={`relative flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
+              tab === 'chat'
+                ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
+                : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             {t('nav.chat')}
             {unreadCount > 0 && tab !== 'chat' && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -416,7 +414,7 @@ export default function ListDetailPage() {
 
       <main className="mx-auto max-w-2xl px-4 py-6">
         {isCompleted && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 bg-[var(--color-surface)] dark:text-slate-300">
+          <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span>🔒 {t('lists.readOnlyBanner')}</span>
             <button
               onClick={() => (isOwner ? reactivateList() : showOwnerOnlyToast(t('list.ownerOnlyComplete')))}
