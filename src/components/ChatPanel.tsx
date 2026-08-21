@@ -835,7 +835,18 @@ export default function ChatPanel({
                     onKeyDown={handleComposerKeyDown}
                     placeholder={t('chat.placeholder')}
                     rows={1}
-                    className="glass-panel !border-transparent max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
+                    // Fondo translúcido con el mismo color que ".glass-panel"
+                    // pero SIN backdrop-filter: ese desenfoque, aplicado a un
+                    // <textarea> que cambia de alto en cada pulsación (ver
+                    // el efecto de arriba), por un lado obligaba al navegador
+                    // a recalcular el desenfoque en cada tecla (de ahí parte
+                    // de la lentitud que se notaba al escribir) y por otro
+                    // dejaba un filo visible justo en el borde del propio
+                    // recuadro contra fondos oscuros — el "línea al lado del
+                    // micrófono" que se seguía viendo aunque el borde ya
+                    // fuera transparente. Sin backdrop-filter no hay filo que
+                    // dibujar, y el tinte de fondo se ve prácticamente igual.
+                    className="border border-transparent bg-[var(--color-glass)] max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
                   />
                 </>
               )}

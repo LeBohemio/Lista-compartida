@@ -101,22 +101,24 @@ export default function ListDetailPage() {
   // Vibración sutil cuando llega un mensaje nuevo de otra persona mientras no
   // estás mirando la pestaña de chat, para enterarte sin tener que comprobarlo.
   //
-  // Bug que arreglamos aquí: al entrar en una lista (o al cambiar de una
-  // lista a otra), los mensajes se cargan de golpe de forma asíncrona — el
+  // Bug (reportado de nuevo — el guard anterior no bastaba): al entrar en
+  // una lista, los mensajes se cargan de golpe de forma asíncrona — el
   // array pasa de [] a tener, digamos, 20 mensajes ya existentes. Eso NO es
-  // un mensaje nuevo de verdad, es solo el historial cargándose, pero como
-  // antes solo comparábamos "¿hay más mensajes que antes?", esa carga
-  // inicial se contaba como "llegaron mensajes nuevos" y hacía vibrar el
-  // móvil nada más entrar. loadedForListRef marca de qué lista es la carga
-  // que ya hemos visto, para saber cuándo estamos ante esa primera carga
-  // (de esta lista en concreto) y no vibrar en ese caso — solo a partir de
-  // ahí, con mensajes que llegan de verdad mientras ya estás mirando la
-  // lista, vibra.
+  // un mensaje nuevo de verdad, es solo el historial cargándose. El guard
+  // anterior (loadedForListRef) solo se saltaba la vibración en la PRIMERA
+  // ejecución de este efecto — pero mientras "loading" sigue en true esa
+  // primera ejecución todavía ve el array vacío ([]), y la carga real de
+  // mensajes llega en una ejecución POSTERIOR del efecto, que ya no
+  // coincidía con "primera ejecución" y sí contaba como "llegaron mensajes
+  // nuevos" → vibraba nada más abrir la lista. Ahora el guard se basa en
+  // "loading" de verdad: no se arma la vibración hasta que useListData
+  // termina de cargar esta lista por primera vez, venga la carga en una o
+  // en varias ejecuciones del efecto.
   const prevMessageCountRef = useRef(messages.length)
-  const loadedForListRef = useRef<string | undefined>(undefined)
+  const armedForListRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (loadedForListRef.current !== listId) {
-      loadedForListRef.current = listId
+    if (loading || armedForListRef.current !== listId) {
+      if (!loading) armedForListRef.current = listId
       prevMessageCountRef.current = messages.length
       return
     }
@@ -128,7 +130,7 @@ export default function ListDetailPage() {
       }
     }
     prevMessageCountRef.current = messages.length
-  }, [messages, tab, user, listId])
+  }, [messages, tab, user, listId, loading])
 
   if (loading) {
     return (

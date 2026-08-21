@@ -22,7 +22,7 @@ export default function GreetingSummary({
   const { t } = useLanguage()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}

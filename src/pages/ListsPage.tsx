@@ -14,7 +14,6 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
 import Toast from '../components/Toast'
 import {
-  ChartIcon,
   CheckIcon,
   CopyIcon,
   DragHandleIcon,
@@ -222,30 +221,31 @@ export default function ListsPage() {
               {statusLine && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{statusLine}</p>}
             </div>
           </button>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/settings', { state: { openExpenses: true } })}
-              className="rounded-full p-1.5 text-slate-500 hover:bg-black/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
-              aria-label={t('home.myExpensesShortcut')}
-              title={t('home.myExpensesShortcut')}
-            >
-              <ChartIcon className="h-5 w-5" />
-            </button>
-            <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
-              <Avatar
-                username={profile?.username ?? '?'}
-                avatarUrl={profile?.avatar_url}
-                size={38}
-                className="ring-2 ring-[var(--color-glass-border)] hover:ring-[var(--color-brand-400)]"
-                enlargeOnClick={false}
-              />
-              {invitations.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
-                  {invitations.length > 9 ? '9+' : invitations.length}
-                </span>
-              )}
-            </button>
-          </div>
+          {/* El acceso directo a "Mis gastos" que vivía aquí (un icono
+              suelto junto al avatar) se ha quitado: era redundante con el
+              botón "Mis gastos" que ya existe dentro de Ajustes — dos
+              caminos al mismo sitio no aportaban nada, solo ruido en la
+              cabecera. */}
+          <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
+            <Avatar
+              username={profile?.username ?? '?'}
+              avatarUrl={profile?.avatar_url}
+              size={48}
+              // El anillo llevaba el color de acento solo al pasar el ratón
+              // por encima (":hover") — en el móvil eso nunca llega a verse,
+              // así que el avatar se quedaba siempre con un anillo neutro.
+              // Ahora lleva el acento puesto todo el rato, para que la foto
+              // de la persona gane presencia en vez de perderse en la
+              // esquina.
+              className="ring-[3px] ring-[var(--color-brand-400)]"
+              enlargeOnClick={false}
+            />
+            {invitations.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
+                {invitations.length > 9 ? '9+' : invitations.length}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 

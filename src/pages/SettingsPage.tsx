@@ -301,7 +301,15 @@ export default function SettingsPage() {
       className="min-h-screen pb-28"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 pb-4 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
+      {/* Pedido explícito: esta cabecera no debe flotar separada del borde
+          superior (como se pidió también para la barra de abajo, ver
+          BottomNav.tsx) — pegada arriba del todo, con solo las esquinas de
+          abajo redondeadas, en vez de la píldora flotante con margen que
+          llevan el resto de pestañas. */}
+      <header
+        className="glass-panel sticky top-0 z-10 rounded-b-[26px] px-4 pb-4 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]"
+        style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
+      >
         <h1 className="mx-auto max-w-2xl font-display font-medium text-slate-900 dark:text-slate-100">
           {t('profile.title')}
         </h1>

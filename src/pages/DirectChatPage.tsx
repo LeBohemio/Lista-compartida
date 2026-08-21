@@ -53,11 +53,15 @@ export default function DirectChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, user, peerId])
 
+  // Mismo guard que ListDetailPage.tsx (ver el comentario allí): no se arma
+  // la vibración hasta que useDirectMessages termina de cargar esta
+  // conversación por primera vez, para no confundir el historial cargándose
+  // con mensajes nuevos de verdad.
   const prevMessageCountRef = useRef(messages.length)
-  const loadedForPeerRef = useRef<string | undefined>(undefined)
+  const armedForPeerRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (loadedForPeerRef.current !== peerId) {
-      loadedForPeerRef.current = peerId
+    if (loading || armedForPeerRef.current !== peerId) {
+      if (!loading) armedForPeerRef.current = peerId
       prevMessageCountRef.current = messages.length
       return
     }
@@ -67,7 +71,7 @@ export default function DirectChatPage() {
       if (fromOther && navigator.vibrate) navigator.vibrate(60)
     }
     prevMessageCountRef.current = messages.length
-  }, [messages, user, peerId])
+  }, [messages, user, peerId, loading])
 
   const toggleMuted = () => {
     if (!user || !peerId || !myContact) return
