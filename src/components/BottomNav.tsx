@@ -67,50 +67,45 @@ const TABS: { to: string; Icon: typeof ListsIcon; labelKey: TranslationKey }[] =
 // esas 3 pantallas; el detalle de una lista y las pantallas de
 // login/registro se quedan fuera, a pantalla completa.
 //
-// Diseño (v2, sobre el mockup que mandaste): franja sólida con el color
-// de acento en vez de la superficie neutra de antes, iconos de línea en
-// blanco, una rayita vertical separando cada pestaña, y la pestaña activa
-// marcada con una barrita blanca debajo — en vez de cambiar de color como
-// antes. Uso brand-600→brand-700 (no brand-500, el acento "tal cual") a
-// propósito: con blanco encima, brand-500 no da suficiente contraste para
-// varios de los acentos claros de la app (amarillo, cian, verde...) —
-// comprobado con la fórmula de contraste de WCAG en los 18 colores que
-// ofrece el selector; con 600→700 los 18 pasan de sobra.
+// Diseño (v3, rediseño "Cristal"): pastilla flotante de cristal esmerilado
+// (glass-panel, ver index.css), separada del borde en vez de pegada a él.
+// La pestaña activa se marca con su propia píldora de degradado del
+// acento detrás del icono — no con una barrita ni un color de texto
+// distinto — así se ve de un vistazo incluso sin fijarse en el color del
+// texto (útil para quien tiene menos contraste de visión).
 export default function BottomNav({ pendingContactRequests = 0 }: { pendingContactRequests?: number }) {
   const { t } = useLanguage()
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex bg-gradient-to-b from-brand-600 to-brand-700 shadow-[0_-2px_12px_rgba(0,0,0,0.15)]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="glass-panel fixed inset-x-4 z-40 mx-auto flex max-w-sm items-center gap-1 rounded-[26px] p-1.5 shadow-[0_20px_44px_-22px_rgba(20,21,26,0.45)]"
+      style={{ bottom: 'calc(0.9rem + env(safe-area-inset-bottom))' }}
     >
-      {TABS.map((tab, idx) => (
+      {TABS.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
-          className={({ isActive }) =>
-            `relative flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition ${
-              isActive ? 'text-white' : 'text-white/70 hover:text-white/90'
-            } ${idx > 0 ? 'border-l border-white/15' : ''}`
-          }
+          className="relative flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-medium transition text-[var(--color-surface-border)]"
         >
           {({ isActive }) => (
             <>
-              <span className="relative">
-                <tab.Icon className="h-6 w-6" />
+              {isActive && (
+                <span
+                  className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] shadow-[0_8px_18px_-8px_var(--color-glow)]"
+                  aria-hidden="true"
+                />
+              )}
+              <span className={`relative z-10 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                <tab.Icon className="h-5 w-5" />
                 {tab.to === '/contacts' && pendingContactRequests > 0 && (
-                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold text-white ring-2 ring-brand-700">
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                     {pendingContactRequests > 9 ? '9+' : pendingContactRequests}
                   </span>
                 )}
               </span>
-              <span>{t(tab.labelKey)}</span>
-              <span
-                className={`absolute bottom-0 h-1 rounded-t-full bg-white transition-all ${
-                  isActive ? 'w-8 opacity-100' : 'w-8 opacity-0'
-                }`}
-                aria-hidden="true"
-              />
+              <span className={`relative z-10 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                {t(tab.labelKey)}
+              </span>
             </>
           )}
         </NavLink>

@@ -63,9 +63,12 @@ function atLightness(hex: string, lightness: number, satBoostCap?: number): stri
 }
 
 /**
- * Genera la rampa de tonos brand-50/100/500/600/700 a partir de un único
- * color de acento. Los tonos 600/700 se calculan RELATIVOS a la luminosidad
- * del propio color elegido (en vez de a una luminosidad fija), para que
+ * Genera la rampa de tonos brand-50/100/200/300/400/500/600/700/800/950 a
+ * partir de un único color de acento. Los tonos por debajo de 500 (200, 300,
+ * 400 — como el 50/100) usan una luminosidad FIJA, pensada para funcionar
+ * bien como texto legible sobre fondo oscuro sin importar qué acento se
+ * elija. Los tonos por encima de 500 (600, 700, 800, 950 — como antes) se
+ * calculan RELATIVOS a la luminosidad del propio color elegido, para que
  * funcione igual de bien con acentos claros y con acentos ya oscuros — si no,
  * un acento oscuro podía acabar con un "600"/"700" más claro que el propio
  * "500", lo cual se ve raro en botones y hovers.
@@ -74,12 +77,19 @@ export function shadesFromAccent(hex: string) {
   const [, , l] = rgbToHsl(...hexToRgb(hex))
   const l600 = Math.max(l - 20, 8)
   const l700 = Math.max(l - 32, 5)
+  const l800 = Math.max(l - 40, 4)
+  const l950 = Math.max(l - 48, 3)
   return {
     50: atLightness(hex, 95, 60),
     100: atLightness(hex, 90, 55),
+    200: atLightness(hex, 82, 55),
+    300: atLightness(hex, 72, 55),
+    400: atLightness(hex, 64, 65),
     500: hex,
     600: atLightness(hex, l600),
     700: atLightness(hex, l700),
+    800: atLightness(hex, l800),
+    950: atLightness(hex, l950),
   }
 }
 
@@ -121,6 +131,27 @@ export function surfaceShadesFromAccent(hex: string, isDark: boolean) {
   }
 }
 
+/**
+ * Genera los tres tonos difusos del fondo "cristal" (rediseño Cristal) a
+ * partir del acento elegido: tres matices análogos (el propio tono, y a
+ * ±34°) muy claros y poco saturados en el tema claro, muy oscuros en el
+ * oscuro — para que el degradado de fondo siempre combine con el acento de
+ * quien lo mire, en vez de ser un violeta fijo. Solo se usa cuando la
+ * persona NO ha elegido un color de fondo propio (ver applyTheme) — si lo
+ * ha elegido, ese color de fondo sigue mandando tal cual, como hasta ahora.
+ */
+export function meshFromAccent(hex: string, isDark: boolean) {
+  const [h] = rgbToHsl(...hexToRgb(hex))
+  const wrap = (deg: number) => ((deg % 360) + 360) % 360
+  const stops = [h, wrap(h + 34), wrap(h - 34)]
+  const [lightness, satCap] = isDark ? [14, 45] : [90, 45]
+  return {
+    a: atLightness(rgbToHex(...hslToRgb(stops[0], 60, 50)), lightness, satCap),
+    b: atLightness(rgbToHex(...hslToRgb(stops[1], 60, 50)), lightness, satCap),
+    c: atLightness(rgbToHex(...hslToRgb(stops[2], 60, 50)), lightness, satCap),
+  }
+}
+
 const DEFAULT_ACCENT = '#4f46e5'
 
 /**
@@ -145,13 +176,42 @@ export function applyTheme(theme: Theme, accentColor: string | null, backgroundC
   const shades = shadesFromAccent(effectiveAccent)
   root.style.setProperty('--color-brand-50', shades[50])
   root.style.setProperty('--color-brand-100', shades[100])
+  root.style.setProperty('--color-brand-200', shades[200])
+  root.style.setProperty('--color-brand-300', shades[300])
+  root.style.setProperty('--color-brand-400', shades[400])
   root.style.setProperty('--color-brand-500', shades[500])
   root.style.setProperty('--color-brand-600', shades[600])
   root.style.setProperty('--color-brand-700', shades[700])
+  root.style.setProperty('--color-brand-800', shades[800])
+  root.style.setProperty('--color-brand-950', shades[950])
 
   const surf = surfaceShadesFromAccent(effectiveAccent, isDark)
   root.style.setProperty('--color-surface', surf.surface)
   root.style.setProperty('--color-surface-alt', surf.surfaceAlt)
   root.style.setProperty('--color-surface-border', surf.surfaceBorder)
   root.style.setProperty('--color-surface-line', surf.surfaceLine)
+
+  // Rediseño "Cristal" (ver estudio de diseño): cristal esmerilado sobre un
+  // degradado de fondo derivado del acento, con una sombra "glow" tintada
+  // del mismo acento para botones y avatares. --color-glass/-border son la
+  // superficie translúcida de los paneles; --color-glow es la sombra de
+  // los elementos con degradado (botones, burbujas propias del chat).
+  root.style.setProperty('--color-glass', isDark ? 'rgba(30, 29, 46, 0.55)' : 'rgba(255, 255, 255, 0.62)')
+  root.style.setProperty('--color-glass-border', isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.75)')
+  root.style.setProperty('--color-glow', hexToRgbaString(effectiveAccent, isDark ? 0.45 : 0.4))
+
+  // El degradado de fondo ("mesh") solo se aplica cuando NO hay un color de
+  // fondo propio elegido — si lo hay, ese sigue mandando tal cual (mismo
+  // comportamiento de siempre). Las pantallas que aún no se han pasado al
+  // rediseño Cristal pintan su propio fondo opaco encima igualmente, así
+  // que esta clase no les cambia nada hasta que se actualicen una a una.
+  if (!backgroundColor) {
+    const mesh = meshFromAccent(effectiveAccent, isDark)
+    root.style.setProperty('--mesh-a', mesh.a)
+    root.style.setProperty('--mesh-b', mesh.b)
+    root.style.setProperty('--mesh-c', mesh.c)
+    root.classList.add('mesh-bg')
+  } else {
+    root.classList.remove('mesh-bg')
+  }
 }

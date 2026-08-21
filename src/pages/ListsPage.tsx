@@ -192,31 +192,27 @@ export default function ListsPage() {
 
   return (
     <div
-      className="min-h-screen pb-28 bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-32"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 px-4 pb-5 pt-4 text-white shadow-sm">
-        <div
-          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10"
-          aria-hidden="true"
-        />
-        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
+      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 pb-4 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
           <button
             onClick={() => setShowSummary(true)}
             className="flex min-w-0 items-center gap-3 rounded-lg text-left"
           >
-            <Logo size={40} className="rounded-xl shadow-md ring-1 ring-white/30" />
+            <Logo size={40} className="rounded-2xl shadow-md" />
             <div className="min-w-0">
-              <p className="truncate font-semibold leading-tight">
+              <p className="truncate font-display font-medium leading-tight text-slate-900 dark:text-slate-100">
                 {greeting}, {profile?.username ?? '…'}
               </p>
-              {statusLine && <p className="truncate text-xs text-white/80">{statusLine}</p>}
+              {statusLine && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{statusLine}</p>}
             </div>
           </button>
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/settings', { state: { openExpenses: true } })}
-              className="rounded-full p-1.5 text-white/90 hover:bg-white/10 hover:text-white"
+              className="rounded-full p-1.5 text-slate-500 hover:bg-black/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
               aria-label={t('home.myExpensesShortcut')}
               title={t('home.myExpensesShortcut')}
             >
@@ -227,11 +223,11 @@ export default function ListsPage() {
                 username={profile?.username ?? '?'}
                 avatarUrl={profile?.avatar_url}
                 size={38}
-                className="ring-2 ring-white/70 hover:ring-white"
+                className="ring-2 ring-[var(--color-glass-border)] hover:ring-[var(--color-brand-400)]"
                 enlargeOnClick={false}
               />
               {invitations.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                   {invitations.length > 9 ? '9+' : invitations.length}
                 </span>
               )}
@@ -254,14 +250,14 @@ export default function ListsPage() {
 
         {invitations.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-[var(--color-brand-600)]">
               {t('lists.invitationsTitle')}
             </h2>
             <div className="space-y-3">
               {invitations.map((inv) => (
                 <div
                   key={inv.id}
-                  className="flex items-center justify-between rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:ring-amber-900"
+                  className="glass-panel flex items-center justify-between rounded-[22px] p-4"
                 >
                   <div>
                     <p className="font-medium text-slate-900 dark:text-slate-100">{inv.name}</p>
@@ -270,13 +266,13 @@ export default function ListsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => respondInvitation(inv.id, false)}
-                      className="rounded-lg border px-3 py-1.5 text-sm text-slate-600 hover:bg-white border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
+                      className="rounded-full border px-3 py-1.5 text-sm text-slate-600 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/10"
                     >
                       {t('lists.reject')}
                     </button>
                     <button
                       onClick={() => respondInvitation(inv.id, true)}
-                      className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                      className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
                     >
                       {t('lists.accept')}
                     </button>
@@ -289,7 +285,7 @@ export default function ListsPage() {
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <h2 className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {t('lists.title')}
             </h2>
             <input
@@ -298,12 +294,12 @@ export default function ListsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('lists.searchPlaceholder')}
               aria-label={t('common.search')}
-              className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+              className="w-36 rounded-full border px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             />
           </div>
 
           {!normalizedQuery && reorderMode && (
-            <div className="mb-3 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+            <div className="glass-panel mb-3 flex items-center justify-between rounded-2xl px-3 py-2 text-sm text-[var(--color-brand-700)] dark:text-[var(--color-brand-300)]">
               <span>⠿ {t('reorder.bannerHint')}</span>
               <button onClick={() => setReorderMode(false)} className="font-semibold hover:underline">
                 {t('reorder.done')}
@@ -314,11 +310,11 @@ export default function ListsPage() {
           {loading ? (
             <p className="text-sm text-slate-400">{t('lists.loadingLists')}</p>
           ) : activeLists.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-8 text-center border-[var(--color-surface-border)]">
+            <div className="glass-panel rounded-[26px] p-8 text-center">
               <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
               <button
                 onClick={() => setShowCreate(true)}
-                className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+                className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)]"
               >
                 {t('lists.create')}
               </button>
@@ -330,7 +326,7 @@ export default function ListsPage() {
             visibleActiveLists.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-400">{t('lists.emptySearch')}</p>
             ) : (
-              <div className="overflow-hidden rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+              <div className="glass-panel overflow-hidden rounded-[26px]">
                 {visibleActiveLists.map((l) => (
                   <ListRow
                     key={l.id}
@@ -354,7 +350,7 @@ export default function ListsPage() {
             // volvía invisible de golpe, dando la sensación de que el
             // arrastre se quedaba "pillado" ahí.
             <div
-              className={`rounded-xl shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)] ${
+              className={`glass-panel rounded-[26px] ${
                 reorder.draggingId ? 'overflow-visible' : 'overflow-hidden'
               }`}
             >
@@ -389,12 +385,12 @@ export default function ListsPage() {
           <section className="mt-8">
             <button
               onClick={() => setShowArchived((s) => !s)}
-              className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 hover:text-brand-600 dark:text-slate-400"
+              className="mb-3 font-mono text-xs uppercase tracking-wide text-slate-500 hover:text-[var(--color-brand-600)] dark:text-slate-400"
             >
               {showArchived ? '▾' : '▸'} {t('lists.completedSection')} ({archivedLists.length})
             </button>
             {showArchived && (
-              <div className="overflow-hidden rounded-xl opacity-70 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+              <div className="glass-panel overflow-hidden rounded-[26px] opacity-70">
                 {archivedLists.map((l) => (
                   <ListRow
                     key={l.id}
@@ -417,7 +413,7 @@ export default function ListsPage() {
 
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-24 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg ring-2 ring-white/40 dark:shadow-2xl dark:shadow-black/50 dark:ring-white/15 hover:bg-brand-700"
+        className="fixed bottom-24 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-2xl text-white shadow-[0_16px_30px_-10px_var(--color-glow)] ring-1 ring-[var(--color-glass-border)]"
         aria-label={t('lists.createFab')}
       >
         +
