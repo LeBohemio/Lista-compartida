@@ -99,7 +99,7 @@ export default function BalanceSummary({
   }
 
   return (
-    <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+    <div className="glass-panel mb-6 rounded-2xl p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Balance</h3>
         <button
@@ -191,7 +191,7 @@ export default function BalanceSummary({
       {suggestedDebts.length === 0 ? (
         <p className="text-sm text-slate-400">{t('balance.noDebts')}</p>
       ) : (
-        <div className="space-y-2 border-t border-slate-100 pt-3 border-[var(--color-surface-border)]">
+        <div className="space-y-2 border-t pt-3 border-[var(--color-glass-border)]">
           {suggestedDebts.map((d, idx) => {
             const canSettle = user?.id === d.from || user?.id === d.to
             return (
@@ -204,7 +204,7 @@ export default function BalanceSummary({
                 {canSettle && (
                   <button
                     onClick={() => setSettling(d)}
-                    className="rounded-lg border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-950/40"
+                    className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-2.5 py-1 text-xs font-medium text-white shadow-[0_6px_14px_-8px_var(--color-glow)]"
                   >
                     {t('balance.markSettled')}
                   </button>

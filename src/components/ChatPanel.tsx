@@ -630,7 +630,7 @@ export default function ChatPanel({
               <div key={m.id}>
                 {showDateDivider && (
                   <div className="my-3 flex justify-center">
-                    <span className="rounded-full px-3 py-1 text-[11px] font-medium text-slate-500 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)] dark:text-slate-300">
+                    <span className="glass-panel rounded-full px-3 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-300">
                       {formatDayLabel(m.created_at, t, language)}
                     </span>
                   </div>
@@ -652,11 +652,11 @@ export default function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur border-[var(--color-surface-border)] bg-[var(--color-surface-alt)]/95">
+      <div className="glass-panel fixed inset-x-0 bottom-0 z-30">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
           {!readOnly && replyTarget && (
-            <div className="mb-2 flex items-start gap-2 rounded-lg border-l-4 border-brand-500 py-1.5 pl-2.5 pr-2 bg-[var(--color-surface)]">
+            <div className="glass-panel mb-2 flex items-start gap-2 rounded-xl border-l-4 !border-l-[var(--color-brand-500)] py-1.5 pl-2.5 pr-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
                   {replyTarget.sender_id === user?.id ? t('chat.you') : replyTarget.sender?.username || '—'}
@@ -686,7 +686,7 @@ export default function ChatPanel({
             // su izquierda, nunca desmonta el formulario ni el botón.
             <form onSubmit={sendText} className="flex items-center gap-2">
               {recording ? (
-                <div className="flex flex-1 items-center gap-2 rounded-full border px-4 py-2.5 border-[var(--color-surface-border)] bg-[var(--color-surface)]">
+                <div className="glass-panel flex flex-1 items-center gap-2 rounded-full px-4 py-2.5">
                   <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
                   {slideCancelHint ? (
                     <span className="text-sm font-medium text-red-500">{t('chat.releaseToCancel')}</span>
@@ -706,7 +706,7 @@ export default function ChatPanel({
                     type="button"
                     onClick={() => setShowPhotoMenu(true)}
                     disabled={sending}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50 bg-[var(--color-surface)] dark:text-slate-300 dark:hover:bg-slate-700"
+                    className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 disabled:opacity-50 dark:text-slate-300"
                     aria-label={t('chat.attachPhoto')}
                   >
                     📷
@@ -739,7 +739,7 @@ export default function ChatPanel({
                     onKeyDown={handleComposerKeyDown}
                     placeholder={t('chat.placeholder')}
                     rows={1}
-                    className="max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl border px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+                    className="glass-panel max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
                   />
                 </>
               )}
@@ -748,7 +748,7 @@ export default function ChatPanel({
                 <button
                   type="submit"
                   disabled={sending}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow ring-2 ring-white/40 dark:shadow-black/40 dark:ring-white/15 hover:bg-brand-700 disabled:opacity-50"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-10px_var(--color-glow)] disabled:opacity-50"
                   aria-label={t('chat.send')}
                 >
                   ➤
@@ -761,8 +761,8 @@ export default function ChatPanel({
                   onPointerUp={handleMicPointerUp}
                   onPointerCancel={handleMicPointerUp}
                   disabled={sending && !recording}
-                  className={`flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow ring-2 ring-white/40 transition-transform dark:shadow-black/40 dark:ring-white/15 disabled:opacity-50 ${
-                    slideCancelHint ? 'bg-red-500' : 'bg-brand-600 hover:bg-brand-700'
+                  className={`flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow-[0_10px_20px_-10px_var(--color-glow)] transition-transform disabled:opacity-50 ${
+                    slideCancelHint ? 'bg-red-500' : 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)]'
                   } ${recording ? 'scale-110' : ''}`}
                   style={{ touchAction: 'none' }}
                   aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
@@ -970,10 +970,10 @@ function MessageBubble({
         )}
         <div
           {...longPress}
-          className={`select-none rounded-2xl px-3 py-2 text-sm shadow-sm ${
+          className={`select-none rounded-2xl px-3 py-2 text-sm ${
             isMine
-              ? 'rounded-br-sm bg-brand-500 text-white ring-1 ring-black/10'
-              : 'rounded-bl-sm text-slate-800 ring-1 bg-[var(--color-surface)] dark:text-slate-100 ring-[var(--color-surface-border)]'
+              ? 'rounded-br-sm bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-12px_var(--color-glow)]'
+              : 'glass-panel rounded-bl-sm text-slate-800 dark:text-slate-100'
           }`}
         >
           {m.reply_to && (

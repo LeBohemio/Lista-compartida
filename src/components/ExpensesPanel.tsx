@@ -151,7 +151,7 @@ export default function ExpensesPanel({
         <div className="mb-4 flex justify-end">
           <button
             onClick={() => setShowNew(true)}
-            className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700"
+            className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)]"
           >
             {t('expenses.new')}
           </button>
@@ -163,7 +163,7 @@ export default function ExpensesPanel({
           vs. "¿quién le debe a quién?") que antes solo se podían responder
           mirando el balance, que en realidad no contesta a la primera. */}
       {visibleExpenses.length > 0 && (
-        <div className="mb-4 flex items-baseline justify-between rounded-xl px-4 py-3 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+        <div className="glass-panel mb-4 flex items-baseline justify-between rounded-2xl px-4 py-3">
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('expenses.totalSpent')}</span>
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
             {formatCurrency(totalSpent, currency, language)}
@@ -180,7 +180,7 @@ export default function ExpensesPanel({
       />
 
       {categoryTotals.length > 0 && (
-        <div className="mb-6 rounded-xl p-4 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+        <div className="glass-panel mb-6 rounded-2xl p-4">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {t('expenses.byCategory')}
           </h3>
@@ -195,8 +195,8 @@ export default function ExpensesPanel({
                 onClick={() => setCategoryFilter((cur) => (cur === c.value ? null : c.value))}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   categoryFilter === c.value
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-600 bg-[var(--color-surface-alt)] hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700'
+                    ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_6px_14px_-8px_var(--color-glow)]'
+                    : 'text-slate-600 bg-black/5 hover:bg-black/10 dark:text-slate-300 dark:bg-white/5 dark:hover:bg-white/10'
                 }`}
               >
                 {c.icon} {t(c.labelKey)}: {formatCurrency(c.total, currency, language)}
@@ -227,7 +227,7 @@ export default function ExpensesPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('expenses.searchPlaceholder')}
-          className="mb-3 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
+          className="mb-3 w-full rounded-full border px-3.5 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
         />
       )}
 
@@ -242,7 +242,7 @@ export default function ExpensesPanel({
             {!readOnly && (
               <button
                 onClick={() => setShowNew(true)}
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)]"
               >
                 {t('expenses.addFirst')}
               </button>
@@ -255,8 +255,8 @@ export default function ExpensesPanel({
             row.kind === 'expense' ? (
               <div
                 key={`e-${row.data.id}`}
-                className={`rounded-lg shadow-sm ring-1 bg-[var(--color-surface)] ${
-                  row.data.is_draft ? 'ring-amber-300 dark:ring-amber-700' : 'ring-[var(--color-surface-border)]'
+                className={`glass-panel overflow-hidden rounded-2xl ${
+                  row.data.is_draft ? '!border-amber-300 dark:!border-amber-700' : ''
                 }`}
               >
                 <div className="flex w-full items-center justify-between px-4 py-3">
@@ -319,7 +319,7 @@ export default function ExpensesPanel({
                   </div>
                 </div>
                 {expandedId === row.data.id && (
-                  <div className="border-t border-slate-100 px-4 py-3 border-[var(--color-surface-border)]">
+                  <div className="border-t px-4 py-3 border-[var(--color-glass-border)]">
                     {row.data.receipt_image_path && (
                       <div className="mb-3">
                         {receiptUrl ? (
@@ -348,7 +348,7 @@ export default function ExpensesPanel({
               // el aviso de arriba (BalanceSummary), no aquí.
               <div
                 key={`s-${row.data.id}`}
-                className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
+                className="flex items-center justify-between rounded-2xl bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
               >
                 <div>
                   <p className="text-sm text-green-800 dark:text-green-400">
