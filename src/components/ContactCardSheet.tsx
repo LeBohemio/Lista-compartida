@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -7,6 +7,7 @@ import Avatar from './Avatar'
 import ConfirmDialog from './ConfirmDialog'
 import CreateListModal from './CreateListModal'
 import MuteDurationMenu from './MuteDurationMenu'
+import { BellIcon, BellOffIcon, BlockIcon, ChatBubbleIcon, ListsIcon, PinIcon, TrashIcon } from './icons'
 import { formatMuteUntil, isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Contact, ContactRequest, Profile } from '../lib/types'
 
@@ -274,24 +275,31 @@ export default function ContactCardSheet({
           {state.kind === 'contact' && (
             <div className="space-y-2">
               {state.contact.blocked_at && (
-                <p className="mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                  🚫 {t('card.blockedHint')}
+                <p className="mb-1 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                  <BlockIcon className="h-4 w-4 shrink-0" />
+                  {t('card.blockedHint')}
                 </p>
               )}
               {!state.contact.blocked_at && (
                 <>
-                  <CardAction icon="💬" label={t('card.openChat')} onClick={openChat} />
-                  <CardAction icon="📋" label={t('card.createList')} onClick={() => setShowCreateList(true)} />
+                  <CardAction icon={<ChatBubbleIcon className="h-5 w-5" />} label={t('card.openChat')} onClick={openChat} />
+                  <CardAction icon={<ListsIcon className="h-5 w-5" />} label={t('card.createList')} onClick={() => setShowCreateList(true)} />
                 </>
               )}
               <CardAction
-                icon="📌"
+                icon={<PinIcon className="h-5 w-5" />}
                 label={state.contact.pinned ? t('card.unpin') : t('card.pin')}
                 onClick={togglePinned}
                 disabled={busy}
               />
               <CardAction
-                icon={isCurrentlyMuted(state.contact.muted, state.contact.muted_until) ? '🔕' : '🔔'}
+                icon={
+                  isCurrentlyMuted(state.contact.muted, state.contact.muted_until) ? (
+                    <BellOffIcon className="h-5 w-5" />
+                  ) : (
+                    <BellIcon className="h-5 w-5" />
+                  )
+                }
                 label={isCurrentlyMuted(state.contact.muted, state.contact.muted_until) ? t('card.unmute') : t('card.mute')}
                 hint={
                   isCurrentlyMuted(state.contact.muted, state.contact.muted_until) && state.contact.muted_until
@@ -302,14 +310,14 @@ export default function ContactCardSheet({
                 disabled={busy}
               />
               <CardAction
-                icon="🚫"
+                icon={<BlockIcon className="h-5 w-5" />}
                 label={state.contact.blocked_at ? t('card.unblock') : t('card.block')}
                 onClick={state.contact.blocked_at ? unblockContact : () => setConfirmBlock(true)}
                 disabled={busy}
                 danger={!state.contact.blocked_at}
               />
               <CardAction
-                icon="🗑"
+                icon={<TrashIcon className="h-5 w-5" />}
                 label={t('card.remove')}
                 onClick={() => setConfirmRemove(true)}
                 disabled={busy}
@@ -422,7 +430,7 @@ function CardAction({
   disabled,
   danger,
 }: {
-  icon: string
+  icon: ReactNode
   label: string
   // Segunda línea pequeña, opcional (por ejemplo "Silenciado hasta las 18:30").
   hint?: string
@@ -439,7 +447,7 @@ function CardAction({
         danger ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'
       }`}
     >
-      <span>{icon}</span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
       <span className="flex-1">
         {label}
         {hint && <span className="block text-xs font-normal text-slate-400">{hint}</span>}

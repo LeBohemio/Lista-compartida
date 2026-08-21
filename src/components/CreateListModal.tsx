@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { PALETTE, colorForName } from '../lib/colors'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { DEFAULT_CURRENCY } from '../lib/currencies'
+import { CloseIcon } from './icons'
 
 const TEMPLATES: { emoji: string; labelKey: TranslationKey }[] = [
   { emoji: '🛒', labelKey: 'lists.template.shopping' },
@@ -80,7 +81,7 @@ export default function CreateListModal({
           title={t('common.close')}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
-          ✕
+          <CloseIcon className="h-4 w-4" />
         </button>
         <h2 className="mb-4 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('lists.createTitle')}</h2>
 

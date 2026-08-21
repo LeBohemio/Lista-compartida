@@ -6,6 +6,7 @@ import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
 import { formatCurrency, splitEqually } from '../lib/balances'
 import { currencySymbol, type CurrencyCode } from '../lib/currencies'
+import { CameraIcon, GalleryIcon } from './icons'
 import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom' | 'percent'
@@ -316,16 +317,18 @@ export default function NewExpenseModal({
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
               >
-                📷 {t('expenses.takePhoto')}
+                <CameraIcon className="h-4 w-4" />
+                {t('expenses.takePhoto')}
               </button>
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
               >
-                🖼️ {t('expenses.choosePhoto')}
+                <GalleryIcon className="h-4 w-4" />
+                {t('expenses.choosePhoto')}
               </button>
             </div>
             <input

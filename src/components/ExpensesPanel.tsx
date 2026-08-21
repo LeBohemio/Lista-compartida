@@ -9,6 +9,7 @@ import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
+import { CheckIcon, CloseIcon, EditIcon, HandshakeIcon, LockIcon, TrashIcon } from './icons'
 import { EXPENSE_CATEGORIES, categoryIcon } from '../lib/categories'
 
 const UNDO_DELAY_MS = 5000
@@ -142,8 +143,9 @@ export default function ExpensesPanel({
   return (
     <div>
       {readOnly && (
-        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-          🔒 {t('expenses.readOnlyHint')}
+        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          <LockIcon className="h-3.5 w-3.5 shrink-0" />
+          {t('expenses.readOnlyHint')}
         </p>
       )}
 
@@ -214,9 +216,10 @@ export default function ExpensesPanel({
         {categoryFilter && (
           <button
             onClick={() => setCategoryFilter(null)}
-            className="shrink-0 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
           >
-            ✕ {t('expenses.clearCategoryFilter')}
+            <CloseIcon className="h-3.5 w-3.5" />
+            {t('expenses.clearCategoryFilter')}
           </button>
         )}
       </div>
@@ -263,10 +266,10 @@ export default function ExpensesPanel({
                   <button onClick={() => toggleExpand(row.data)} className="flex flex-1 items-center gap-2 text-left">
                     {row.data.no_debt ? (
                       <span
-                        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm dark:bg-slate-700"
+                        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300"
                         aria-hidden="true"
                       >
-                        🤝
+                        <HandshakeIcon className="h-4 w-4" />
                       </span>
                     ) : (
                       <Avatar username={row.data.payer?.username ?? '?'} avatarUrl={row.data.payer?.avatar_url} size={30} />
@@ -303,7 +306,7 @@ export default function ExpensesPanel({
                             aria-label={t('expenses.edit')}
                             title={t('expenses.edit')}
                           >
-                            ✎
+                            <EditIcon className="h-4 w-4" />
                           </button>
                         )}
                         <button
@@ -312,7 +315,7 @@ export default function ExpensesPanel({
                           aria-label={t('expenses.delete')}
                           title={t('expenses.delete')}
                         >
-                          🗑
+                          <TrashIcon className="h-4 w-4" />
                         </button>
                       </>
                     )}
@@ -351,8 +354,8 @@ export default function ExpensesPanel({
                 className="flex items-center justify-between rounded-2xl bg-green-50 px-4 py-3 ring-1 ring-green-100 dark:bg-green-950/30 dark:ring-green-900"
               >
                 <div>
-                  <p className="text-sm text-green-800 dark:text-green-400">
-                    ✓{' '}
+                  <p className="flex items-center gap-1.5 text-sm text-green-800 dark:text-green-400">
+                    <CheckIcon className="h-4 w-4 shrink-0" />
                     {t('expenses.settledMessage', {
                       from: row.data.from_profile?.username ?? '—',
                       to: row.data.to_profile?.username ?? '—',

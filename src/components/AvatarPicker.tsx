@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
+import { CloseIcon } from './icons'
 
 const AVATAR_CATEGORIES: { slug: string; labelKey: TranslationKey }[] = [
   { slug: 'anime', labelKey: 'avatarPicker.anime' },
@@ -90,7 +91,7 @@ export default function AvatarPicker({
             title={t('common.close')}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
-            ✕
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 

@@ -5,6 +5,7 @@ import { formatCurrency } from '../lib/balances'
 import { DEFAULT_CURRENCY, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
 import ConfirmDialog from './ConfirmDialog'
+import { CloseIcon } from './icons'
 
 type ListRef = { name: string; color: string | null; currency: CurrencyCode }
 type ExpenseRow = { id: string; list_id: string; total_amount: number; created_at: string; list: ListRef | null }
@@ -119,7 +120,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           title={t('common.close')}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
-          ✕
+          <CloseIcon className="h-4 w-4" />
         </button>
         <h2 className="mb-1 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('myExpenses.title')}</h2>
         <div className="mb-4 flex items-center justify-between gap-2">

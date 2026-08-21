@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { colorForName } from '../lib/colors'
 import { useLanguage } from '../lib/i18n'
+import { CloseIcon } from './icons'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -64,9 +65,9 @@ export default function Avatar({
                 }}
                 aria-label={t('common.close')}
                 title={t('common.close')}
-                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
               >
-                ✕
+                <CloseIcon className="h-5 w-5" />
               </button>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <img

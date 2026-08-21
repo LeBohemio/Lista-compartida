@@ -6,6 +6,7 @@ import { useNotes } from '../hooks/useNotes'
 import { supabase } from '../lib/supabaseClient'
 import CreateNoteModal from '../components/CreateNoteModal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { NotesIcon, TrashIcon } from '../components/icons'
 
 // Pantalla de "Notas comunes" (ver migration_v23.sql) — algo aparte de las
 // listas, con su propia pestaña en la barra inferior. Versión simple a
@@ -167,7 +168,9 @@ export default function NotesPage() {
                       }}
                       className="glass-panel flex w-full items-start gap-3 rounded-2xl p-3.5 text-left transition"
                     >
-                      <span className="mt-0.5 shrink-0 text-xl">📝</span>
+                      <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
+                        <NotesIcon className="h-5 w-5" />
+                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-slate-900 dark:text-slate-100">
                           {n.title}
@@ -185,7 +188,7 @@ export default function NotesPage() {
                         title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
                         className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
                       >
-                        🗑
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </li>

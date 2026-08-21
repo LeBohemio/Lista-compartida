@@ -17,6 +17,7 @@ import Toast from '../components/Toast'
 import Avatar from '../components/Avatar'
 import ContactCardSheet from '../components/ContactCardSheet'
 import MuteDurationMenu from '../components/MuteDurationMenu'
+import { BellIcon, BellOffIcon, CheckIcon, EditIcon, LockIcon, MoreIcon, TrashIcon, UndoIcon } from '../components/icons'
 import { isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Profile } from '../lib/types'
 
@@ -287,11 +288,11 @@ export default function ListDetailPage() {
                 {isOwner && (
                   <button
                     onClick={() => setShowRename(true)}
-                    className="shrink-0 rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
+                    className="flex shrink-0 items-center rounded-full border border-[var(--color-glass-border)] p-1 text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
                     aria-label={t('list.editTitle')}
                     title={t('list.editTitle')}
                   >
-                    ✎
+                    <EditIcon className="h-3.5 w-3.5" />
                   </button>
                 )}
                 <button
@@ -306,11 +307,11 @@ export default function ListDetailPage() {
                       setConfirmComplete(true)
                     }
                   }}
-                  className="shrink-0 rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex shrink-0 items-center rounded-full border border-[var(--color-glass-border)] p-1 text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
                   aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                   title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                 >
-                  {isCompleted ? '↩' : '✓'}
+                  {isCompleted ? <UndoIcon className="h-3.5 w-3.5" /> : <CheckIcon className="h-3.5 w-3.5" />}
                 </button>
               </div>
               <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">
@@ -375,7 +376,7 @@ export default function ListDetailPage() {
                         aria-label={t('list.removeMember')}
                         title={t('list.removeMember')}
                       >
-                        🗑
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     )}
                   </span>
@@ -439,7 +440,10 @@ export default function ListDetailPage() {
       <main className="mx-auto max-w-2xl px-4 py-6">
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-            <span>🔒 {t('lists.readOnlyBanner')}</span>
+            <span className="flex items-center gap-1.5">
+              <LockIcon className="h-4 w-4 shrink-0" />
+              {t('lists.readOnlyBanner')}
+            </span>
             <button
               onClick={() => (isOwner ? reactivateList() : showOwnerOnlyToast(t('list.ownerOnlyComplete')))}
               className="shrink-0 font-semibold text-brand-600 hover:underline dark:text-brand-400"
@@ -479,17 +483,20 @@ export default function ListDetailPage() {
                   onClick={toggleMuted}
                   className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
                 >
-                  {isCurrentlyMuted(myMembership.muted, myMembership.muted_until)
-                    ? `🔕 ${t('chat.unmute')}`
-                    : `🔔 ${t('chat.mute')}`}
+                  {isCurrentlyMuted(myMembership.muted, myMembership.muted_until) ? (
+                    <BellOffIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <BellIcon className="h-3.5 w-3.5" />
+                  )}
+                  {isCurrentlyMuted(myMembership.muted, myMembership.muted_until) ? t('chat.unmute') : t('chat.mute')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowChatMenu(true)}
                   aria-label={t('common.more')}
-                  className="text-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
-                  ⋮
+                  <MoreIcon className="h-5 w-5" />
                 </button>
               </div>
             )}
@@ -513,7 +520,7 @@ export default function ListDetailPage() {
             actions={[
               {
                 label: t('chat.clearChat'),
-                icon: '🗑',
+                icon: <TrashIcon className="h-5 w-5" />,
                 danger: true,
                 onSelect: () => setConfirmClearChat(true),
               },

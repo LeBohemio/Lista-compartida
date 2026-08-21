@@ -13,6 +13,19 @@ import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
 import Toast from '../components/Toast'
+import {
+  ChartIcon,
+  CheckIcon,
+  CopyIcon,
+  DragHandleIcon,
+  FolderIcon,
+  PinIcon,
+  ReorderIcon,
+  SortAlphaIcon,
+  SortDateIcon,
+  TrashIcon,
+  UndoIcon,
+} from '../components/icons'
 import { colorForList } from '../lib/colors'
 import type { ListWithMembership, Profile } from '../lib/types'
 
@@ -216,7 +229,7 @@ export default function ListsPage() {
               aria-label={t('home.myExpensesShortcut')}
               title={t('home.myExpensesShortcut')}
             >
-              📊
+              <ChartIcon className="h-5 w-5" />
             </button>
             <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
               <Avatar
@@ -588,7 +601,9 @@ function ListRow({
           )}
           <div className="min-w-0">
             <p className="truncate font-medium text-slate-900 dark:text-slate-100">
-              {l.membership.pinned && <span className="mr-1">📌</span>}
+              {l.membership.pinned && (
+                <PinIcon className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-[var(--color-brand-500)]" />
+              )}
               {l.name}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -624,7 +639,7 @@ function ListRow({
             title={isOwner ? t('lists.deleteList') : t('lists.leaveList')}
             className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
           >
-            🗑
+            <TrashIcon className="h-4 w-4" />
           </button>
           <span className="text-slate-300 dark:text-slate-600">›</span>
         </div>
@@ -645,21 +660,33 @@ function ListRow({
           title={l.name}
           onClose={() => setShowMenu(false)}
           actions={[
-            { label: t('menu.open'), icon: '📂', onSelect: onOpen },
+            { label: t('menu.open'), icon: <FolderIcon className="h-5 w-5" />, onSelect: onOpen },
             {
               label: l.membership.pinned ? t('menu.unpin') : t('menu.pin'),
-              icon: '📌',
+              icon: <PinIcon className="h-5 w-5" />,
               onSelect: onTogglePin,
             },
-            { label: t('menu.duplicate'), icon: '⧉', onSelect: onDuplicate },
+            { label: t('menu.duplicate'), icon: <CopyIcon className="h-5 w-5" />, onSelect: onDuplicate },
             ...(onSortDate && onSortAlpha && onEnterCustomOrder
-              ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
+              ? [{ label: t('menu.reorder'), icon: <ReorderIcon className="h-5 w-5" />, onSelect: () => setShowSortMenu(true) }]
               : []),
             ...(onComplete
-              ? [{ label: t('menu.complete'), icon: '✓', onSelect: () => (isOwner ? onComplete() : showOwnerOnlyToast()) }]
+              ? [
+                  {
+                    label: t('menu.complete'),
+                    icon: <CheckIcon className="h-5 w-5" />,
+                    onSelect: () => (isOwner ? onComplete() : showOwnerOnlyToast()),
+                  },
+                ]
               : []),
             ...(onReactivate
-              ? [{ label: t('menu.reactivate'), icon: '↩', onSelect: () => (isOwner ? onReactivate() : showOwnerOnlyToast()) }]
+              ? [
+                  {
+                    label: t('menu.reactivate'),
+                    icon: <UndoIcon className="h-5 w-5" />,
+                    onSelect: () => (isOwner ? onReactivate() : showOwnerOnlyToast()),
+                  },
+                ]
               : []),
           ]}
         />
@@ -672,9 +699,9 @@ function ListRow({
           title={t('menu.reorder')}
           onClose={() => setShowSortMenu(false)}
           actions={[
-            { label: t('reorder.byDate'), icon: '🕓', onSelect: onSortDate },
-            { label: t('reorder.alpha'), icon: '🔤', onSelect: onSortAlpha },
-            { label: t('reorder.custom'), icon: '⠿', onSelect: onEnterCustomOrder },
+            { label: t('reorder.byDate'), icon: <SortDateIcon className="h-5 w-5" />, onSelect: onSortDate },
+            { label: t('reorder.alpha'), icon: <SortAlphaIcon className="h-5 w-5" />, onSelect: onSortAlpha },
+            { label: t('reorder.custom'), icon: <DragHandleIcon className="h-5 w-5" />, onSelect: onEnterCustomOrder },
           ]}
         />
       )}

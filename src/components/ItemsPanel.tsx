@@ -29,6 +29,18 @@ import UndoToast from './UndoToast'
 import ConfirmDialog from './ConfirmDialog'
 import ContextMenu from './ContextMenu'
 import NewExpenseModal from './NewExpenseModal'
+import {
+  CalendarIcon,
+  CheckIcon,
+  DragHandleIcon,
+  EditIcon,
+  LockIcon,
+  PriceIcon,
+  ReorderIcon,
+  SortAlphaIcon,
+  SortDateIcon,
+  TrashIcon,
+} from './icons'
 import type { Item, ItemSuggestion, ListMember } from '../lib/types'
 
 const UNDO_DELAY_MS = 5000
@@ -358,8 +370,9 @@ export default function ItemsPanel({
       ) : (
         <div className="space-y-4 pb-24">
           {readOnly && (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-              🔒 {t('notes.readOnlyHint')}
+            <p className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              <LockIcon className="h-3.5 w-3.5 shrink-0" />
+              {t('notes.readOnlyHint')}
             </p>
           )}
           {!readOnly &&
@@ -580,7 +593,8 @@ export default function ItemsPanel({
               onClick={onCompleteList}
               className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-400 dark:hover:bg-brand-950/50"
             >
-              ✓ {t('notes.completeListCta')}
+              <CheckIcon className="h-4 w-4" />
+              {t('notes.completeListCta')}
             </button>
           )}
         </div>
@@ -1096,19 +1110,19 @@ function ItemRow({
           actions={[
             ...(!readOnly
               ? [
-                  { label: t('menu.editNote'), icon: '✎', onSelect: startEdit },
-                  { label: t('menu.dueDate'), icon: '📅', onSelect: onOpenDueDate },
+                  { label: t('menu.editNote'), icon: <EditIcon className="h-5 w-5" />, onSelect: startEdit },
+                  { label: t('menu.dueDate'), icon: <CalendarIcon className="h-5 w-5" />, onSelect: onOpenDueDate },
                   {
                     label: item.price != null ? `${t('menu.price')}: ${formatCurrency(item.price, currency, language)}` : t('menu.price'),
-                    icon: '💰',
+                    icon: <PriceIcon className="h-5 w-5" />,
                     onSelect: onOpenPrice,
                   },
                 ]
               : []),
             ...(!readOnly && onSortDate && onSortAlpha && onEnterCustomOrder
-              ? [{ label: t('menu.reorder'), icon: '↕️', onSelect: () => setShowSortMenu(true) }]
+              ? [{ label: t('menu.reorder'), icon: <ReorderIcon className="h-5 w-5" />, onSelect: () => setShowSortMenu(true) }]
               : []),
-            { label: t('menu.delete'), icon: '🗑', danger: true, onSelect: () => onDelete(item.id) },
+            { label: t('menu.delete'), icon: <TrashIcon className="h-5 w-5" />, danger: true, onSelect: () => onDelete(item.id) },
           ]}
         />
       )}
@@ -1118,9 +1132,9 @@ function ItemRow({
           title={t('menu.reorder')}
           onClose={() => setShowSortMenu(false)}
           actions={[
-            { label: t('reorder.byDate'), icon: '🕓', onSelect: onSortDate },
-            { label: t('reorder.alpha'), icon: '🔤', onSelect: onSortAlpha },
-            { label: t('reorder.custom'), icon: '⠿', onSelect: onEnterCustomOrder },
+            { label: t('reorder.byDate'), icon: <SortDateIcon className="h-5 w-5" />, onSelect: onSortDate },
+            { label: t('reorder.alpha'), icon: <SortAlphaIcon className="h-5 w-5" />, onSelect: onSortAlpha },
+            { label: t('reorder.custom'), icon: <DragHandleIcon className="h-5 w-5" />, onSelect: onEnterCustomOrder },
           ]}
         />
       )}

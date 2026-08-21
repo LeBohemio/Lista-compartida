@@ -17,6 +17,18 @@ import UndoToast from './UndoToast'
 import Toast from './Toast'
 import ContextMenu from './ContextMenu'
 import ForwardMessageModal from './ForwardMessageModal'
+import {
+  CameraIcon,
+  CloseIcon,
+  CopyIcon,
+  ForwardIcon,
+  GalleryIcon,
+  LockIcon,
+  MicIcon,
+  ReplyIcon,
+  SendIcon,
+  TrashIcon,
+} from './icons'
 import { colorForName } from '../lib/colors'
 import type { Message } from '../lib/types'
 
@@ -669,13 +681,14 @@ export default function ChatPanel({
                 aria-label={t('common.close')}
                 className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                ✕
+                <CloseIcon className="h-4 w-4" />
               </button>
             </div>
           )}
           {readOnly ? (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-              🔒 {t('chat.readOnlyHint')}
+            <p className="flex items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              <LockIcon className="h-3.5 w-3.5 shrink-0" />
+              {t('chat.readOnlyHint')}
             </p>
           ) : (
             // Un único <form> para toda la barra: el botón de micrófono
@@ -706,10 +719,10 @@ export default function ChatPanel({
                     type="button"
                     onClick={() => setShowPhotoMenu(true)}
                     disabled={sending}
-                    className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 disabled:opacity-50 dark:text-slate-300"
+                    className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 disabled:opacity-50 dark:text-slate-300"
                     aria-label={t('chat.attachPhoto')}
                   >
-                    📷
+                    <CameraIcon className="h-5 w-5" />
                   </button>
                   {/* Dos inputs separados en vez de uno solo: dejar que el
                       propio navegador decida si ofrece cámara y galería
@@ -751,7 +764,7 @@ export default function ChatPanel({
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-10px_var(--color-glow)] disabled:opacity-50"
                   aria-label={t('chat.send')}
                 >
-                  ➤
+                  <SendIcon className="h-4 w-4" />
                 </button>
               ) : (
                 <button
@@ -768,7 +781,7 @@ export default function ChatPanel({
                   aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
                   title={recording ? t('chat.recording') : t('chat.attachAudio')}
                 >
-                  🎤
+                  <MicIcon className="h-5 w-5" />
                 </button>
               )}
             </form>
@@ -783,16 +796,18 @@ export default function ChatPanel({
         <ContextMenu
           onClose={() => setMenuTarget(null)}
           actions={[
-            ...(!readOnly ? [{ label: t('chat.reply'), icon: '↩️', onSelect: () => setReplyTarget(menuTarget) }] : []),
-            ...(menuTarget.content
-              ? [{ label: t('menu.copy'), icon: '📋', onSelect: () => copyMessage(menuTarget) }]
+            ...(!readOnly
+              ? [{ label: t('chat.reply'), icon: <ReplyIcon className="h-5 w-5" />, onSelect: () => setReplyTarget(menuTarget) }]
               : []),
-            { label: t('menu.forward'), icon: '↪️', onSelect: () => setForwardTarget(menuTarget) },
+            ...(menuTarget.content
+              ? [{ label: t('menu.copy'), icon: <CopyIcon className="h-5 w-5" />, onSelect: () => copyMessage(menuTarget) }]
+              : []),
+            { label: t('menu.forward'), icon: <ForwardIcon className="h-5 w-5" />, onSelect: () => setForwardTarget(menuTarget) },
             ...(menuTarget.sender_id === user?.id
               ? [
                   {
                     label: t('chat.deleteForEveryone'),
-                    icon: '🗑',
+                    icon: <TrashIcon className="h-5 w-5" />,
                     danger: true,
                     onSelect: () => requestDeleteMessage(menuTarget.id),
                   },
@@ -806,8 +821,8 @@ export default function ChatPanel({
         <ContextMenu
           onClose={() => setShowPhotoMenu(false)}
           actions={[
-            { label: t('chat.takePhoto'), icon: '📷', onSelect: () => cameraInputRef.current?.click() },
-            { label: t('chat.choosePhoto'), icon: '🖼️', onSelect: () => galleryInputRef.current?.click() },
+            { label: t('chat.takePhoto'), icon: <CameraIcon className="h-5 w-5" />, onSelect: () => cameraInputRef.current?.click() },
+            { label: t('chat.choosePhoto'), icon: <GalleryIcon className="h-5 w-5" />, onSelect: () => galleryInputRef.current?.click() },
           ]}
         />
       )}
@@ -874,9 +889,9 @@ export default function ChatPanel({
             onClick={() => setViewerUrl(null)}
             aria-label={t('chat.closeViewer')}
             title={t('chat.closeViewer')}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <img

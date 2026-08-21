@@ -1,5 +1,6 @@
 import { useLanguage } from '../lib/i18n'
 import { colorForList } from '../lib/colors'
+import { CloseIcon } from './icons'
 import type { ItemStats } from '../hooks/useLists'
 import type { ListWithMembership } from '../lib/types'
 
@@ -34,7 +35,7 @@ export default function GreetingSummary({
             title={t('common.close')}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
-            ✕
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 

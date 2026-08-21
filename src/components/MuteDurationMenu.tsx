@@ -1,5 +1,6 @@
 import { useLanguage } from '../lib/i18n'
 import ContextMenu from './ContextMenu'
+import { BellOffIcon, CalendarIcon, ClockIcon } from './icons'
 import type { MuteDuration } from '../lib/mute'
 
 // Hoja de opciones para elegir CUÁNTO tiempo silenciar (un contacto o el
@@ -19,10 +20,10 @@ export default function MuteDurationMenu({
       title={t('mute.chooseDuration')}
       onClose={onClose}
       actions={[
-        { label: t('mute.for1h'), icon: '🕐', onSelect: () => onPick('1h') },
-        { label: t('mute.for8h'), icon: '🕗', onSelect: () => onPick('8h') },
-        { label: t('mute.for1w'), icon: '📅', onSelect: () => onPick('1w') },
-        { label: t('mute.forAlways'), icon: '🔕', onSelect: () => onPick('always') },
+        { label: t('mute.for1h'), icon: <ClockIcon className="h-5 w-5" />, onSelect: () => onPick('1h') },
+        { label: t('mute.for8h'), icon: <ClockIcon className="h-5 w-5" />, onSelect: () => onPick('8h') },
+        { label: t('mute.for1w'), icon: <CalendarIcon className="h-5 w-5" />, onSelect: () => onPick('1w') },
+        { label: t('mute.forAlways'), icon: <BellOffIcon className="h-5 w-5" />, onSelect: () => onPick('always') },
       ]}
     />
   )

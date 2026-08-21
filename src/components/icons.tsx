@@ -333,6 +333,43 @@ export function LockIcon(props: IconProps) {
   )
 }
 
+// Flecha curva de "deshacer/reactivar" (lista completada → volver a
+// activarla). Distinta del check ✓ (CheckIcon), que es la acción contraria.
+export function UndoIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M7 8H4V5" />
+      <path d="M4.5 8.5A7.5 7.5 0 1 1 6 15.5" />
+    </Base>
+  )
+}
+
+export function ClockIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7.5V12l3.2 1.8" />
+    </Base>
+  )
+}
+
+export function FolderIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h4l1.7 2H18.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" />
+    </Base>
+  )
+}
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4.5 20V10M12 20V4M19.5 20v-7" />
+      <path d="M4 20h16" />
+    </Base>
+  )
+}
+
 /**
  * "Insignia de cristal" (propuesta B elegida): la mini-tarjeta de cristal
  * esmerilado que envuelve a cada icono. `active` cambia el cristal neutro

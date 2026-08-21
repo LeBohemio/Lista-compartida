@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContactCardSheet from '../components/ContactCardSheet'
+import { BellOffIcon, BlockIcon, ChatBubbleIcon, PinIcon, TrashIcon } from '../components/icons'
 import { useLanguage } from '../lib/i18n'
 import { isCurrentlyMuted } from '../lib/mute'
 import type { Contact, ContactRequest, Profile } from '../lib/types'
@@ -299,14 +300,16 @@ export default function ContactsPage() {
                         enlargeOnClick={false}
                       />
                       <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                        {c.pinned && <span className="mr-1">📌</span>}
+                        {c.pinned && (
+                          <PinIcon className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-[var(--color-brand-500)]" />
+                        )}
                         {c.contact!.username}
                         {isCurrentlyMuted(c.muted, c.muted_until) && (
-                          <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>
+                          <BellOffIcon className="ml-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-slate-400" />
                         )}
                         {c.blocked_at && (
-                          <span className="ml-1 align-middle text-xs text-slate-400" title={t('contacts.blockedBadge')}>
-                            🚫
+                          <span className="ml-1 inline-flex align-middle text-slate-400" title={t('contacts.blockedBadge')}>
+                            <BlockIcon className="h-3.5 w-3.5" />
                           </span>
                         )}
                       </span>
@@ -320,7 +323,7 @@ export default function ContactsPage() {
                         title={t('card.openChat')}
                         className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
                       >
-                        💬
+                        <ChatBubbleIcon className="h-5 w-5" />
                       </button>
                       <button
                         type="button"
@@ -332,7 +335,7 @@ export default function ContactsPage() {
                         title={t('contacts.remove')}
                         className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                       >
-                        🗑
+                        <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
                   </li>

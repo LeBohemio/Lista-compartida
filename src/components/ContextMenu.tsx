@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react'
 import { useLanguage } from '../lib/i18n'
 
 export type ContextMenuAction = {
   label: string
-  icon?: string
+  // Acepta tanto un emoji suelto (para lo que aún no se ha migrado) como un
+  // icono de línea de icons.tsx (p. ej. <TrashIcon className="h-5 w-5" />).
+  icon?: ReactNode
   danger?: boolean
   onSelect: () => void
 }
@@ -40,7 +43,9 @@ export default function ContextMenu({
                   : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              {a.icon && <span className="text-base">{a.icon}</span>}
+              {a.icon && (
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center text-base">{a.icon}</span>
+              )}
               {a.label}
             </button>
           ))}

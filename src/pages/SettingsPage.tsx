@@ -8,6 +8,7 @@ import DeleteAccountDialog from '../components/DeleteAccountDialog'
 import MyExpensesModal from '../components/MyExpensesModal'
 import AvatarCropper from '../components/AvatarCropper'
 import AvatarPicker from '../components/AvatarPicker'
+import { CloseIcon } from '../components/icons'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
 import { disablePush, enablePush, isPushSupported } from '../lib/push'
@@ -416,8 +417,8 @@ export default function SettingsPage() {
                     }}
                   >
                     {opt.value === null && (
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
-                        ✕
+                      <span className="absolute inset-0 flex items-center justify-center text-slate-400">
+                        <CloseIcon className="h-3 w-3" />
                       </span>
                     )}
                   </span>

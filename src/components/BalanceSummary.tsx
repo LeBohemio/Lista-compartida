@@ -6,6 +6,7 @@ import { useLanguage } from '../lib/i18n'
 import type { CurrencyCode } from '../lib/currencies'
 import type { Expense, ListMember, Settlement, SuggestedDebt } from '../lib/types'
 import SettleUpModal from './SettleUpModal'
+import { ShareIcon } from './icons'
 
 export default function BalanceSummary({
   listId,
@@ -108,7 +109,7 @@ export default function BalanceSummary({
           aria-label={t('balance.share')}
           title={t('balance.share')}
         >
-          📤
+          <ShareIcon className="h-4 w-4" />
         </button>
       </div>
 

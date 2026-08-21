@@ -9,6 +9,7 @@ import Avatar from '../components/Avatar'
 import ContextMenu from '../components/ContextMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import MuteDurationMenu from '../components/MuteDurationMenu'
+import { BellIcon, BellOffIcon, MoreIcon, TrashIcon } from '../components/icons'
 import { isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Contact } from '../lib/types'
 
@@ -133,18 +134,21 @@ export default function DirectChatPage() {
                 onClick={toggleMuted}
                 className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
               >
-                {isCurrentlyMuted(myContact.muted, myContact.muted_until)
-                  ? `🔕 ${t('chat.unmute')}`
-                  : `🔔 ${t('chat.mute')}`}
+                {isCurrentlyMuted(myContact.muted, myContact.muted_until) ? (
+                  <BellOffIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <BellIcon className="h-3.5 w-3.5" />
+                )}
+                {isCurrentlyMuted(myContact.muted, myContact.muted_until) ? t('chat.unmute') : t('chat.mute')}
               </button>
             )}
             <button
               type="button"
               onClick={() => setShowMenu(true)}
               aria-label={t('common.more')}
-              className="text-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
-              ⋮
+              <MoreIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -170,7 +174,7 @@ export default function DirectChatPage() {
           actions={[
             {
               label: t('chat.clearChat'),
-              icon: '🗑',
+              icon: <TrashIcon className="h-5 w-5" />,
               danger: true,
               onSelect: () => setConfirmClear(true),
             },

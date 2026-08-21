@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
+import { TrashIcon } from '../components/icons'
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -152,7 +153,7 @@ export default function NoteDetailPage() {
                           aria-label={t('list.removeMember')}
                           title={t('list.removeMember')}
                         >
-                          🗑
+                          <TrashIcon className="h-4 w-4" />
                         </button>
                       )}
                     </span>
