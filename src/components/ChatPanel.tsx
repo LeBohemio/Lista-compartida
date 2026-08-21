@@ -19,8 +19,10 @@ import ContextMenu from './ContextMenu'
 import ForwardMessageModal from './ForwardMessageModal'
 import {
   CameraIcon,
+  CheckIcon,
   CloseIcon,
   CopyIcon,
+  EditIcon,
   ForwardIcon,
   GalleryIcon,
   LockIcon,
@@ -52,6 +54,20 @@ function replyPreviewText(
   if (m.image_path) return t('chat.replyPhoto')
   if (m.audio_path) return t('chat.replyAudio')
   return ''
+}
+
+// Ventana durante la que se puede editar un mensaje propio, igual que
+// WhatsApp — comprobada también en el servidor (migration_v30.sql), esto
+// aquí es solo para no ofrecer "Editar" en el menú cuando ya no vale de
+// nada intentarlo.
+const EDIT_WINDOW_MS = 15 * 60 * 1000
+
+function canEditMessage(m: Message, userId?: string): boolean {
+  if (!userId || m.sender_id !== userId) return false
+  // Solo mensajes de puro texto: una foto o nota de voz ya enviada no se
+  // puede sustituir por otra cosa.
+  if (!m.content || m.image_path || m.audio_path) return false
+  return Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS
 }
 
 function isSameDay(a: string, b: string) {
@@ -184,6 +200,11 @@ export default function ChatPanel({
   // Mensaje al que se está respondiendo (se citará en el próximo mensaje
   // que se mande, sea texto, foto o nota de voz) — ver migration_v28.sql.
   const [replyTarget, setReplyTarget] = useState<Message | null>(null)
+  // Mensaje propio que se está editando ahora mismo (ver migration_v30.sql)
+  // — mutuamente excluyente con "responder": empezar a editar cancela
+  // cualquier respuesta pendiente y viceversa, para no mezclar las dos
+  // barras encima del compositor.
+  const [editTarget, setEditTarget] = useState<Message | null>(null)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null)
   const [copiedFeedback, setCopiedFeedback] = useState(false)
@@ -358,6 +379,47 @@ export default function ChatPanel({
     }
     setText('')
     setReplyTarget(null)
+  }
+
+  // Empezar a responder o a editar cancela lo otro, para que nunca se vean
+  // las dos barras a la vez encima del compositor.
+  const startReply = (m: Message) => {
+    setReplyTarget(m)
+    setEditTarget(null)
+  }
+
+  const startEdit = (m: Message) => {
+    setEditTarget(m)
+    setReplyTarget(null)
+    setText(m.content ?? '')
+    // El foco tiene que pedirse en el siguiente frame: el <textarea> del
+    // compositor es el mismo elemento de siempre (no se desmonta al
+    // entrar en modo edición), pero justo al pulsar "Editar" el foco
+    // todavía está en el menú contextual que se acaba de cerrar.
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
+  const cancelEdit = () => {
+    setEditTarget(null)
+    setText('')
+  }
+
+  const saveEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editTarget || !text.trim() || !user) return
+    setSending(true)
+    setError(null)
+    const { error: err } = await supabase
+      .from('messages')
+      .update({ content: text.trim(), edited_at: new Date().toISOString() })
+      .eq('id', editTarget.id)
+    setSending(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setText('')
+    setEditTarget(null)
   }
 
   // Al elegir una foto (de cámara o galería) no se manda sola: se guarda
@@ -656,6 +718,7 @@ export default function ChatPanel({
                   audioUrl={m.audio_path ? audioUrls[m.audio_path] : undefined}
                   onLongPress={() => setMenuTarget(m)}
                   onOpenImage={setViewerUrl}
+                  onSwipeReply={readOnly ? undefined : startReply}
                 />
               </div>
             )
@@ -667,7 +730,7 @@ export default function ChatPanel({
       <div className="glass-panel fixed inset-x-0 bottom-0 z-30">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
-          {!readOnly && replyTarget && (
+          {!readOnly && replyTarget && !editTarget && (
             <div className="glass-panel mb-2 flex items-start gap-2 rounded-xl border-l-4 !border-l-[var(--color-brand-500)] py-1.5 pl-2.5 pr-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
@@ -678,6 +741,22 @@ export default function ChatPanel({
               <button
                 type="button"
                 onClick={() => setReplyTarget(null)}
+                aria-label={t('common.close')}
+                className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          {!readOnly && editTarget && (
+            <div className="glass-panel mb-2 flex items-start gap-2 rounded-xl border-l-4 !border-l-[var(--color-brand-500)] py-1.5 pl-2.5 pr-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-brand-600 dark:text-brand-400">{t('chat.editingMessage')}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{editTarget.content}</p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelEdit}
                 aria-label={t('common.close')}
                 className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
@@ -697,7 +776,7 @@ export default function ChatPanel({
             // entrar en "recording", se perdería la captura del puntero a
             // mitad de gesto). Por eso "recording" solo cambia lo que hay a
             // su izquierda, nunca desmonta el formulario ni el botón.
-            <form onSubmit={sendText} className="flex items-center gap-2">
+            <form onSubmit={editTarget ? saveEdit : sendText} className="flex items-center gap-2">
               {recording ? (
                 <div className="glass-panel flex flex-1 items-center gap-2 rounded-full px-4 py-2.5">
                   <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
@@ -715,15 +794,19 @@ export default function ChatPanel({
                 </div>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setShowPhotoMenu(true)}
-                    disabled={sending}
-                    className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 disabled:opacity-50 dark:text-slate-300"
-                    aria-label={t('chat.attachPhoto')}
-                  >
-                    <CameraIcon className="h-5 w-5" />
-                  </button>
+                  {/* No se puede convertir un mensaje editado en una foto —
+                      mientras se edita, el botón de cámara desaparece. */}
+                  {!editTarget && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotoMenu(true)}
+                      disabled={sending}
+                      className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 disabled:opacity-50 dark:text-slate-300"
+                      aria-label={t('chat.attachPhoto')}
+                    >
+                      <CameraIcon className="h-5 w-5" />
+                    </button>
+                  )}
                   {/* Dos inputs separados en vez de uno solo: dejar que el
                       propio navegador decida si ofrece cámara y galería
                       juntas (con o sin el atributo "capture") es poco
@@ -757,7 +840,17 @@ export default function ChatPanel({
                 </>
               )}
 
-              {!recording && text.trim() ? (
+              {!recording && editTarget ? (
+                <button
+                  type="submit"
+                  disabled={sending || !text.trim()}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-10px_var(--color-glow)] disabled:opacity-50"
+                  aria-label={t('chat.saveEdit')}
+                  title={t('chat.saveEdit')}
+                >
+                  <CheckIcon className="h-4 w-4" />
+                </button>
+              ) : !recording && text.trim() ? (
                 <button
                   type="submit"
                   disabled={sending}
@@ -797,7 +890,10 @@ export default function ChatPanel({
           onClose={() => setMenuTarget(null)}
           actions={[
             ...(!readOnly
-              ? [{ label: t('chat.reply'), icon: <ReplyIcon className="h-5 w-5" />, onSelect: () => setReplyTarget(menuTarget) }]
+              ? [{ label: t('chat.reply'), icon: <ReplyIcon className="h-5 w-5" />, onSelect: () => startReply(menuTarget) }]
+              : []),
+            ...(!readOnly && canEditMessage(menuTarget, user?.id)
+              ? [{ label: t('chat.edit'), icon: <EditIcon className="h-5 w-5" />, onSelect: () => startEdit(menuTarget) }]
               : []),
             ...(menuTarget.content
               ? [{ label: t('menu.copy'), icon: <CopyIcon className="h-5 w-5" />, onSelect: () => copyMessage(menuTarget) }]
@@ -948,6 +1044,14 @@ export default function ChatPanel({
   )
 }
 
+// Deslizar una burbuja hacia la derecha para responder a ese mensaje, como
+// en WhatsApp — cuanto más se desliza, más se ve el icono de "responder"
+// asomando a la izquierda, hasta que pasa el umbral y queda "armado": al
+// soltar ahí, se activa esa respuesta. Si se suelta antes del umbral, la
+// burbuja vuelve sola a su sitio sin hacer nada.
+const SWIPE_REPLY_MAX_PX = 64
+const SWIPE_REPLY_THRESHOLD_PX = 44
+
 function MessageBubble({
   message: m,
   isMine,
@@ -957,6 +1061,7 @@ function MessageBubble({
   audioUrl,
   onLongPress,
   onOpenImage,
+  onSwipeReply,
 }: {
   message: Message
   isMine: boolean
@@ -966,9 +1071,61 @@ function MessageBubble({
   audioUrl?: string
   onLongPress: () => void
   onOpenImage: (url: string) => void
+  // undefined cuando el chat es de solo lectura (lista completada): sin
+  // esta prop, el gesto de deslizar queda desactivado del todo.
+  onSwipeReply?: (message: Message) => void
 }) {
   const { t, language } = useLanguage()
   const longPress = useLongPress(onLongPress)
+
+  const [dragX, setDragX] = useState(0)
+  const [armed, setArmed] = useState(false)
+  const dragStartXRef = useRef<number | null>(null)
+  const draggingRef = useRef(false)
+
+  const handleSwipePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!onSwipeReply) return
+    dragStartXRef.current = e.clientX
+    draggingRef.current = false
+  }
+
+  const handleSwipePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!onSwipeReply || dragStartXRef.current == null) return
+    const dx = e.clientX - dragStartXRef.current
+    // Un poco de margen antes de considerarlo un arrastre de verdad, para
+    // no robarle el gesto a un simple toque con el dedo algo tembloroso.
+    if (!draggingRef.current && dx <= 6) return
+    if (!draggingRef.current) {
+      draggingRef.current = true
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // sin soporte de pointer capture: el gesto sigue funcionando, solo
+        // que se corta si el dedo se sale del todo de la burbuja.
+      }
+    }
+    const clamped = Math.max(0, Math.min(dx, SWIPE_REPLY_MAX_PX))
+    setDragX(clamped)
+    const nowArmed = clamped >= SWIPE_REPLY_THRESHOLD_PX
+    setArmed((wasArmed) => {
+      if (nowArmed && !wasArmed && navigator.vibrate) navigator.vibrate(12)
+      return nowArmed
+    })
+  }
+
+  const endSwipe = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!onSwipeReply) return
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // nada que liberar si no se llegó a capturar.
+    }
+    if (draggingRef.current && armed) onSwipeReply(m)
+    dragStartXRef.current = null
+    draggingRef.current = false
+    setArmed(false)
+    setDragX(0)
+  }
 
   return (
     <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
@@ -983,14 +1140,32 @@ function MessageBubble({
             {m.sender?.username ?? '—'}
           </p>
         )}
-        <div
-          {...longPress}
-          className={`select-none rounded-2xl px-3 py-2 text-sm ${
-            isMine
-              ? 'rounded-br-sm bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-12px_var(--color-glow)]'
-              : 'glass-panel rounded-bl-sm text-slate-800 dark:text-slate-100'
-          }`}
-        >
+        <div className="relative">
+          {onSwipeReply && dragX > 0 && (
+            <span
+              className="pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-brand-500)] transition-opacity"
+              style={{ left: '-30px', opacity: Math.min(dragX / SWIPE_REPLY_THRESHOLD_PX, 1) }}
+            >
+              <ReplyIcon className="h-4 w-4" />
+            </span>
+          )}
+          <div
+            {...longPress}
+            onPointerDown={handleSwipePointerDown}
+            onPointerMove={handleSwipePointerMove}
+            onPointerUp={endSwipe}
+            onPointerCancel={endSwipe}
+            style={{
+              transform: `translateX(${dragX}px)`,
+              transition: draggingRef.current ? 'none' : 'transform 200ms ease-out',
+              touchAction: 'pan-y',
+            }}
+            className={`select-none rounded-2xl px-3 py-2 text-sm ${
+              isMine
+                ? 'rounded-br-sm bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-12px_var(--color-glow)]'
+                : 'glass-panel rounded-bl-sm text-slate-800 dark:text-slate-100'
+            }`}
+          >
           {m.reply_to && (
             <div
               className={`mb-1.5 rounded-lg border-l-4 px-2 py-1 text-xs ${
@@ -1032,8 +1207,10 @@ function MessageBubble({
             </div>
           )}
           {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
+          </div>
         </div>
         <p className="mt-0.5 px-1 text-[10px] text-slate-400">
+          {m.edited_at && `${t('chat.edited')} · `}
           {new Date(m.created_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'es-ES', {
             hour: '2-digit',
             minute: '2-digit',

@@ -282,6 +282,10 @@ export type Message = {
   // mensajes. Si el mensaje citado se borra más tarde, esto pasa a null
   // solo (no borra ni afecta a este mensaje). Ver migration_v28.sql.
   reply_to_message_id: string | null
+  // Cuándo se editó por última vez (null si nunca se editó) — solo aplica
+  // a mensajes de puro texto, dentro de los 15 minutos tras enviarlos. Ver
+  // migration_v30.sql.
+  edited_at: string | null
   // joined
   sender?: Profile
   reply_to?: {
