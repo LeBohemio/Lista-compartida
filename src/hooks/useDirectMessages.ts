@@ -35,7 +35,9 @@ export function useDirectMessages(peerId: string | undefined) {
         .maybeSingle(),
       supabase
         .from('messages')
-        .select('*, sender:profiles!messages_sender_id_fkey(*)')
+        .select(
+          '*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_message_id_fkey(id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username))',
+        )
         .is('list_id', null)
         .or(`and(sender_id.eq.${user.id},to_user_id.eq.${peerId}),and(sender_id.eq.${peerId},to_user_id.eq.${user.id})`)
         .order('created_at', { ascending: true }),

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useLanguage } from '../lib/i18n'
 import AvatarCropper from './AvatarCropper'
+import Avatar from './Avatar'
 
 // Cambiar la foto de la lista — abierto a CUALQUIER miembro (no solo a
 // quien la creó), a diferencia de RenameListModal (nombre/color/moneda),
@@ -13,11 +14,13 @@ import AvatarCropper from './AvatarCropper'
 // migration_v24.sql.
 export default function ChangeListPhotoModal({
   listId,
+  listName,
   currentPhotoUrl,
   onClose,
   onSaved,
 }: {
   listId: string
+  listName: string
   currentPhotoUrl: string | null
   onClose: () => void
   onSaved: () => void
@@ -85,14 +88,15 @@ export default function ChangeListPhotoModal({
           <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('list.changePhoto')}</h2>
 
           <div className="mb-4 flex items-center gap-3">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-alt)] ring-1 ring-[var(--color-surface-border)]">
-              {currentPhotoUrl ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <img src={currentPhotoUrl} alt={t('list.photo')} className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-2xl text-slate-300">●</span>
-              )}
-            </div>
+            {/* Antes era un <img> suelto, sin ampliar al tocarlo ni cerrar
+                bien. Ahora reutiliza Avatar, que ya trae esa vista ampliada
+                a pantalla completa con su botón ✕ funcional. */}
+            <Avatar
+              username={listName}
+              avatarUrl={currentPhotoUrl}
+              size={64}
+              className="ring-1 ring-[var(--color-surface-border)]"
+            />
             <div className="flex flex-col gap-1">
               <label className="cursor-pointer text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
                 {uploading ? t('common.saving') : t('list.changePhoto')}

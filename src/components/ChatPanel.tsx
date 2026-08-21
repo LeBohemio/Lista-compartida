@@ -29,6 +29,19 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+// Resumen corto de un mensaje para mostrarlo citado — encima del
+// compositor mientras se responde, o dentro de la burbuja de quien
+// respondió. Un mensaje sin texto es una foto o una nota de voz.
+function replyPreviewText(
+  m: { content: string | null; image_path: string | null; audio_path: string | null },
+  t: (key: TranslationKey) => string,
+): string {
+  if (m.content) return m.content
+  if (m.image_path) return t('chat.replyPhoto')
+  if (m.audio_path) return t('chat.replyAudio')
+  return ''
+}
+
 function isSameDay(a: string, b: string) {
   const da = new Date(a)
   const db = new Date(b)
@@ -156,6 +169,9 @@ export default function ChatPanel({
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const [lastPendingId, setLastPendingId] = useState<string | null>(null)
   const [menuTarget, setMenuTarget] = useState<Message | null>(null)
+  // Mensaje al que se está respondiendo (se citará en el próximo mensaje
+  // que se mande, sea texto, foto o nota de voz) — ver migration_v28.sql.
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null)
   const [copiedFeedback, setCopiedFeedback] = useState(false)
@@ -317,15 +333,19 @@ export default function ChatPanel({
     if (!text.trim() || !user) return
     setSending(true)
     setError(null)
-    const { error: err } = await supabase
-      .from('messages')
-      .insert({ ...insertPayload(target), sender_id: user.id, content: text.trim() })
+    const { error: err } = await supabase.from('messages').insert({
+      ...insertPayload(target),
+      sender_id: user.id,
+      content: text.trim(),
+      reply_to_message_id: replyTarget?.id ?? null,
+    })
     setSending(false)
     if (err) {
       setError(err.code === '42501' ? t('chat.blockedError') : err.message)
       return
     }
     setText('')
+    setReplyTarget(null)
   }
 
   // Al elegir una foto (de cámara o galería) no se manda sola: se guarda
@@ -370,9 +390,13 @@ export default function ChatPanel({
       return
     }
 
-    const { error: insertErr } = await supabase
-      .from('messages')
-      .insert({ ...insertPayload(target), sender_id: user.id, image_path: path, content: text.trim() || null })
+    const { error: insertErr } = await supabase.from('messages').insert({
+      ...insertPayload(target),
+      sender_id: user.id,
+      image_path: path,
+      content: text.trim() || null,
+      reply_to_message_id: replyTarget?.id ?? null,
+    })
 
     setSending(false)
     URL.revokeObjectURL(pendingImage.previewUrl)
@@ -383,6 +407,7 @@ export default function ChatPanel({
       return
     }
     setText('')
+    setReplyTarget(null)
   }
 
   const sendAudioBlob = async (blob: Blob, durationSeconds: number) => {
@@ -407,10 +432,15 @@ export default function ChatPanel({
       sender_id: user.id,
       audio_path: path,
       audio_duration_seconds: Math.max(1, Math.round(durationSeconds)),
+      reply_to_message_id: replyTarget?.id ?? null,
     })
 
     setSending(false)
-    if (insertErr) setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
+    if (insertErr) {
+      setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
+      return
+    }
+    setReplyTarget(null)
   }
 
   const startRecording = async () => {
@@ -609,6 +639,7 @@ export default function ChatPanel({
                   message={m}
                   isMine={isMine}
                   isFirstInGroup={isFirstInGroup}
+                  currentUserId={user?.id}
                   imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
                   audioUrl={m.audio_path ? audioUrls[m.audio_path] : undefined}
                   onLongPress={() => setMenuTarget(m)}
@@ -624,6 +655,24 @@ export default function ChatPanel({
       <div className="fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur border-[var(--color-surface-border)] bg-[var(--color-surface-alt)]/95">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
+          {!readOnly && replyTarget && (
+            <div className="mb-2 flex items-start gap-2 rounded-lg border-l-4 border-brand-500 py-1.5 pl-2.5 pr-2 bg-[var(--color-surface)]">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
+                  {replyTarget.sender_id === user?.id ? t('chat.you') : replyTarget.sender?.username || '—'}
+                </p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{replyPreviewText(replyTarget, t)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyTarget(null)}
+                aria-label={t('common.close')}
+                className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {readOnly ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
               🔒 {t('chat.readOnlyHint')}
@@ -734,6 +783,7 @@ export default function ChatPanel({
         <ContextMenu
           onClose={() => setMenuTarget(null)}
           actions={[
+            ...(!readOnly ? [{ label: t('chat.reply'), icon: '↩️', onSelect: () => setReplyTarget(menuTarget) }] : []),
             ...(menuTarget.content
               ? [{ label: t('menu.copy'), icon: '📋', onSelect: () => copyMessage(menuTarget) }]
               : []),
@@ -887,6 +937,7 @@ function MessageBubble({
   message: m,
   isMine,
   isFirstInGroup,
+  currentUserId,
   imageUrl,
   audioUrl,
   onLongPress,
@@ -895,6 +946,7 @@ function MessageBubble({
   message: Message
   isMine: boolean
   isFirstInGroup: boolean
+  currentUserId?: string
   imageUrl?: string
   audioUrl?: string
   onLongPress: () => void
@@ -924,6 +976,20 @@ function MessageBubble({
               : 'rounded-bl-sm text-slate-800 ring-1 bg-[var(--color-surface)] dark:text-slate-100 ring-[var(--color-surface-border)]'
           }`}
         >
+          {m.reply_to && (
+            <div
+              className={`mb-1.5 rounded-lg border-l-4 px-2 py-1 text-xs ${
+                isMine ? 'border-white/50 bg-white/10' : 'border-brand-500 bg-black/5 dark:bg-white/5'
+              }`}
+            >
+              <p className={`font-medium ${isMine ? 'text-white/90' : 'text-brand-600 dark:text-brand-400'}`}>
+                {m.reply_to.sender_id === currentUserId ? t('chat.you') : m.reply_to.sender?.username || '—'}
+              </p>
+              <p className={`truncate ${isMine ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
+                {replyPreviewText(m.reply_to, t)}
+              </p>
+            </div>
+          )}
           {m.image_path && imageUrl && (
             <img
               src={imageUrl}

@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContactCardSheet from '../components/ContactCardSheet'
 import { useLanguage } from '../lib/i18n'
+import { isCurrentlyMuted } from '../lib/mute'
 import type { Contact, ContactRequest, Profile } from '../lib/types'
 import type { ContactRequestsData } from '../hooks/useContactRequests'
 
@@ -300,7 +301,9 @@ export default function ContactsPage() {
                       <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                         {c.pinned && <span className="mr-1">📌</span>}
                         {c.contact!.username}
-                        {c.muted && <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>}
+                        {isCurrentlyMuted(c.muted, c.muted_until) && (
+                          <span className="ml-1 align-middle text-xs text-slate-400">🔕</span>
+                        )}
                         {c.blocked_at && (
                           <span className="ml-1 align-middle text-xs text-slate-400" title={t('contacts.blockedBadge')}>
                             🚫

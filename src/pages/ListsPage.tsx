@@ -213,20 +213,30 @@ export default function ListsPage() {
               {statusLine && <p className="truncate text-xs text-white/80">{statusLine}</p>}
             </div>
           </button>
-          <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
-            <Avatar
-              username={profile?.username ?? '?'}
-              avatarUrl={profile?.avatar_url}
-              size={38}
-              className="ring-2 ring-white/70 hover:ring-white"
-              enlargeOnClick={false}
-            />
-            {invitations.length > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
-                {invitations.length > 9 ? '9+' : invitations.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/settings', { state: { openExpenses: true } })}
+              className="rounded-full p-1.5 text-white/90 hover:bg-white/10 hover:text-white"
+              aria-label={t('home.myExpensesShortcut')}
+              title={t('home.myExpensesShortcut')}
+            >
+              📊
+            </button>
+            <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
+              <Avatar
+                username={profile?.username ?? '?'}
+                avatarUrl={profile?.avatar_url}
+                size={38}
+                className="ring-2 ring-white/70 hover:ring-white"
+                enlargeOnClick={false}
+              />
+              {invitations.length > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
+                  {invitations.length > 9 ? '9+' : invitations.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 

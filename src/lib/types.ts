@@ -70,8 +70,11 @@ export type ListMember = {
   responded_at: string | null
   last_read_message_at: string | null
   // Silenciar el chat de ESTA lista (no afecta a otras listas ni a otros
-  // tipos de aviso). Ver migration_v15.sql.
+  // tipos de aviso). Ver migration_v15.sql. Puede ser para siempre
+  // (muted_until vacío) o hasta una fecha (muted_until con valor) — ver
+  // migration_v27.sql.
   muted: boolean
+  muted_until: string | null
   // Quién mandó la invitación — hace falta para saber con quién os hacéis
   // contactos automáticamente en cuanto se acepta. null en invitaciones
   // antiguas (de antes de esto) o en la fila del propio dueño al crear la
@@ -101,7 +104,10 @@ export type Contact = {
   // leído esa conversación — todo por tu propia fila (no compartido con la
   // otra persona). Ver migration_v18.sql.
   pinned: boolean
+  // Silenciado para siempre (muted_until vacío) o hasta una fecha
+  // (muted_until con valor) — ver migration_v27.sql.
   muted: boolean
+  muted_until: string | null
   last_read_message_at: string | null
   // "Borrar chat" (solo para mí): igual que chat_cleared_at en
   // ListMember, pero para la conversación directa con esta persona. Ver
@@ -269,6 +275,18 @@ export type Message = {
   audio_path: string | null
   audio_duration_seconds: number | null
   created_at: string
+  // Mensaje al que responde (cita), si lo hay — null en la mayoría de
+  // mensajes. Si el mensaje citado se borra más tarde, esto pasa a null
+  // solo (no borra ni afecta a este mensaje). Ver migration_v28.sql.
+  reply_to_message_id: string | null
   // joined
   sender?: Profile
+  reply_to?: {
+    id: string
+    content: string | null
+    image_path: string | null
+    audio_path: string | null
+    sender_id: string | null
+    sender?: { username: string }
+  } | null
 }

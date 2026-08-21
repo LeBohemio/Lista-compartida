@@ -8,6 +8,8 @@ import ChatPanel from '../components/ChatPanel'
 import Avatar from '../components/Avatar'
 import ContextMenu from '../components/ContextMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
+import MuteDurationMenu from '../components/MuteDurationMenu'
+import { isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Contact } from '../lib/types'
 
 export default function DirectChatPage() {
@@ -19,6 +21,7 @@ export default function DirectChatPage() {
   const [myContact, setMyContact] = useState<Contact | null>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [showMuteMenu, setShowMuteMenu] = useState(false)
 
   const fetchMyContact = useCallback(async () => {
     if (!user || !peerId) return
@@ -65,11 +68,20 @@ export default function DirectChatPage() {
     prevMessageCountRef.current = messages.length
   }, [messages, user, peerId])
 
-  const toggleMuted = async () => {
+  const toggleMuted = () => {
+    if (!user || !peerId || !myContact) return
+    if (isCurrentlyMuted(myContact.muted, myContact.muted_until)) {
+      void applyMute(null)
+    } else {
+      setShowMuteMenu(true)
+    }
+  }
+
+  const applyMute = async (duration: MuteDuration | null) => {
     if (!user || !peerId || !myContact) return
     await supabase
       .from('contacts')
-      .update({ muted: !myContact.muted })
+      .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('user_id', user.id)
       .eq('contact_user_id', peerId)
     fetchMyContact()
@@ -121,7 +133,9 @@ export default function DirectChatPage() {
                 onClick={toggleMuted}
                 className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
               >
-                {myContact.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
+                {isCurrentlyMuted(myContact.muted, myContact.muted_until)
+                  ? `🔕 ${t('chat.unmute')}`
+                  : `🔔 ${t('chat.mute')}`}
               </button>
             )}
             <button
@@ -139,6 +153,16 @@ export default function DirectChatPage() {
       <main className="mx-auto max-w-2xl px-4 py-6">
         <ChatPanel target={{ kind: 'direct', peerId }} messages={messages} />
       </main>
+
+      {showMuteMenu && (
+        <MuteDurationMenu
+          onClose={() => setShowMuteMenu(false)}
+          onPick={(duration) => {
+            setShowMuteMenu(false)
+            void applyMute(duration)
+          }}
+        />
+      )}
 
       {showMenu && (
         <ContextMenu

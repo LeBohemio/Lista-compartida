@@ -36,6 +36,18 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 type NotifyField = 'notify_chat' | 'notify_expenses' | 'notify_invites' | 'notify_settlements'
 
+// "muted" ahora puede ser para siempre (muted_until vacío) o hasta una
+// fecha concreta (1 hora / 8 horas / 1 semana — ver migration_v27.sql). Si
+// ya ha pasado esa fecha, se considera que ya NO está silenciado, aunque la
+// columna "muted" siga en true — el aviso de vencimiento se limpia solo la
+// próxima vez que se abre la ficha/lista en la app, así que aquí hay que
+// comprobarlo por fecha, no fiarse solo del booleano.
+function isCurrentlyMuted(row: { muted?: boolean | null; muted_until?: string | null } | null | undefined): boolean {
+  if (!row?.muted) return false
+  if (!row.muted_until) return true
+  return new Date(row.muted_until).getTime() > Date.now()
+}
+
 type PushPayload = {
   title: string
   body: string
@@ -109,12 +121,12 @@ async function handleMessages(record: Record<string, unknown>) {
       supabaseAdmin.from('profiles').select('username, avatar_url').eq('id', senderId).maybeSingle(),
       supabaseAdmin
         .from('contacts')
-        .select('muted')
+        .select('muted, muted_until')
         .eq('user_id', toUserId)
         .eq('contact_user_id', senderId)
         .maybeSingle(),
     ])
-    if (!sender || myContactRow?.muted) return
+    if (!sender || isCurrentlyMuted(myContactRow)) return
 
     const bodyText =
       (record.content as string | null) ||
@@ -138,7 +150,7 @@ async function handleMessages(record: Record<string, unknown>) {
     supabaseAdmin.from('profiles').select('username').eq('id', senderId).maybeSingle(),
     supabaseAdmin
       .from('list_members')
-      .select('user_id, muted')
+      .select('user_id, muted, muted_until')
       .eq('list_id', listId)
       .eq('status', 'accepted')
       .neq('user_id', senderId),
@@ -161,10 +173,11 @@ async function handleMessages(record: Record<string, unknown>) {
     convType: 'list',
     convId: listId,
   }
-  // Quien tenga silenciado el chat DE ESTA LISTA (ver migration_v15.sql) no
-  // recibe el aviso, aunque tenga notify_chat activado en general.
+  // Quien tenga silenciado el chat DE ESTA LISTA (ver migration_v15.sql y,
+  // para la duración, migration_v27.sql) no recibe el aviso, aunque tenga
+  // notify_chat activado en general.
   await Promise.all(
-    members.filter((m) => !m.muted).map((m) => notifyUser(m.user_id as string, 'notify_chat', payload)),
+    members.filter((m) => !isCurrentlyMuted(m)).map((m) => notifyUser(m.user_id as string, 'notify_chat', payload)),
   )
 }
 

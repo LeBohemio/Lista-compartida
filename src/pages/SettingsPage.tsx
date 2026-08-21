@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
@@ -62,23 +63,26 @@ const ALL_BACKGROUND_OPTIONS: { value: string | null; labelKey: TranslationKey; 
 // array decide el color de avatares/listas de cada persona a partir de su
 // nombre, así que cambiar su orden le cambiaría el color a gente que ya
 // tiene uno asignado.
-const ACCENT_LIGHT_TO_DARK: { light: string; dark: string }[] = [
-  { light: '#f59e0b', dark: '#78350f' }, // amber
-  { light: '#10b981', dark: '#065f46' }, // emerald
-  { light: '#0ea5e9', dark: '#0c4a6e' }, // sky
-  { light: '#ec4899', dark: '#831843' }, // pink
-  { light: '#ef4444', dark: '#7f1d1d' }, // red
-  { light: '#6366f1', dark: '#312e81' }, // indigo
+const ACCENT_LIGHT_TO_DARK: { light: string; dark: string; nameKey: TranslationKey }[] = [
+  { light: '#f59e0b', dark: '#78350f', nameKey: 'accent.amber' },
+  { light: '#10b981', dark: '#065f46', nameKey: 'accent.emerald' },
+  { light: '#0ea5e9', dark: '#0c4a6e', nameKey: 'accent.sky' },
+  { light: '#ec4899', dark: '#831843', nameKey: 'accent.pink' },
+  { light: '#ef4444', dark: '#7f1d1d', nameKey: 'accent.red' },
+  { light: '#6366f1', dark: '#312e81', nameKey: 'accent.indigo' },
 ]
 // Negro puro, al final del todo — combinado con "Negro" en color de fondo
 // da un tema en escala de grises. shadesFromAccent() (ver theme.ts) trata
 // un acento sin saturación como gris puro en todos sus tonos, así que
 // funciona bien sin ningún caso especial.
 const BLACK_ACCENT = '#000000'
-const ALL_ACCENT_COLORS = [
-  ...ACCENT_LIGHT_TO_DARK.map((c) => c.light),
-  ...ACCENT_LIGHT_TO_DARK.map((c) => c.dark),
-  BLACK_ACCENT,
+// Antes solo eran los códigos de color sueltos (sin nombre visible, solo el
+// tooltip del navegador) — ahora cada swatch lleva su nombre para poder
+// mostrarlo debajo, igual que ya se hacía con los fondos.
+const ALL_ACCENT_SWATCHES: { value: string; nameKey: TranslationKey; dark: boolean }[] = [
+  ...ACCENT_LIGHT_TO_DARK.map((c) => ({ value: c.light, nameKey: c.nameKey, dark: false })),
+  ...ACCENT_LIGHT_TO_DARK.map((c) => ({ value: c.dark, nameKey: c.nameKey, dark: true })),
+  { value: BLACK_ACCENT, nameKey: 'accent.black' as TranslationKey, dark: false },
 ]
 
 // Ajustes — antes era un modal (ProfileModal) al que se accedía desde el
@@ -89,11 +93,17 @@ const ALL_ACCENT_COLORS = [
 export default function SettingsPage() {
   const { user, profile, refreshProfile, signOut } = useAuth()
   const { language, setLanguage, t } = useLanguage()
+  const location = useLocation()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showDelete, setShowDelete] = useState(false)
-  const [showMyExpenses, setShowMyExpenses] = useState(false)
+  // Se puede llegar aquí ya con la intención de abrir "Mis gastos" directo
+  // (atajo desde la cabecera de "Mis listas", ver ListsPage.tsx) — se lee
+  // una sola vez al montar, no hace falta que sea reactivo.
+  const [showMyExpenses, setShowMyExpenses] = useState(
+    () => Boolean((location.state as { openExpenses?: boolean } | null)?.openExpenses),
+  )
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
@@ -359,42 +369,61 @@ export default function SettingsPage() {
           </div>
           <div>
             <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.accentColor')}</p>
-            <div className="flex flex-wrap gap-2">
-              {ALL_ACCENT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setAccentColor(c)}
-                  aria-label={`Color ${c}`}
-                  className="h-8 w-8 rounded-full border border-black/5 transition"
-                  style={{
-                    backgroundColor: c,
-                    boxShadow: profile.accent_color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
-                  }}
-                />
-              ))}
+            <div className="flex flex-wrap gap-3">
+              {ALL_ACCENT_SWATCHES.map((opt) => {
+                const label = opt.dark ? `${t(opt.nameKey)} · ${t('color.darkSuffix')}` : t(opt.nameKey)
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setAccentColor(opt.value)}
+                    aria-label={label}
+                    title={label}
+                    className="flex w-14 flex-col items-center gap-1 rounded-lg py-1 transition hover:bg-[var(--color-surface-alt)]"
+                  >
+                    <span
+                      className="h-8 w-8 rounded-full border border-black/5"
+                      style={{
+                        backgroundColor: opt.value,
+                        boxShadow:
+                          profile.accent_color === opt.value ? `0 0 0 2px white, 0 0 0 4px ${opt.value}` : 'none',
+                      }}
+                    />
+                    <span className="w-full truncate text-center text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                      {label}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
           <div>
             <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.backgroundColor')}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {ALL_BACKGROUND_OPTIONS.map((opt, idx) => (
                 <button
                   key={opt.value ?? `default-${idx}`}
                   onClick={() => setBackgroundColor(opt.value)}
                   aria-label={t(opt.labelKey)}
                   title={t(opt.labelKey)}
-                  className="relative h-8 w-8 rounded-full border transition border-[var(--color-surface-border)]"
-                  style={{
-                    backgroundColor: opt.swatch,
-                    boxShadow:
-                      profile.background_color === opt.value ? '0 0 0 2px white, 0 0 0 4px #4f46e5' : 'none',
-                  }}
+                  className="flex w-14 flex-col items-center gap-1 rounded-lg py-1 transition hover:bg-[var(--color-surface-alt)]"
                 >
-                  {opt.value === null && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
-                      ✕
-                    </span>
-                  )}
+                  <span
+                    className="relative h-8 w-8 rounded-full border transition border-[var(--color-surface-border)]"
+                    style={{
+                      backgroundColor: opt.swatch,
+                      boxShadow:
+                        profile.background_color === opt.value ? '0 0 0 2px white, 0 0 0 4px #4f46e5' : 'none',
+                    }}
+                  >
+                    {opt.value === null && (
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
+                        ✕
+                      </span>
+                    )}
+                  </span>
+                  <span className="w-full truncate text-center text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                    {t(opt.labelKey)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -430,6 +459,7 @@ export default function SettingsPage() {
                 </option>
               ))}
             </select>
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">{t('profile.currencyHint')}</p>
           </div>
         </div>
 
@@ -497,74 +527,78 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeUsername')}</p>
-          <form onSubmit={handleChangeUsername} className="space-y-2">
-            <input
-              type="text"
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              placeholder={profile.username}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-            />
-            {usernameMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{usernameMessage}</p>}
-            <button
-              type="submit"
-              disabled={usernameSubmitting || !newUsername.trim()}
-              className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              {usernameSubmitting ? t('common.saving') : t('profile.updateUsername')}
-            </button>
-          </form>
-        </div>
+        <div className="mb-6 space-y-5 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.accountSection')}</p>
 
-        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changePassword')}</p>
-          <form onSubmit={handleChangePassword} className="space-y-2">
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder={t('profile.newPassword')}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-            />
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder={t('profile.repeatPassword')}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-            />
-            {passwordMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{passwordMessage}</p>}
-            <button
-              type="submit"
-              disabled={passwordSubmitting || !newPassword}
-              className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              {passwordSubmitting ? t('common.saving') : t('profile.updatePassword')}
-            </button>
-          </form>
-        </div>
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeUsername')}</p>
+            <form onSubmit={handleChangeUsername} className="space-y-2">
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder={profile.username}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              />
+              {usernameMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{usernameMessage}</p>}
+              <button
+                type="submit"
+                disabled={usernameSubmitting || !newUsername.trim()}
+                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {usernameSubmitting ? t('common.saving') : t('profile.updateUsername')}
+              </button>
+            </form>
+          </div>
 
-        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.changeEmail')}</p>
-          <form onSubmit={handleChangeEmail} className="space-y-2">
-            <input
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              placeholder={t('profile.newEmailPlaceholder')}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
-            />
-            {emailMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{emailMessage}</p>}
-            <button
-              type="submit"
-              disabled={emailSubmitting || !newEmail}
-              className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              {emailSubmitting ? t('common.saving') : t('profile.updateEmail')}
-            </button>
-          </form>
+          <div className="space-y-2 border-t pt-4 border-[var(--color-surface-border)]">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeEmail')}</p>
+            <form onSubmit={handleChangeEmail} className="space-y-2">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder={t('profile.newEmailPlaceholder')}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              />
+              {emailMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{emailMessage}</p>}
+              <button
+                type="submit"
+                disabled={emailSubmitting || !newEmail}
+                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {emailSubmitting ? t('common.saving') : t('profile.updateEmail')}
+              </button>
+            </form>
+          </div>
+
+          <div className="space-y-2 border-t pt-4 border-[var(--color-surface-border)]">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changePassword')}</p>
+            <form onSubmit={handleChangePassword} className="space-y-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t('profile.newPassword')}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t('profile.repeatPassword')}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              />
+              {passwordMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{passwordMessage}</p>}
+              <button
+                type="submit"
+                disabled={passwordSubmitting || !newPassword}
+                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {passwordSubmitting ? t('common.saving') : t('profile.updatePassword')}
+              </button>
+            </form>
+          </div>
         </div>
 
         <button

@@ -198,7 +198,7 @@ export default function InviteMemberModal({
               />
               {availableContacts.length === 0 ? (
                 <p className="py-3 text-center text-sm text-slate-400">
-                  {normalizedSearch ? t('invite.noContactsMatch') : t('invite.allContactsInList')}
+                  {normalizedSearch ? t('invite.noContactsMatch') : t('invite.allContactsAdded')}
                 </p>
               ) : (
                 <ul className="divide-y divide-[var(--color-surface-border)]">

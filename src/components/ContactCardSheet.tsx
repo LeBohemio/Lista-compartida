@@ -6,6 +6,8 @@ import { useLanguage } from '../lib/i18n'
 import Avatar from './Avatar'
 import ConfirmDialog from './ConfirmDialog'
 import CreateListModal from './CreateListModal'
+import MuteDurationMenu from './MuteDurationMenu'
+import { formatMuteUntil, isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Contact, ContactRequest, Profile } from '../lib/types'
 
 type CardState =
@@ -38,7 +40,7 @@ export default function ContactCardSheet({
   onChanged?: () => void
 }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const navigate = useNavigate()
 
   const [state, setState] = useState<CardState>({ kind: 'loading' })
@@ -47,6 +49,7 @@ export default function ContactCardSheet({
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [confirmBlock, setConfirmBlock] = useState(false)
   const [showCreateList, setShowCreateList] = useState(false)
+  const [showMuteMenu, setShowMuteMenu] = useState(false)
 
   const fetchState = useCallback(async () => {
     if (!user) return
@@ -109,12 +112,26 @@ export default function ContactCardSheet({
     notify()
   }
 
-  const toggleMuted = async () => {
+  // Si ya está silenciado (aunque fuera con fecha de caducidad), pulsar el
+  // botón lo reactiva directamente. Si no lo está, abre el menú para elegir
+  // cuánto tiempo (ver applyMute).
+  const toggleMuted = () => {
+    if (state.kind !== 'contact' || !user) return
+    if (isCurrentlyMuted(state.contact.muted, state.contact.muted_until)) {
+      void applyMute(null)
+    } else {
+      setShowMuteMenu(true)
+    }
+  }
+
+  // duration=null desilencia. Cualquier otro valor silencia con esa
+  // duración (o para siempre, si es "always").
+  const applyMute = async (duration: MuteDuration | null) => {
     if (state.kind !== 'contact' || !user) return
     setBusy(true)
     await supabase
       .from('contacts')
-      .update({ muted: !state.contact.muted })
+      .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('user_id', user.id)
       .eq('contact_user_id', targetProfile.id)
     setBusy(false)
@@ -274,8 +291,13 @@ export default function ContactCardSheet({
                 disabled={busy}
               />
               <CardAction
-                icon={state.contact.muted ? '🔕' : '🔔'}
-                label={state.contact.muted ? t('card.unmute') : t('card.mute')}
+                icon={isCurrentlyMuted(state.contact.muted, state.contact.muted_until) ? '🔕' : '🔔'}
+                label={isCurrentlyMuted(state.contact.muted, state.contact.muted_until) ? t('card.unmute') : t('card.mute')}
+                hint={
+                  isCurrentlyMuted(state.contact.muted, state.contact.muted_until) && state.contact.muted_until
+                    ? t('card.mutedUntil', { when: formatMuteUntil(state.contact.muted_until, language) })
+                    : undefined
+                }
                 onClick={toggleMuted}
                 disabled={busy}
               />
@@ -378,6 +400,16 @@ export default function ContactCardSheet({
       {showCreateList && (
         <CreateListModal onClose={() => setShowCreateList(false)} onCreated={handleListCreated} />
       )}
+
+      {showMuteMenu && (
+        <MuteDurationMenu
+          onClose={() => setShowMuteMenu(false)}
+          onPick={(duration) => {
+            setShowMuteMenu(false)
+            void applyMute(duration)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -385,12 +417,15 @@ export default function ContactCardSheet({
 function CardAction({
   icon,
   label,
+  hint,
   onClick,
   disabled,
   danger,
 }: {
   icon: string
   label: string
+  // Segunda línea pequeña, opcional (por ejemplo "Silenciado hasta las 18:30").
+  hint?: string
   onClick: () => void
   disabled?: boolean
   danger?: boolean
@@ -405,7 +440,10 @@ function CardAction({
       }`}
     >
       <span>{icon}</span>
-      <span className="flex-1">{label}</span>
+      <span className="flex-1">
+        {label}
+        {hint && <span className="block text-xs font-normal text-slate-400">{hint}</span>}
+      </span>
     </button>
   )
 }

@@ -16,6 +16,8 @@ import ContextMenu from '../components/ContextMenu'
 import Toast from '../components/Toast'
 import Avatar from '../components/Avatar'
 import ContactCardSheet from '../components/ContactCardSheet'
+import MuteDurationMenu from '../components/MuteDurationMenu'
+import { isCurrentlyMuted, muteUntilFor, type MuteDuration } from '../lib/mute'
 import type { Profile } from '../lib/types'
 
 type Tab = 'notas' | 'gastos' | 'chat'
@@ -56,6 +58,7 @@ export default function ListDetailPage() {
   const [confirmComplete, setConfirmComplete] = useState(false)
   const [cardTarget, setCardTarget] = useState<Profile | null>(null)
   const [showChatMenu, setShowChatMenu] = useState(false)
+  const [showMuteMenu, setShowMuteMenu] = useState(false)
   const [confirmClearChat, setConfirmClearChat] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -194,12 +197,22 @@ export default function ListDetailPage() {
 
   // Silenciar SOLO el chat de esta lista (no toca las demás listas ni otros
   // tipos de aviso) — deja de sonar/avisar por push aunque lleguen mensajes
-  // nuevos, hasta que se vuelva a activar. Ver migration_v15.sql.
-  const toggleMuted = async () => {
+  // nuevos, hasta que se vuelva a activar (o hasta que pase la duración
+  // elegida). Ver migration_v15.sql y, para la duración, migration_v27.sql.
+  const toggleMuted = () => {
+    if (!user || !myMembership) return
+    if (isCurrentlyMuted(myMembership.muted, myMembership.muted_until)) {
+      void applyMute(null)
+    } else {
+      setShowMuteMenu(true)
+    }
+  }
+
+  const applyMute = async (duration: MuteDuration | null) => {
     if (!user || !myMembership) return
     await supabase
       .from('list_members')
-      .update({ muted: !myMembership.muted })
+      .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('list_id', list.id)
       .eq('user_id', user.id)
     refetch()
@@ -444,7 +457,9 @@ export default function ListDetailPage() {
                   onClick={toggleMuted}
                   className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
                 >
-                  {myMembership.muted ? `🔕 ${t('chat.unmute')}` : `🔔 ${t('chat.mute')}`}
+                  {isCurrentlyMuted(myMembership.muted, myMembership.muted_until)
+                    ? `🔕 ${t('chat.unmute')}`
+                    : `🔔 ${t('chat.mute')}`}
                 </button>
                 <button
                   type="button"
@@ -458,6 +473,16 @@ export default function ListDetailPage() {
             )}
             <ChatPanel target={{ kind: 'list', listId: list.id }} messages={messages} readOnly={isCompleted} />
           </>
+        )}
+
+        {showMuteMenu && (
+          <MuteDurationMenu
+            onClose={() => setShowMuteMenu(false)}
+            onPick={(duration) => {
+              setShowMuteMenu(false)
+              void applyMute(duration)
+            }}
+          />
         )}
 
         {showChatMenu && (
@@ -539,6 +564,7 @@ export default function ListDetailPage() {
       {showChangePhoto && (
         <ChangeListPhotoModal
           listId={list.id}
+          listName={list.name}
           currentPhotoUrl={list.photo_url}
           onClose={() => setShowChangePhoto(false)}
           onSaved={() => {
