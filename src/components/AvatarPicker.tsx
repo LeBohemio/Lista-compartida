@@ -78,9 +78,9 @@ export default function AvatarPicker({
   }, [activeSlug])
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
-        className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        className="glass-panel flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pt-6">
@@ -106,7 +106,7 @@ export default function AvatarPicker({
               className="h-24 w-24 rounded-full object-cover ring-4 ring-brand-100 dark:ring-brand-950/50"
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed text-xs text-slate-400 border-[var(--color-surface-border)]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed text-xs text-slate-400 border-[var(--color-glass-border)]">
               {t('avatarPicker.noneSelected')}
             </div>
           )}
@@ -121,10 +121,10 @@ export default function AvatarPicker({
                 else pillRefs.current.delete(cat.slug)
               }}
               onClick={() => setActiveSlug(cat.slug)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 activeSlug === cat.slug
-                  ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                  : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
+                  ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                  : 'border text-slate-600 hover:bg-white/40 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/5'
               }`}
             >
               {t(cat.labelKey)}
@@ -156,17 +156,17 @@ export default function AvatarPicker({
           </div>
         </div>
 
-        <div className="flex gap-3 border-t px-6 py-4 border-[var(--color-surface-border)]">
+        <div className="flex gap-3 border-t px-6 py-4 border-[var(--color-glass-border)]">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="flex-1 rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={confirm}
             disabled={!selected}
-            className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            className="flex-1 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-50"
           >
             {t('avatarPicker.use')}
           </button>

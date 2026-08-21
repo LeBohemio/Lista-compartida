@@ -22,9 +22,9 @@ export default function GreetingSummary({
   const { t } = useLanguage()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
-        className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        className="glass-panel flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pb-4 pt-6">
@@ -50,7 +50,7 @@ export default function GreetingSummary({
                 <button
                   key={l.id}
                   onClick={() => onSelectList(l.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left hover:bg-black/5 dark:hover:bg-white/5"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span

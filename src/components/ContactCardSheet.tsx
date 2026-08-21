@@ -253,9 +253,9 @@ export default function ContactCardSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-sm overflow-hidden rounded-t-2xl shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        className="glass-panel w-full max-w-sm overflow-hidden rounded-t-[28px] shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center gap-2 p-6 pb-4 text-center">
@@ -332,7 +332,7 @@ export default function ContactCardSheet({
               <button
                 onClick={cancelOutgoing}
                 disabled={busy}
-                className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
+                className="w-full rounded-full border px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-white/60 disabled:opacity-60 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/10"
               >
                 {t('card.cancelRequest')}
               </button>
@@ -346,14 +346,14 @@ export default function ContactCardSheet({
                 <button
                   onClick={() => respondIncoming(false)}
                   disabled={busy}
-                  className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 border-[var(--color-surface-border)] dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="flex-1 rounded-full border px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-white/60 disabled:opacity-60 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   {t('lists.reject')}
                 </button>
                 <button
                   onClick={() => respondIncoming(true)}
                   disabled={busy}
-                  className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                  className="flex-1 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 text-sm font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
                 >
                   {t('lists.accept')}
                 </button>
@@ -367,7 +367,7 @@ export default function ContactCardSheet({
               <button
                 onClick={sendRequest}
                 disabled={busy}
-                className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                className="w-full rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 text-sm font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
               >
                 {busy ? t('card.sendingRequest') : t('card.sendRequest')}
               </button>
@@ -376,7 +376,7 @@ export default function ContactCardSheet({
 
           <button
             onClick={onClose}
-            className="mt-4 w-full rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="mt-4 w-full rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
           >
             {t('common.close')}
           </button>
@@ -443,7 +443,7 @@ function CardAction({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:hover:bg-slate-700 ${
+      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left text-sm hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:hover:bg-white/10 ${
         danger ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'
       }`}
     >

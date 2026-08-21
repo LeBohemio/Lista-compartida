@@ -298,11 +298,11 @@ export default function SettingsPage() {
 
   return (
     <div
-      className="min-h-screen pb-28 bg-[var(--color-surface-alt)]"
+      className="min-h-screen pb-28"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="sticky top-0 z-10 bg-[var(--color-surface)] px-4 py-4 shadow-sm">
-        <h1 className="mx-auto max-w-2xl text-lg font-semibold text-slate-900 dark:text-slate-100">
+      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 pb-4 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
+        <h1 className="mx-auto max-w-2xl font-display font-medium text-slate-900 dark:text-slate-100">
           {t('profile.title')}
         </h1>
       </header>
@@ -313,10 +313,10 @@ export default function SettingsPage() {
             username={profile.username}
             avatarUrl={previewUrl ?? profile.avatar_url}
             size={88}
-            className="ring-2 ring-slate-100 ring-[var(--color-surface-border)]"
+            className="ring-2 ring-[var(--color-glass-border)]"
           />
           <div className="flex gap-2">
-            <label className="cursor-pointer rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100">
+            <label className="cursor-pointer rounded-full border px-3 py-1.5 text-sm font-medium text-[var(--color-brand-600)] border-[var(--color-glass-border)] bg-[var(--color-glass)] hover:bg-white/60 dark:text-[var(--color-brand-400)] dark:hover:bg-white/10">
               {uploading ? t('profile.uploading') : t('profile.changePhoto')}
               <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
             </label>
@@ -324,7 +324,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => setShowAvatarPicker(true)}
               disabled={uploading}
-              className="rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50"
+              className="rounded-full border px-3 py-1.5 text-sm font-medium text-[var(--color-brand-600)] border-[var(--color-glass-border)] bg-[var(--color-glass)] hover:bg-white/60 disabled:opacity-50 dark:text-[var(--color-brand-400)] dark:hover:bg-white/10"
             >
               {t('profile.chooseAvatar')}
             </button>
@@ -345,23 +345,23 @@ export default function SettingsPage() {
         <div className="mb-6">
           <button
             onClick={() => setShowMyExpenses(true)}
-            className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="glass-panel w-full rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-white/60 dark:text-slate-200 dark:hover:bg-white/10"
           >
             {t('profile.myExpenses')}
           </button>
         </div>
 
-        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.appearance')}</p>
+        <div className="glass-panel mb-6 space-y-3 rounded-[26px] p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('profile.appearance')}</p>
           <div className="flex gap-2">
             {THEME_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setTheme(opt.value)}
-                className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
+                className={`flex-1 rounded-full px-2 py-2 text-sm font-medium transition ${
                   profile.theme === opt.value
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
-                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                    ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                    : 'border text-slate-600 border-[var(--color-glass-border)] hover:bg-white/40 dark:text-slate-300 dark:hover:bg-white/5'
                 }`}
               >
                 {t(opt.labelKey)}
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                     onClick={() => setAccentColor(opt.value)}
                     aria-label={label}
                     title={label}
-                    className="flex w-14 flex-col items-center gap-1 rounded-lg py-1 transition hover:bg-[var(--color-surface-alt)]"
+                    className="flex w-14 flex-col items-center gap-1 rounded-2xl py-1 transition hover:bg-white/40 dark:hover:bg-white/5"
                   >
                     <span
                       className="h-8 w-8 rounded-full border border-black/5"
@@ -406,10 +406,10 @@ export default function SettingsPage() {
                   onClick={() => setBackgroundColor(opt.value)}
                   aria-label={t(opt.labelKey)}
                   title={t(opt.labelKey)}
-                  className="flex w-14 flex-col items-center gap-1 rounded-lg py-1 transition hover:bg-[var(--color-surface-alt)]"
+                  className="flex w-14 flex-col items-center gap-1 rounded-2xl py-1 transition hover:bg-white/40 dark:hover:bg-white/5"
                 >
                   <span
-                    className="relative h-8 w-8 rounded-full border transition border-[var(--color-surface-border)]"
+                    className="relative h-8 w-8 rounded-full border transition border-[var(--color-glass-border)]"
                     style={{
                       backgroundColor: opt.swatch,
                       boxShadow:
@@ -436,10 +436,10 @@ export default function SettingsPage() {
                 <button
                   key={opt.value}
                   onClick={() => setLanguage(opt.value)}
-                  className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition ${
+                  className={`flex-1 rounded-full px-2 py-2 text-sm font-medium transition ${
                     language === opt.value
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
-                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                      ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                      : 'border text-slate-600 border-[var(--color-glass-border)] hover:bg-white/40 dark:text-slate-300 dark:hover:bg-white/5'
                   }`}
                 >
                   {opt.label}
@@ -452,7 +452,7 @@ export default function SettingsPage() {
             <select
               value={profile.currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-              className="w-full rounded-lg border px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              className="w-full rounded-2xl border px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -464,8 +464,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="mb-6 space-y-3 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.notifications')}</p>
+        <div className="glass-panel mb-6 space-y-3 rounded-[26px] p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('profile.notifications')}</p>
 
           {!isPushSupported() ? (
             <p className="text-xs text-slate-400">{t('profile.pushUnsupported')}</p>
@@ -475,10 +475,10 @@ export default function SettingsPage() {
                 type="button"
                 onClick={togglePush}
                 disabled={pushBusy}
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
+                className={`flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
                   profile.notify_push_enabled
-                    ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
-                    : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                    ? 'border-[var(--color-brand-500)] bg-[var(--color-brand-50)] text-[var(--color-brand-700)] dark:border-brand-400 dark:bg-brand-700/20 dark:text-brand-400'
+                    : 'text-slate-600 border-[var(--color-glass-border)] dark:text-slate-300'
                 }`}
               >
                 <span>{t('profile.pushEnableToggle')}</span>
@@ -499,7 +499,7 @@ export default function SettingsPage() {
               {pushError && <p className="text-xs text-red-500 dark:text-red-400">{pushError}</p>}
 
               {profile.notify_push_enabled && (
-                <div className="space-y-2 rounded-lg p-3 bg-[var(--color-surface-alt)]">
+                <div className="space-y-2 rounded-2xl p-3 bg-black/5 dark:bg-white/5">
                   {(
                     [
                       { field: 'notify_chat', label: t('profile.notifyChat'), value: profile.notify_chat },
@@ -528,8 +528,8 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="mb-6 space-y-5 rounded-xl p-4 ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('profile.accountSection')}</p>
+        <div className="glass-panel mb-6 space-y-5 rounded-[26px] p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('profile.accountSection')}</p>
 
           <div className="space-y-2">
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeUsername')}</p>
@@ -539,20 +539,20 @@ export default function SettingsPage() {
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder={profile.username}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {usernameMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{usernameMessage}</p>}
               <button
                 type="submit"
                 disabled={usernameSubmitting || !newUsername.trim()}
-                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="w-full rounded-full border py-2 text-sm font-medium text-slate-700 hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
               >
                 {usernameSubmitting ? t('common.saving') : t('profile.updateUsername')}
               </button>
             </form>
           </div>
 
-          <div className="space-y-2 border-t pt-4 border-[var(--color-surface-border)]">
+          <div className="space-y-2 border-t pt-4 border-[var(--color-glass-border)]">
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeEmail')}</p>
             <form onSubmit={handleChangeEmail} className="space-y-2">
               <input
@@ -560,20 +560,20 @@ export default function SettingsPage() {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder={t('profile.newEmailPlaceholder')}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {emailMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{emailMessage}</p>}
               <button
                 type="submit"
                 disabled={emailSubmitting || !newEmail}
-                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="w-full rounded-full border py-2 text-sm font-medium text-slate-700 hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
               >
                 {emailSubmitting ? t('common.saving') : t('profile.updateEmail')}
               </button>
             </form>
           </div>
 
-          <div className="space-y-2 border-t pt-4 border-[var(--color-surface-border)]">
+          <div className="space-y-2 border-t pt-4 border-[var(--color-glass-border)]">
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changePassword')}</p>
             <form onSubmit={handleChangePassword} className="space-y-2">
               <input
@@ -581,20 +581,20 @@ export default function SettingsPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t('profile.newPassword')}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t('profile.repeatPassword')}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {passwordMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{passwordMessage}</p>}
               <button
                 type="submit"
                 disabled={passwordSubmitting || !newPassword}
-                className="w-full rounded-lg border py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="w-full rounded-full border py-2 text-sm font-medium text-slate-700 hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
               >
                 {passwordSubmitting ? t('common.saving') : t('profile.updatePassword')}
               </button>
@@ -604,7 +604,7 @@ export default function SettingsPage() {
 
         <button
           onClick={() => signOut()}
-          className="w-full rounded-lg border border-red-200 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+          className="w-full rounded-full border px-4 py-2.5 font-medium text-red-600 hover:bg-red-50/60 border-red-300/60 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/30"
         >
           {t('profile.signOut')}
         </button>

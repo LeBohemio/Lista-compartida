@@ -297,11 +297,11 @@ export default function NewExpenseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center"
       onClick={handleRequestClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-6 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        className="glass-panel max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -368,10 +368,10 @@ export default function NewExpenseModal({
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
               placeholder="0.00"
-              className={`w-full rounded-lg border px-3 py-2.5 text-base focus:outline-none focus:ring-2 bg-[var(--color-surface-alt)] dark:text-slate-100 ${
+              className={`w-full rounded-2xl border px-3 py-2.5 text-base focus:outline-none focus:ring-2 bg-[var(--color-glass)] dark:text-slate-100 ${
                 needsManualReview
                   ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-100'
-                  : 'focus:border-brand-500 focus:ring-brand-100 border-[var(--color-surface-border)]'
+                  : 'focus:border-brand-500 focus:ring-brand-100 border-[var(--color-glass-border)]'
               }`}
             />
           </div>
@@ -383,7 +383,7 @@ export default function NewExpenseModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('expenses.descriptionPlaceholder')}
-              className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+              className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             />
           </div>
 
@@ -395,10 +395,10 @@ export default function NewExpenseModal({
                   type="button"
                   key={c.value}
                   onClick={() => setCategory(c.value)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  className={`rounded-full px-3 py-1.5 text-sm transition ${
                     category === c.value
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 hover:border-brand-300 border-[var(--color-surface-border)] dark:text-slate-300'
+                      ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                      : 'border text-slate-600 hover:bg-white/40 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/5'
                   }`}
                 >
                   {c.icon} {t(c.labelKey)}
@@ -429,7 +429,7 @@ export default function NewExpenseModal({
               <select
                 value={paidBy}
                 onChange={(e) => setPaidBy(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               >
                 {acceptedMembers.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -454,10 +454,10 @@ export default function NewExpenseModal({
                 <button
                   type="button"
                   onClick={() => setSplitMode('equal')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                  className={`flex-1 rounded-full px-3 py-2 text-sm font-medium ${
                     splitMode === 'equal'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                      ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                      : 'border text-slate-600 hover:bg-white/40 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/5'
                   }`}
                 >
                   {t('expenses.splitEqual')}
@@ -465,10 +465,10 @@ export default function NewExpenseModal({
                 <button
                   type="button"
                   onClick={() => setSplitMode('percent')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                  className={`flex-1 rounded-full px-3 py-2 text-sm font-medium ${
                     splitMode === 'percent'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                      ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                      : 'border text-slate-600 hover:bg-white/40 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/5'
                   }`}
                 >
                   {t('expenses.splitPercent')}
@@ -476,10 +476,10 @@ export default function NewExpenseModal({
                 <button
                   type="button"
                   onClick={() => setSplitMode('custom')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                  className={`flex-1 rounded-full px-3 py-2 text-sm font-medium ${
                     splitMode === 'custom'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'text-slate-600 border-[var(--color-surface-border)] dark:text-slate-300'
+                      ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_18px_-8px_var(--color-glow)]'
+                      : 'border text-slate-600 hover:bg-white/40 border-[var(--color-glass-border)] dark:text-slate-300 dark:hover:bg-white/5'
                   }`}
                 >
                   {t('expenses.splitCustom')}
@@ -515,7 +515,7 @@ export default function NewExpenseModal({
                           value={percentAmounts[m.user_id] ?? ''}
                           onChange={(e) => setPercentAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))}
                           placeholder="0"
-                          className="w-16 rounded-lg border px-2 py-1.5 pr-5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                          className="w-16 rounded-2xl border px-2 py-1.5 pr-5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
                         />
                         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
                       </div>
@@ -536,7 +536,7 @@ export default function NewExpenseModal({
                         setCustomAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))
                       }
                       placeholder="0.00"
-                      className="w-24 rounded-lg border px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                      className="w-24 rounded-2xl border px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
                     />
                   )}
                 </div>
@@ -570,14 +570,14 @@ export default function NewExpenseModal({
             <button
               type="button"
               onClick={handleRequestClose}
-              className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              className="flex-1 rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
             >
               {t('expenses.close')}
             </button>
             <button
               type="submit"
               disabled={submitting || ocrRunning}
-              className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+              className="flex-1 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
             >
               {submitting ? t('common.saving') : isEditing ? t('expenses.saveChanges') : t('expenses.saveExpense')}
             </button>

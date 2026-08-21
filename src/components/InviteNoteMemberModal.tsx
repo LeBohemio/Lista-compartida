@@ -136,9 +136,9 @@ export default function InviteNoteMemberModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
-        className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+        className="glass-panel flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 p-6 pb-0">
@@ -167,14 +167,14 @@ export default function InviteNoteMemberModal({
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
                 placeholder={t('invite.searchContacts')}
-                className="mb-2 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="mb-2 w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {availableContacts.length === 0 ? (
                 <p className="py-3 text-center text-sm text-slate-400">
                   {normalizedSearch ? t('invite.noContactsMatch') : t('invite.allContactsAdded')}
                 </p>
               ) : (
-                <ul className="divide-y divide-[var(--color-surface-border)]">
+                <ul className="divide-y divide-[var(--color-glass-border)]">
                   {availableContacts.map((c) => (
                     <li key={c.contact_user_id} className="flex items-center gap-3 py-2">
                       <Avatar username={c.contact!.username} avatarUrl={c.contact!.avatar_url} size={32} enlargeOnClick={false} />
@@ -185,7 +185,7 @@ export default function InviteNoteMemberModal({
                         type="button"
                         onClick={() => inviteContact(c)}
                         disabled={addingContactId === c.contact_user_id}
-                        className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                        className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
                       >
                         {addingContactId === c.contact_user_id ? t('invite.inviting') : t('invite.addContact')}
                       </button>
@@ -196,7 +196,7 @@ export default function InviteNoteMemberModal({
             </div>
           )}
 
-          <div className={contacts.length > 0 ? 'border-t pt-4 border-[var(--color-surface-border)]' : ''}>
+          <div className={contacts.length > 0 ? 'border-t pt-4 border-[var(--color-glass-border)]' : ''}>
             <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
               {contacts.length > 0 ? t('invite.orByEmail') : t('invite.body')}
             </p>
@@ -206,12 +206,12 @@ export default function InviteNoteMemberModal({
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={t('invite.placeholder')}
-                className="min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+                className="min-w-0 flex-1 rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               <button
                 type="submit"
                 disabled={submitting}
-                className="shrink-0 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
               >
                 {submitting ? t('invite.inviting') : t('invite.submit')}
               </button>
@@ -223,7 +223,7 @@ export default function InviteNoteMemberModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="w-full rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
           >
             {t('common.close')}
           </button>
