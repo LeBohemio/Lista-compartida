@@ -164,6 +164,14 @@ export default function ListDetailPage() {
   const soloList = acceptedMembers.length <= 1
   const listColor = colorForList(list)
   const isCompleted = !!list.archived_at
+  const showTabsRow = tab !== 'chat'
+  // TypeScript reduce el tipo de "tab" a 'notas' | 'gastos' dentro del
+  // bloque "showTabsRow &&" de abajo (siempre es cierto ahí), así que la
+  // comparación "tab === 'chat'" del propio botón "Chat" da error de
+  // compilación aunque en tiempo de ejecución sea perfectamente válida.
+  // Truco: una copia con el tipo "Tab" escrito a mano, para que TypeScript
+  // no la reduzca y podamos seguir comparando con 'chat' ahí dentro.
+  const activeTab: Tab = tab
 
   // Activar gastos: abierto a cualquier miembro (antes solo al dueño) — va
   // por una función RPC en vez de un update directo a "lists" para no tener
@@ -247,8 +255,13 @@ export default function ListDetailPage() {
             visual suelto. */}
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">
+            {/* Dentro del chat no se ve la fila de pestañas (Tareas /
+                Gastos / Chat) — así que la flecha de atrás pasa a ser la
+                única forma de volver a Tareas, en vez de salir de la lista
+                del todo. Fuera del chat sigue llevando a "Mis listas" como
+                siempre. */}
             <button
-              onClick={() => navigate('/lists')}
+              onClick={() => (tab === 'chat' ? setTab('notas') : navigate('/lists'))}
               className="shrink-0 text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               ‹
@@ -295,24 +308,29 @@ export default function ListDetailPage() {
                     <EditIcon className="h-3.5 w-3.5" />
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    if (!isOwner) {
-                      showOwnerOnlyToast(t('list.ownerOnlyComplete'))
-                      return
-                    }
-                    if (isCompleted) {
-                      reactivateList()
-                    } else {
-                      setConfirmComplete(true)
-                    }
-                  }}
-                  className="flex shrink-0 items-center rounded-full border border-[var(--color-glass-border)] p-1 text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
-                  aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
-                  title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
-                >
-                  {isCompleted ? <UndoIcon className="h-3.5 w-3.5" /> : <CheckIcon className="h-3.5 w-3.5" />}
-                </button>
+                {/* En el chat la cabecera se queda solo con foto, nombre,
+                    editar, miembros e invitar — el botón de completar se
+                    esconde con el resto de acciones de "Tareas". */}
+                {tab !== 'chat' && (
+                  <button
+                    onClick={() => {
+                      if (!isOwner) {
+                        showOwnerOnlyToast(t('list.ownerOnlyComplete'))
+                        return
+                      }
+                      if (isCompleted) {
+                        reactivateList()
+                      } else {
+                        setConfirmComplete(true)
+                      }
+                    }}
+                    className="flex shrink-0 items-center rounded-full border border-[var(--color-glass-border)] p-1 text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
+                    aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                    title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
+                  >
+                    {isCompleted ? <UndoIcon className="h-3.5 w-3.5" /> : <CheckIcon className="h-3.5 w-3.5" />}
+                  </button>
+                )}
               </div>
               <button onClick={() => setShowMembers((s) => !s)} className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">
                 {acceptedMembers.length} {acceptedMembers.length === 1 ? t('list.member') : t('list.membersPlural')}
@@ -387,6 +405,10 @@ export default function ListDetailPage() {
           </div>
         )}
 
+        {/* Pedido explícito: dentro del chat no se ve este selector de
+            Tareas/Gastos/Chat — la flecha de atrás (arriba) es la que
+            saca de la conversación. */}
+        {showTabsRow && (
         <div className="mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-black/5 p-1 dark:bg-white/5">
           <button
             onClick={() => setTab('notas')}
@@ -422,19 +444,20 @@ export default function ListDetailPage() {
           <button
             onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
-              tab === 'chat'
+              activeTab === 'chat'
                 ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
                 : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             {t('nav.chat')}
-            {unreadCount > 0 && tab !== 'chat' && (
+            {unreadCount > 0 && activeTab !== 'chat' && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
         </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">

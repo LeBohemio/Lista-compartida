@@ -752,7 +752,7 @@ export default function ChatPanel({
                     onKeyDown={handleComposerKeyDown}
                     placeholder={t('chat.placeholder')}
                     rows={1}
-                    className="glass-panel max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
+                    className="glass-panel !border-transparent max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
                   />
                 </>
               )}
