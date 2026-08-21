@@ -223,13 +223,33 @@ export default function ListDetailPage() {
       className="min-h-screen pb-16"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
+      {/* Cabecera pegada de verdad al borde de arriba (antes era una
+          "burbuja" de cristal flotante, separada del borde con top-3+mx-3
+          — pedido explícito: que no lo parezca). Solo el borde inferior se
+          queda redondeado; el resto va a bordes vivos, a todo el ancho. */}
       <header
-        className="glass-panel sticky top-3 z-10 mx-3 overflow-hidden rounded-[26px] px-4 pb-3.5 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]"
-        style={{ borderTopColor: listColor, borderTopWidth: 3 }}
+        className="glass-panel sticky top-0 z-10 overflow-hidden rounded-b-[26px] px-4 pb-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]"
+        style={{
+          borderTopColor: listColor,
+          borderTopWidth: 3,
+          paddingTop: 'calc(0.9rem + env(safe-area-inset-top))',
+        }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/lists')} className="text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+        {/* Fila superior a prueba de nombres largos: el bloque de la
+            izquierda (foto + nombre + editar + completar) es el que se
+            encoge y trunca el nombre con "…" cuando falta sitio — el botón
+            "Invitar" lleva shrink-0 y nunca se mueve ni se aprieta. Antes,
+            sin min-w-0/truncate en el nombre ni shrink-0 en Invitar, un
+            nombre de lista largo podía apretar tanto la fila que "Editar" y
+            "Completar" acababan cayendo debajo de "Invitar" — bug real
+            reportado, arreglado con esta estructura en vez de con un ajuste
+            visual suelto. */}
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              onClick={() => navigate('/lists')}
+              className="shrink-0 text-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
               ‹
             </button>
             {/* La foto de la lista ahora la puede cambiar cualquier
@@ -254,18 +274,20 @@ export default function ListDetailPage() {
                 <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: listColor }} />
               )}
             </button>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="font-display font-medium text-slate-900 dark:text-slate-100">{list.name}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="min-w-0 truncate font-display font-medium text-slate-900 dark:text-slate-100">
+                  {list.name}
+                </p>
                 {isCompleted && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                     {t('lists.completedBadge')}
                   </span>
                 )}
                 {isOwner && (
                   <button
                     onClick={() => setShowRename(true)}
-                    className="rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
+                    className="shrink-0 rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
                     aria-label={t('list.editTitle')}
                     title={t('list.editTitle')}
                   >
@@ -284,7 +306,7 @@ export default function ListDetailPage() {
                       setConfirmComplete(true)
                     }
                   }}
-                  className="rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
+                  className="shrink-0 rounded-full border border-[var(--color-glass-border)] px-2 py-0.5 text-sm font-semibold text-[var(--color-brand-600)] hover:bg-black/5 dark:hover:bg-white/10"
                   aria-label={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                   title={isCompleted ? t('menu.reactivate') : t('menu.complete')}
                 >
@@ -302,10 +324,12 @@ export default function ListDetailPage() {
               muestra la pantalla de invitación pendiente), no hace falta
               comprobación extra aquí. Botón siempre relleno con degradado
               (antes era "outline" en claro y relleno en oscuro) — un solo
-              tratamiento que funciona con cualquier acento elegido. */}
+              tratamiento que funciona con cualquier acento elegido. shrink-0
+              para que nunca sea él quien ceda espacio (ver comentario de
+              arriba). */}
           <button
             onClick={() => setShowInvite(true)}
-            className="rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
+            className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-3 py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--color-glow)]"
           >
             {t('list.inviteButton')}
           </button>
