@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { fetchMessagesResilient } from '../lib/messagesQuery'
 import type { Message, Profile } from '../lib/types'
 
 /**
@@ -33,18 +34,22 @@ export function useDirectMessages(peerId: string | undefined) {
         .eq('user_id', user.id)
         .eq('contact_user_id', peerId)
         .maybeSingle(),
-      supabase
-        .from('messages')
-        .select(
-          '*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_message_id_fkey(id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username))',
-        )
-        .is('list_id', null)
-        .or(`and(sender_id.eq.${user.id},to_user_id.eq.${peerId}),and(sender_id.eq.${peerId},to_user_id.eq.${user.id})`)
-        .order('created_at', { ascending: true }),
+      fetchMessagesResilient((selectClause) =>
+        supabase
+          .from('messages')
+          .select(selectClause)
+          .is('list_id', null)
+          .or(`and(sender_id.eq.${user.id},to_user_id.eq.${peerId}),and(sender_id.eq.${peerId},to_user_id.eq.${user.id})`)
+          .order('created_at', { ascending: true }),
+      ),
     ])
 
+    // Igual que en useListData.ts: si ni siquiera el respaldo de
+    // fetchMessagesResilient consigue traer los mensajes, no se bloquea
+    // toda la conversación por eso — solo se avisa en consola y se deja la
+    // lista de mensajes vacía.
     if (peerRes.error) setError(peerRes.error.message)
-    else if (messagesRes.error) setError(messagesRes.error.message)
+    else if (messagesRes.error) console.warn('[useDirectMessages] No se pudieron cargar los mensajes:', messagesRes.error.message)
 
     const clearedAt = (myContactRes.data as { chat_cleared_at: string | null } | null)?.chat_cleared_at ?? null
     setChatClearedAt(clearedAt)

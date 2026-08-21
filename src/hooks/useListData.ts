@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Expense, Item, List, ListMember, Message, Settlement } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+import { fetchMessagesResilient } from '../lib/messagesQuery'
 
 export function useListData(listId: string | undefined) {
   const { user } = useAuth()
@@ -44,26 +45,27 @@ export function useListData(listId: string | undefined) {
         )
         .eq('list_id', listId)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('messages')
-        .select(
-          '*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_message_id_fkey(id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username))',
-        )
-        .eq('list_id', listId)
-        .order('created_at', { ascending: true }),
+      fetchMessagesResilient((selectClause) =>
+        supabase.from('messages').select(selectClause).eq('list_id', listId).order('created_at', { ascending: true }),
+      ),
     ])
 
-    const firstError =
-      listRes.error ||
-      membersRes.error ||
-      itemsRes.error ||
-      expensesRes.error ||
-      settlementsRes.error ||
-      messagesRes.error
+    // OJO: el error de "messages" queda fuera de este bloqueo a propósito.
+    // Antes, si esa consulta fallaba (por ejemplo, algo puntual del join de
+    // "responder a" nada más aplicar una migración), la lista ENTERA
+    // dejaba de cargar con un "no se pudo cargar la lista" — aunque notas y
+    // gastos estuvieran perfectamente disponibles. Ahora, si de verdad no
+    // se pueden traer los mensajes ni siquiera con el respaldo de
+    // fetchMessagesResilient, el chat se queda vacío pero el resto de la
+    // lista funciona con normalidad.
+    const firstError = listRes.error || membersRes.error || itemsRes.error || expensesRes.error || settlementsRes.error
     if (firstError) {
       setError(firstError.message)
       setLoading(false)
       return
+    }
+    if (messagesRes.error) {
+      console.warn('[useListData] No se pudieron cargar los mensajes del chat:', messagesRes.error.message)
     }
 
     setList((listRes.data as List) ?? null)
