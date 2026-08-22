@@ -24,6 +24,11 @@ export default function ContactsPage() {
   const [removingBusy, setRemovingBusy] = useState(false)
   const [respondingId, setRespondingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  // El formulario de "añadir contacto" ya no está siempre visible ocupando
+  // sitio arriba del todo: se pliega/despliega con el botón de la cabecera,
+  // dejando que la lista de contactos suba y aproveche ese hueco cuando
+  // está cerrado.
+  const [showAddForm, setShowAddForm] = useState(false)
   const [addEmail, setAddEmail] = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
@@ -140,7 +145,19 @@ export default function ContactsPage() {
       >
         <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
         <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
-        <h1 className="relative mx-auto max-w-2xl font-display font-medium text-white">{t('nav.tabContacts')}</h1>
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between gap-2">
+          <h1 className="font-display font-medium text-white">{t('nav.tabContacts')}</h1>
+          <button
+            onClick={() => {
+              setShowAddForm((s) => !s)
+              setAddError(null)
+              setAddSuccess(null)
+            }}
+            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-brand-700)] shadow-[0_8px_18px_-8px_rgba(20,21,26,0.4)]"
+          >
+            {t('contacts.addTitle')}
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
@@ -230,35 +247,38 @@ export default function ContactsPage() {
           </section>
         )}
 
-        <section className="mb-8">
-          <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t('contacts.addTitle')}
-          </h2>
-          <div className="glass-panel rounded-[26px] p-4">
-            <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">{t('contacts.addBody')}</p>
-            {addSuccess && (
-              <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">
-                {addSuccess}
-              </p>
-            )}
-            <form onSubmit={handleAddSubmit} className="flex gap-2">
-              <input
-                type="email"
-                value={addEmail}
-                onChange={(e) => setAddEmail(e.target.value)}
-                placeholder={t('contacts.addPlaceholder')}
-                className="min-w-0 flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
-              />
-              <button
-                type="submit"
-                disabled={addSubmitting}
-                className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
-              >
-                {addSubmitting ? t('contacts.sendingRequest') : t('contacts.addSubmit')}
-              </button>
-            </form>
-          </div>
-        </section>
+        {showAddForm && (
+          <section className="mb-8">
+            <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t('contacts.addTitle')}
+            </h2>
+            <div className="glass-panel rounded-[26px] p-4">
+              <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">{t('contacts.addBody')}</p>
+              {addSuccess && (
+                <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                  {addSuccess}
+                </p>
+              )}
+              <form onSubmit={handleAddSubmit} className="flex gap-2">
+                <input
+                  type="email"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder={t('contacts.addPlaceholder')}
+                  autoFocus
+                  className="min-w-0 flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
+                />
+                <button
+                  type="submit"
+                  disabled={addSubmitting}
+                  className="shrink-0 rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] px-4 py-2.5 font-medium text-white shadow-[0_10px_22px_-10px_var(--color-glow)] disabled:opacity-60"
+                >
+                  {addSubmitting ? t('contacts.sendingRequest') : t('contacts.addSubmit')}
+                </button>
+              </form>
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">

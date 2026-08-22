@@ -192,9 +192,14 @@ export default function NoteDetailPage() {
             de cristal neutra de siempre — para que una nota no se sienta
             como la de cualquier app de notas genérica. La lengüeta usa el
             acento de quien mira, igual que el resto de la app. */}
-        <div className="relative pt-2.5">
-          <span className="absolute left-6 top-0 h-2.5 w-14 rounded-b-md bg-[var(--color-brand-500)]" />
-          <div className="glass-panel rounded-[22px] px-4 pb-4 pt-5">
+        <div>
+          {/* La lengüeta va DENTRO de la propia tarjeta (pegada a su borde
+              superior, por eso la tarjeta necesita "relative" y algo más
+              de padding arriba), no en un envoltorio aparte por encima —
+              así se queda embebida en el borde en vez de flotar suelta por
+              fuera de la nota. */}
+          <div className="glass-panel relative rounded-[22px] px-4 pb-4 pt-5">
+            <span className="absolute left-6 top-0 h-2.5 w-14 rounded-b-md bg-[var(--color-brand-500)]" />
             <textarea
               ref={titleAreaRef}
               value={title}
