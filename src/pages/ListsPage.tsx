@@ -262,16 +262,18 @@ export default function ListsPage() {
           aria-label={t('profile.title')}
           className="absolute -right-4 -top-6 h-32 w-32 shrink-0 rounded-full"
         >
-          {/* Antes llevaba un halo difuminado alrededor, pero no convenció.
-              Ahora un anillo fino (no muy grueso) en blanco translúcido, el
-              mismo recurso que ya se usa en el chat directo para separar
-              la foto del fondo de color. */}
+          {/* Halo suave del mismo tono que las manchas decorativas de la
+              cabecera (brand-400 difuminado): en vez de que el borde de la
+              foto corte en seco contra el fondo, se disuelve en él, así
+              que la foto se siente parte del mismo diseño y no un círculo
+              pegado encima. */}
+          <span className="pointer-events-none absolute -inset-3 -z-10 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-xl" />
           <Avatar
             username={profile?.username ?? '?'}
             avatarUrl={profile?.avatar_url}
             size={128}
             enlargeOnClick={false}
-            className="shadow-lg ring-2 ring-white/40"
+            className="shadow-lg"
           />
           {invitations.length > 0 && (
             <span className="absolute bottom-8 left-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-brand-700)]">
