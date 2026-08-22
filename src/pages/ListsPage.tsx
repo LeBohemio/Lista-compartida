@@ -204,23 +204,26 @@ export default function ListsPage() {
       {/* Esta es la ÚNICA cabecera con este tratamiento especial — la
           principal, la que lleva el nombre del usuario. El resto de
           cabeceras de la app (Ajustes/Contactos/Notas/etc., ver
-          HEADER_ACCENT_SOLID) van con el acento liso. Aquí NO es un
-          degradado difuminado de esquina a esquina — es un fondo oscuro del
-          acento con un CÍRCULO de un tono bastante más claro del mismo
-          acento "cortado" con un borde nítido (sin difuminar) asomando por
-          la esquina de la foto, tal y como se pidió recuperar de una
-          versión antigua de la app. Sigue siendo un rectángulo pegado
-          arriba del todo, sin esquinas redondeadas. */}
+          HEADER_ACCENT_SOLID) van con el acento liso.
+          "Formas suaves flotantes": fondo liso oscuro del acento con un par
+          de manchas difuminadas (blur) del mismo acento en tonos más claros,
+          flotando por detrás del contenido — le da textura y algo de vida
+          sin ser un degradado de esquina a esquina ni un corte/círculo
+          marcado (ambos probados antes y descartados). overflow-hidden para
+          que las manchas, que se salen del propio rectángulo a propósito
+          (así el difuminado no se corta en seco en el borde), no empujen el
+          ancho de la página. Sigue siendo un rectángulo pegado arriba del
+          todo, sin esquinas redondeadas. */}
       <header
-        className="sticky top-0 z-10 px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
+        className="sticky top-0 z-10 overflow-hidden px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
         style={{
           paddingTop: 'calc(0.875rem + env(safe-area-inset-top))',
-          backgroundColor: 'var(--color-brand-800)',
-          backgroundImage:
-            'radial-gradient(circle at 92% -15%, var(--color-brand-300) 0%, var(--color-brand-300) 50%, transparent 51%)',
+          backgroundColor: 'var(--color-brand-700)',
         }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
+        <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
           <button
             onClick={() => setShowSummary(true)}
             className="flex min-w-0 items-center gap-3 rounded-lg text-left"
