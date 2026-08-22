@@ -70,12 +70,6 @@ export default function ListsPage() {
       }, 0),
     [activeLists, itemStats],
   )
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours()
-    if (hour < 12) return t('home.morning')
-    if (hour < 20) return t('home.afternoon')
-    return t('home.evening')
-  }, [t])
   const statusLine =
     activeLists.length === 0
       ? null
@@ -207,18 +201,30 @@ export default function ListsPage() {
       className="min-h-screen pb-32"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      <header className="glass-panel sticky top-3 z-10 mx-3 rounded-[26px] px-4 pb-4 pt-3.5 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.35)]">
+      {/* Pegada arriba del todo (mismo patrón que la cabecera de Ajustes) en
+          vez de flotar con un hueco por encima, y con un degradado de varias
+          tonalidades del propio acento del usuario como fondo — antes era
+          un panel de cristal neutro igual en todas las pantallas; ahora esta
+          es "la burbuja" que más identidad da a la app nada más abrirla. */}
+      <header
+        className="sticky top-0 z-10 rounded-b-[26px] bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-4 shadow-[0_16px_36px_-24px_rgba(20,21,26,0.45)]"
+        style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
+      >
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <button
             onClick={() => setShowSummary(true)}
             className="flex min-w-0 items-center gap-3 rounded-lg text-left"
           >
-            <Logo size={40} className="rounded-2xl shadow-md" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-md">
+              <Logo size={28} />
+            </span>
             <div className="min-w-0">
-              <p className="truncate font-display font-medium leading-tight text-slate-900 dark:text-slate-100">
-                {greeting}, {profile?.username ?? '…'}
+              {/* Ya no lleva "Buenos días/tardes/noches" delante — solo el
+                  nombre, tal y como se pidió. */}
+              <p className="truncate font-display font-medium leading-tight text-white">
+                {profile?.username ?? '…'}
               </p>
-              {statusLine && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{statusLine}</p>}
+              {statusLine && <p className="truncate text-xs text-white/75">{statusLine}</p>}
             </div>
           </button>
           {/* El acceso directo a "Mis gastos" que vivía aquí (un icono
@@ -226,20 +232,21 @@ export default function ListsPage() {
               botón "Mis gastos" que ya existe dentro de Ajustes — dos
               caminos al mismo sitio no aportaban nada, solo ruido en la
               cabecera. */}
-          <button onClick={() => navigate('/settings')} className="relative rounded-full" aria-label={t('profile.title')}>
-            <Avatar
-              username={profile?.username ?? '?'}
-              avatarUrl={profile?.avatar_url}
-              size={48}
-              // El anillo llevaba el color de acento solo al pasar el ratón
-              // por encima (":hover") — en el móvil eso nunca llega a verse,
-              // así que el avatar se quedaba siempre con un anillo neutro.
-              // Ahora lleva el acento puesto todo el rato, para que la foto
-              // de la persona gane presencia en vez de perderse en la
-              // esquina.
-              className="ring-[3px] ring-[var(--color-brand-400)]"
-              enlargeOnClick={false}
-            />
+          <button onClick={() => navigate('/settings')} className="relative shrink-0 rounded-full" aria-label={t('profile.title')}>
+            {/* Anillo "de historia" con varias tonalidades del mismo acento
+                (blanco - acento claro - blanco) en vez de un anillo plano de
+                un solo tono: así la foto de la persona destaca sobre el
+                fondo de color en vez de fundirse con él. */}
+            <span className="block rounded-full bg-gradient-to-br from-white via-[var(--color-brand-200)] to-white p-[3px] shadow-md">
+              <span className="block rounded-full bg-[var(--color-surface)] p-[2px]">
+                <Avatar
+                  username={profile?.username ?? '?'}
+                  avatarUrl={profile?.avatar_url}
+                  size={44}
+                  enlargeOnClick={false}
+                />
+              </span>
+            </span>
             {invitations.length > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                 {invitations.length > 9 ? '9+' : invitations.length}

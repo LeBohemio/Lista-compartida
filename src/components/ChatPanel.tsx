@@ -1178,12 +1178,22 @@ function MessageBubble({
             }`}
           >
           {m.reply_to && (
+            // max-w-[220px] es a propósito, no decorativo: esta burbuja no
+            // tiene un ancho fijo (se ajusta a su contenido dentro del
+            // max-w-[75%] de fuera), y un párrafo con "truncate" (que por
+            // dentro es white-space:nowrap) solo recorta el texto cuando
+            // tiene un ancho DEFINIDO donde recortar — si no, el texto largo
+            // citado empuja a toda la burbuja a hacerse tan ancha como haga
+            // falta para caber entero, aunque el mensaje nuevo sea cortísimo
+            // (por eso una respuesta de "Ew" se veía casi tan ancha como la
+            // pantalla). Con este tope, la cita siempre se recorta a un
+            // ancho razonable y dejamos de arrastrar todo lo demás con ella.
             <div
-              className={`mb-1.5 rounded-lg border-l-4 px-2 py-1 text-xs ${
+              className={`mb-1.5 max-w-[220px] rounded-lg border-l-4 px-2 py-1 text-xs ${
                 isMine ? 'border-white/50 bg-white/10' : 'border-brand-500 bg-black/5 dark:bg-white/5'
               }`}
             >
-              <p className={`font-medium ${isMine ? 'text-white/90' : 'text-brand-600 dark:text-brand-400'}`}>
+              <p className={`truncate font-medium ${isMine ? 'text-white/90' : 'text-brand-600 dark:text-brand-400'}`}>
                 {m.reply_to.sender_id === currentUserId ? t('chat.you') : m.reply_to.sender?.username || '—'}
               </p>
               <p className={`truncate ${isMine ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
