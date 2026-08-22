@@ -216,6 +216,19 @@ export function CalendarIcon(props: IconProps) {
   )
 }
 
+// Billete de banco: para "gastos" en vez del anterior icono de etiqueta de
+// precio, que se prestaba a confusión con el propio precio de un artículo
+// (PriceIcon, que sigue usándose ahí).
+export function BanknoteIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="2.5" y="6.5" width="19" height="11" rx="2" />
+      <circle cx="12" cy="12" r="2.6" />
+      <path d="M5.5 9v.01M18.5 15v.01" />
+    </Base>
+  )
+}
+
 export function PriceIcon(props: IconProps) {
   return (
     <Base {...props}>

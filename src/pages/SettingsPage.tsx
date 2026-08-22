@@ -8,7 +8,7 @@ import DeleteAccountDialog from '../components/DeleteAccountDialog'
 import MyExpensesModal from '../components/MyExpensesModal'
 import AvatarCropper from '../components/AvatarCropper'
 import AvatarPicker from '../components/AvatarPicker'
-import { CloseIcon } from '../components/icons'
+import { BanknoteIcon, ChatBubbleIcon, CloseIcon, HandshakeIcon, ListsIcon } from '../components/icons'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
 import { disablePush, enablePush, isPushSupported } from '../lib/push'
@@ -505,28 +505,85 @@ export default function SettingsPage() {
               {pushError && <p className="text-xs text-red-500 dark:text-red-400">{pushError}</p>}
 
               {profile.notify_push_enabled && (
-                <div className="space-y-2 rounded-2xl p-3 bg-black/5 dark:bg-white/5">
+                // Cada categoría tiene su propio color fijo (igual que las
+                // "categorías vivas" de la compra: reconocerlas de un
+                // vistazo sin tener que leer) — cuando está desactivada, el
+                // icono y el texto se apagan a gris en vez de perder su
+                // color, para que "apagado" se lea como un estado y no como
+                // otro color más de la lista.
+                <div className="space-y-3 rounded-2xl p-3 bg-black/5 dark:bg-white/5">
                   {(
                     [
-                      { field: 'notify_chat', label: t('profile.notifyChat'), value: profile.notify_chat },
-                      { field: 'notify_expenses', label: t('profile.notifyExpenses'), value: profile.notify_expenses },
-                      { field: 'notify_invites', label: t('profile.notifyInvites'), value: profile.notify_invites },
+                      {
+                        field: 'notify_chat',
+                        value: profile.notify_chat,
+                        label: t('profile.notifyChat'),
+                        desc: t('profile.notifyChatDesc'),
+                        icon: <ChatBubbleIcon className="h-5 w-5" />,
+                        onClasses: 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
+                      },
+                      {
+                        field: 'notify_expenses',
+                        value: profile.notify_expenses,
+                        label: t('profile.notifyExpenses'),
+                        desc: t('profile.notifyExpensesDesc'),
+                        icon: <BanknoteIcon className="h-5 w-5" />,
+                        onClasses: 'bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400',
+                      },
+                      {
+                        field: 'notify_invites',
+                        value: profile.notify_invites,
+                        label: t('profile.notifyInvites'),
+                        desc: t('profile.notifyInvitesDesc'),
+                        icon: <ListsIcon className="h-5 w-5" />,
+                        onClasses: 'bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
+                      },
                       {
                         field: 'notify_settlements',
-                        label: t('profile.notifySettlements'),
                         value: profile.notify_settlements,
+                        label: t('profile.notifySettlements'),
+                        desc: t('profile.notifySettlementsDesc'),
+                        icon: <HandshakeIcon className="h-5 w-5" />,
+                        onClasses: 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
                       },
                     ] as const
                   ).map((row) => (
-                    <label key={row.field} className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
-                      {row.label}
-                      <input
-                        type="checkbox"
-                        checked={row.value}
-                        onChange={(e) => setNotifyPref(row.field, e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 accent-brand-600"
-                      />
-                    </label>
+                    <button
+                      key={row.field}
+                      type="button"
+                      onClick={() => setNotifyPref(row.field, !row.value)}
+                      className="flex w-full items-center gap-3 text-left"
+                    >
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition ${
+                          row.value ? row.onClasses : 'bg-black/5 text-slate-400 dark:bg-white/10 dark:text-slate-500'
+                        }`}
+                      >
+                        {row.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={`block text-sm font-medium ${
+                            row.value ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'
+                          }`}
+                        >
+                          {row.label}
+                        </span>
+                        <span className="block text-[11.5px] text-slate-400 dark:text-slate-500">{row.desc}</span>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+                          row.value ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                      >
+                        <span
+                          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                            row.value ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </span>
+                    </button>
                   ))}
                 </div>
               )}
