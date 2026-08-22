@@ -22,8 +22,14 @@ export default function ContextMenu({
   const { t } = useLanguage()
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      {/* select-none en todo el menú: se abre justo cuando sueltas una
+          pulsación larga sobre un mensaje, y si el dedo todavía estaba algo
+          apoyado al aparecer, el navegador podía confundirlo con un
+          arrastre de selección de texto sobre la primera opción
+          ("Responder") — de ahí que a veces saliera resaltada en azul como
+          si se hubiera seleccionado esa palabra. */}
       <div
-        className="glass-panel w-full max-w-sm rounded-t-[28px] p-2 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
+        className="glass-panel w-full max-w-sm select-none rounded-t-[28px] p-2 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         {title && (

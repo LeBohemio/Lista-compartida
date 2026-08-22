@@ -90,6 +90,17 @@ html, body, #root {
   margin: 0;
 }
 
+/* Red de seguridad: nada en la app debería ensancharse más que la pantalla,
+   pero si algo lo hace por error (p. ej. un gesto táctil nativo del propio
+   navegador — arrastrar una imagen, seleccionar texto — que deja un
+   elemento desplazado), esto evita que TODA la página gane scroll
+   horizontal y arrastre con ella a los elementos "fixed" (como la barra
+   del chat), que es lo que hacía que el botón de enviar apareciera cortado
+   por el borde derecho. */
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   background-color: #f8fafc;
   -webkit-tap-highlight-color: transparent;

@@ -1194,6 +1194,15 @@ function MessageBubble({
             onPointerMove={handleSwipePointerMove}
             onPointerUp={endSwipe}
             onPointerCancel={endSwipe}
+            // Red de seguridad extra: si por lo que sea el navegador nunca
+            // llega a avisar de que el puntero se soltó (pointerup) ni de
+            // que se canceló (pointercancel) — como cuando un gesto nativo
+            // del navegador se cuela a mitad del deslizamiento — esto
+            // también cierra el gesto en cuanto el puntero sale de la
+            // burbuja, para que nunca se quede "empujada" a un lado.
+            onPointerLeave={(e) => {
+              if (draggingRef.current) endSwipe(e)
+            }}
             style={{
               transform: `translateX(${dragX}px)`,
               transition: draggingRef.current ? 'none' : 'transform 200ms ease-out',
@@ -1231,10 +1240,20 @@ function MessageBubble({
             </div>
           )}
           {m.image_path && imageUrl && (
+            // draggable=false + user-drag/touch-callout "none": una <img>
+            // es arrastrable por el propio navegador por defecto. Esta
+            // burbuja ya tiene su propio gesto táctil (deslizar para
+            // responder, con pointerdown/move/up manuales) — sin esto, el
+            // navegador podía interpretar el deslizamiento sobre la FOTO
+            // como su propio "arrastrar imagen" nativo en vez de dejarlo
+            // pasar a nuestro gesto, dejando a medias la captura del
+            // puntero (de ahí que responder a una foto se descuadrara y no
+            // pasara con texto normal).
             <img
               src={imageUrl}
               alt={t('chat.photoAlt')}
-              className="mb-1 max-h-56 cursor-pointer rounded-lg object-contain"
+              draggable={false}
+              className="mb-1 max-h-56 cursor-pointer select-none rounded-lg object-contain [-webkit-touch-callout:none] [-webkit-user-drag:none]"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenImage(imageUrl)
