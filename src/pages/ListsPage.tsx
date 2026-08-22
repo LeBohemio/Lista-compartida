@@ -249,20 +249,18 @@ export default function ListsPage() {
               caminos al mismo sitio no aportaban nada, solo ruido en la
               cabecera. */}
           <button onClick={() => navigate('/settings')} className="relative shrink-0 rounded-full" aria-label={t('profile.title')}>
-            {/* Anillo "de historia" con varias tonalidades del mismo acento
-                (blanco - acento claro - blanco) en vez de un anillo plano de
-                un solo tono: así la foto de la persona destaca sobre el
-                fondo de color en vez de fundirse con él. */}
-            <span className="block rounded-full bg-gradient-to-br from-white via-[var(--color-brand-200)] to-white p-[3px] shadow-md">
-              <span className="block rounded-full bg-[var(--color-surface)] p-[2px]">
-                <Avatar
-                  username={profile?.username ?? '?'}
-                  avatarUrl={profile?.avatar_url}
-                  size={44}
-                  enlargeOnClick={false}
-                />
-              </span>
-            </span>
+            {/* Antes la foto llevaba un anillo "de historia" (blanco -
+                acento claro - blanco) alrededor, que le restaba varios
+                píxeles de grosor y la dejaba más pequeña de lo que su hueco
+                permitía. Se ha quitado ese anillo y la foto ahora ocupa
+                los 44px enteros del hueco, igual que el logo de al lado. */}
+            <Avatar
+              username={profile?.username ?? '?'}
+              avatarUrl={profile?.avatar_url}
+              size={44}
+              enlargeOnClick={false}
+              className="shadow-md"
+            />
             {invitations.length > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
                 {invitations.length > 9 ? '9+' : invitations.length}
