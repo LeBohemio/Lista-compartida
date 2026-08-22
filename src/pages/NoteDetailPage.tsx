@@ -23,6 +23,13 @@ export default function NoteDetailPage() {
   const [showMembers, setShowMembers] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
+  // Sustituye a la idea de mostrar "editado hace X" (no guardamos quién ni
+  // cuándo se tocó por última vez el título/cuerpo por separado, solo
+  // last_activity_at general) por algo más simple y sincero: un indicador
+  // de guardado en vivo, con las cadenas 'apuntes.saving'/'apuntes.saved'
+  // que ya existían en las traducciones pero no se usaban en ningún sitio.
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const titleAreaRef = useRef<HTMLTextAreaElement>(null)
 
   // Mientras la persona tiene el campo enfocado (escribiendo), no le
   // pisamos lo que está tecleando con lo que llegue de la base de datos
@@ -50,12 +57,25 @@ export default function NoteDetailPage() {
 
   const scheduleSave = (patch: { title?: string; body?: string }, timerRef: typeof titleTimerRef) => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      updateNote(patch)
+    setSaveStatus('saving')
+    timerRef.current = setTimeout(async () => {
+      await updateNote(patch)
+      setSaveStatus('saved')
     }, AUTOSAVE_DELAY_MS)
   }
 
-  const handleTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // El título ahora es un <textarea> de una sola fila que crece con el
+  // contenido (igual que el compositor del chat) en vez de un <input> de
+  // toda la vida — un título largo se veía cortado a la mitad, sin forma
+  // de leerlo entero, porque un <input> nunca hace salto de línea.
+  useEffect(() => {
+    const el = titleAreaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
+
+  const handleTitleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     setTitle(value)
     scheduleSave({ title: value }, titleTimerRef)
@@ -167,29 +187,50 @@ export default function NoteDetailPage() {
       </header>
 
       <main className="mx-auto max-w-2xl px-3 py-5">
-        <div className="glass-panel rounded-[26px] px-4 pb-4 pt-4">
-          <input
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            onFocus={() => (titleFocusedRef.current = true)}
-            onBlur={() => {
-              titleFocusedRef.current = false
-            }}
-            placeholder={t('apuntes.titlePlaceholder')}
-            className="mb-3 w-full border-0 border-b bg-transparent px-0 pb-3 font-display text-lg font-medium text-slate-900 focus:outline-none focus:ring-0 border-[var(--color-glass-border)] dark:text-slate-100"
-          />
-          <textarea
-            value={body}
-            onChange={handleBodyChange}
-            onFocus={() => (bodyFocusedRef.current = true)}
-            onBlur={() => {
-              bodyFocusedRef.current = false
-            }}
-            placeholder={t('apuntes.bodyPlaceholder')}
-            rows={16}
-            className="w-full resize-none border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
-          />
+        {/* Diseño "tarjeta con lengüeta": una pestañita de color asomando
+            arriba (como una nota adhesiva de verdad) en vez de la tarjeta
+            de cristal neutra de siempre — para que una nota no se sienta
+            como la de cualquier app de notas genérica. La lengüeta usa el
+            acento de quien mira, igual que el resto de la app. */}
+        <div className="relative pt-2.5">
+          <span className="absolute left-6 top-0 h-2.5 w-14 rounded-b-md bg-[var(--color-brand-500)]" />
+          <div className="glass-panel rounded-[22px] px-4 pb-4 pt-5">
+            <textarea
+              ref={titleAreaRef}
+              value={title}
+              onChange={handleTitleChange}
+              onKeyDown={(e) => {
+                // El título sigue siendo conceptualmente "una línea": puede
+                // ocupar varias líneas en pantalla si es largo, pero Intro
+                // no debería meter un salto de línea manual dentro de él.
+                if (e.key === 'Enter') e.preventDefault()
+              }}
+              onFocus={() => (titleFocusedRef.current = true)}
+              onBlur={() => {
+                titleFocusedRef.current = false
+              }}
+              placeholder={t('apuntes.titlePlaceholder')}
+              rows={1}
+              className="w-full resize-none overflow-hidden border-0 bg-transparent px-0 font-display text-xl font-bold leading-snug text-slate-900 focus:outline-none focus:ring-0 dark:text-slate-100"
+            />
+            {saveStatus !== 'idle' && (
+              <p className="mb-1.5 mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                {saveStatus === 'saving' ? t('apuntes.saving') : t('apuntes.saved')}
+              </p>
+            )}
+            <div className="mb-3 mt-3 h-px bg-[var(--color-glass-border)]" />
+            <textarea
+              value={body}
+              onChange={handleBodyChange}
+              onFocus={() => (bodyFocusedRef.current = true)}
+              onBlur={() => {
+                bodyFocusedRef.current = false
+              }}
+              placeholder={t('apuntes.bodyPlaceholder')}
+              rows={16}
+              className="w-full resize-none border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
+            />
+          </div>
         </div>
       </main>
 
