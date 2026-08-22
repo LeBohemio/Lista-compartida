@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient'
 // claves, hay que cambiar esta constante Y el secreto de la función a la
 // vez, o dejarán de coincidir y todas las suscripciones existentes dejarán
 // de funcionar (habrá que volver a activar las notificaciones).
-export const VAPID_PUBLIC_KEY = 'BGJ3F7zi1s8Dw6ltzQC6cPsq4ifnMIzFIQO8nhhVkjCCsndM0OCEPd6-s_IXlQOu3pDqMdbqKW8dHRUW-oTJaxs'
+export const VAPID_PUBLIC_KEY = 'BM0shUcI03BEFXs3bbwTH396SS797xTK6gnS00bUVO1DzTeuP-ZcNgBC-tP9xRHh8nKzBKSLI_T5Cr8VxUt7vig'
 
 export function isPushSupported() {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -42,23 +42,13 @@ export async function enablePush(userId: string) {
   if (permission !== 'granted') throw new Error('denied')
 
   const registration = await navigator.serviceWorker.ready
-  const oldSubscription = await registration.pushManager.getSubscription()
-
-  // Renovamos la suscripción al activar las notificaciones para asegurarnos
-  // de que usa la VAPID_PUBLIC_KEY actual.
-  if (oldSubscription) {
-    await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('endpoint', oldSubscription.endpoint)
-
-    await oldSubscription.unsubscribe()
+  let subscription = await registration.pushManager.getSubscription()
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    })
   }
-
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  })
 
   const json = subscription.toJSON()
   const endpoint = json.endpoint
