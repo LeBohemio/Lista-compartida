@@ -127,6 +127,22 @@ html.mesh-bg.dark body {
   backdrop-filter: blur(20px);
 }
 
+/* El <textarea> del chat (ChatPanel) crece de alto con overflow-y:auto
+   para hacer scroll interno si el texto pasa de cierto tamaño. En Android
+   eso reserva de forma permanente el hueco de la barra de scroll aunque no
+   haya nada que desplazar todavía — esa es la "rayita gris" vertical que
+   se veía pegada al lado del micrófono incluso con el cuadro vacío. La
+   ocultamos visualmente sin quitarle la función de scroll. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Hide number input spinners for amount fields */
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {

@@ -731,7 +731,18 @@ export default function ChatPanel({
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
           {!readOnly && replyTarget && !editTarget && (
-            <div className="glass-panel mb-2 flex items-start gap-2 rounded-xl border-l-4 !border-l-[var(--color-brand-500)] py-1.5 pl-2.5 pr-2">
+            // Antes esta franja llevaba la clase "glass-panel" (fondo
+            // translúcido + desenfoque de cristal) igual que la barra
+            // entera del compositor en la que va metida — es decir, un
+            // cristal DENTRO de otro cristal, ambos con su propio
+            // backdrop-filter. Esa combinación es una causa conocida de
+            // fallos de renderizado en Android (el navegador no compone
+            // bien dos desenfoques anidados en un elemento "fixed" que
+            // además cambia de contenido), y encaja con lo reportado: la
+            // franja se quedaba sin fondo, sin borde y sin el botón de
+            // cerrar visibles al responder a una foto. Con un fondo sólido
+            // (sin desenfoque) en vez de cristal, no hay nada que anidar.
+            <div className="mb-2 flex items-start gap-2 rounded-xl border border-[var(--color-surface-border)] !border-l-4 !border-l-[var(--color-brand-500)] bg-[var(--color-surface)] py-1.5 pl-2.5 pr-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
                   {replyTarget.sender_id === user?.id ? t('chat.you') : replyTarget.sender?.username || '—'}
@@ -749,7 +760,10 @@ export default function ChatPanel({
             </div>
           )}
           {!readOnly && editTarget && (
-            <div className="glass-panel mb-2 flex items-start gap-2 rounded-xl border-l-4 !border-l-[var(--color-brand-500)] py-1.5 pl-2.5 pr-2">
+            // Mismo motivo que en la franja de "respondiendo a" de arriba:
+            // fondo sólido en vez de "glass-panel" para no anidar dos
+            // desenfoques.
+            <div className="mb-2 flex items-start gap-2 rounded-xl border border-[var(--color-surface-border)] !border-l-4 !border-l-[var(--color-brand-500)] bg-[var(--color-surface)] py-1.5 pl-2.5 pr-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-brand-600 dark:text-brand-400">{t('chat.editingMessage')}</p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">{editTarget.content}</p>
@@ -842,11 +856,14 @@ export default function ChatPanel({
                     // a recalcular el desenfoque en cada tecla (de ahí parte
                     // de la lentitud que se notaba al escribir) y por otro
                     // dejaba un filo visible justo en el borde del propio
-                    // recuadro contra fondos oscuros — el "línea al lado del
-                    // micrófono" que se seguía viendo aunque el borde ya
-                    // fuera transparente. Sin backdrop-filter no hay filo que
-                    // dibujar, y el tinte de fondo se ve prácticamente igual.
-                    className="border border-transparent bg-[var(--color-glass)] max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
+                    // recuadro contra fondos oscuros. Esa parte ya se quitó,
+                    // pero seguía viéndose una rayita gris vertical junto al
+                    // micrófono — esa es la barra de scroll del propio
+                    // <textarea> (overflow-y-auto): en Android se reserva su
+                    // hueco aunque no haya nada que desplazar todavía. Con
+                    // "no-scrollbar" (ver index.css) se oculta esa barra sin
+                    // quitarle la función de scroll cuando el texto sí crece.
+                    className="no-scrollbar border border-transparent bg-[var(--color-glass)] max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
                   />
                 </>
               )}
