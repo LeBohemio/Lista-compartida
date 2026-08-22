@@ -504,7 +504,19 @@ export default function SettingsPage() {
 
               {pushError && <p className="text-xs text-red-500 dark:text-red-400">{pushError}</p>}
 
-              {profile.notify_push_enabled && (
+              {
+                // Antes este bloque solo se pintaba con el interruptor
+                // general activado — al apagarlo, las 4 categorías
+                // desaparecían del todo (y se "olvidaba" lo que tenías
+                // marcado en cada una a la vista). Ahora se quedan siempre
+                // fijas aquí debajo: apagar el interruptor general solo
+                // corta el envío real de avisos (lo decide el servidor,
+                // comprobando notify_push_enabled Y la categoría concreta —
+                // ver send-push/index.ts), no borra ni oculta tus
+                // preferencias por categoría, así que puedes dejarlas
+                // configuradas de antemano aunque las notificaciones estén
+                // desactivadas ahora mismo.
+                //
                 // Cada categoría tiene su propio color fijo (igual que las
                 // "categorías vivas" de la compra: reconocerlas de un
                 // vistazo sin tener que leer) — cuando está desactivada, el
@@ -586,7 +598,7 @@ export default function SettingsPage() {
                     </button>
                   ))}
                 </div>
-              )}
+              }
             </>
           )}
         </div>
