@@ -3,15 +3,13 @@ import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { CloseIcon } from './icons'
 
 const AVATAR_CATEGORIES: { slug: string; labelKey: TranslationKey }[] = [
-  { slug: 'anime', labelKey: 'avatarPicker.anime' },
-  { slug: 'caricatura', labelKey: 'avatarPicker.caricatura' },
-  { slug: 'minimalista', labelKey: 'avatarPicker.minimalista' },
-  { slug: 'ilustracion', labelKey: 'avatarPicker.ilustracion' },
   { slug: 'realista', labelKey: 'avatarPicker.realista' },
-  { slug: 'monos-divertidos', labelKey: 'avatarPicker.monosDivertidos' },
+  { slug: 'ilustracion', labelKey: 'avatarPicker.ilustracion' },
+  { slug: 'anime', labelKey: 'avatarPicker.anime' },
+  { slug: 'ciberpunk', labelKey: 'avatarPicker.ciberpunk' },
   { slug: 'animales', labelKey: 'avatarPicker.animales' },
-  { slug: 'pixel-art', labelKey: 'avatarPicker.pixelArt' },
-  { slug: 'pixel-art-animales', labelKey: 'avatarPicker.pixelArtAnimales' },
+  { slug: 'animales-divertidos', labelKey: 'avatarPicker.animalesDivertidos' },
+  { slug: 'monos-divertidos', labelKey: 'avatarPicker.monosDivertidos' },
 ]
 
 const AVATARS_PER_CATEGORY = 10
