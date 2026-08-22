@@ -262,6 +262,12 @@ export default function ListsPage() {
           aria-label={t('profile.title')}
           className="absolute -right-4 -top-6 h-32 w-32 shrink-0 rounded-full"
         >
+          {/* Halo suave del mismo tono que las manchas decorativas de la
+              cabecera (brand-400 difuminado): en vez de que el borde de la
+              foto corte en seco contra el fondo, se disuelve en él, así
+              que la foto se siente parte del mismo diseño y no un círculo
+              pegado encima. */}
+          <span className="pointer-events-none absolute -inset-3 -z-10 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-xl" />
           <Avatar
             username={profile?.username ?? '?'}
             avatarUrl={profile?.avatar_url}
