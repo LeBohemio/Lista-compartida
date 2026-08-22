@@ -727,7 +727,18 @@ export default function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="glass-panel fixed inset-x-0 bottom-0 z-30">
+      {/* Esta barra cambia de alto cada vez que aparece o desaparece la
+          franja de "respondiendo a" / "editando" de arriba (y el propio
+          <textarea> también cambia de alto al escribir). "glass-panel"
+          lleva backdrop-filter (desenfoque), y un desenfoque en un
+          elemento "fixed" que además cambia de tamaño obliga al navegador
+          a recomponerlo entero en cada cambio — en Android eso es una
+          causa conocida de parpadeos/roturas de pintado, más notorios
+          cuanto más "pesado" es lo que hay reflowing a la vez (como una
+          burbuja de foto volviendo a su sitio tras deslizarla para
+          responder). Fondo sólido en vez de cristal aquí: nada que
+          recomponer. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-surface-border)] bg-[var(--color-surface)]">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
           {!readOnly && replyTarget && !editTarget && (
