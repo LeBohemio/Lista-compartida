@@ -238,14 +238,14 @@ export default function ListDetailPage() {
           "burbuja" de cristal flotante, separada del borde con top-3+mx-3
           — pedido explícito: que no lo parezca). Solo el borde inferior se
           queda redondeado; el resto va a bordes vivos, a todo el ancho. */}
-      {/* HEADER_ACCENT_RECT: mismo patrón que en el resto de cabeceras — ver
+      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de cabeceras — ver
           el comentario completo en SettingsPage.tsx. Antes esta cabecera
           llevaba una franja de 3px arriba con el color propio de la lista;
           con el fondo ya a color entero no hacía falta y competía con el
           degradado, así que ese color de la lista se queda solo en el punto
           (o la miniatura) de al lado del nombre, como distintivo. */}
       <header
-        className="sticky top-0 z-10 bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-3.5"
+        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-3.5"
         style={{ paddingTop: 'calc(0.9rem + env(safe-area-inset-top))' }}
       >
         {/* Fila superior a prueba de nombres largos: el bloque de la

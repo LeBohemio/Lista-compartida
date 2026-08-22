@@ -123,10 +123,10 @@ export default function DirectChatPage() {
       className="min-h-screen bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      {/* HEADER_ACCENT_RECT: mismo patrón que en el resto de cabeceras — ver
+      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de cabeceras — ver
           el comentario completo en SettingsPage.tsx. */}
       <header
-        className="sticky top-0 z-10 bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-3"
+        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-3"
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between">

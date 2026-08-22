@@ -201,15 +201,24 @@ export default function ListsPage() {
       className="min-h-screen pb-32"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      {/* Pegada arriba del todo, en rectángulo completo (nada de esquinas
-          redondas, ni arriba ni abajo — solo una línea recta) y con un
-          degradado de varias tonalidades del propio acento del usuario como
-          fondo. Este mismo patrón (HEADER_ACCENT_RECT, ver también
-          SettingsPage/ContactsPage/NotesPage/NoteDetailPage/ListDetailPage/
-          DirectChatPage) se repite igual en todas las cabeceras de la app. */}
+      {/* Esta es la ÚNICA cabecera con este tratamiento especial — la
+          principal, la que lleva el nombre del usuario. El resto de
+          cabeceras de la app (Ajustes/Contactos/Notas/etc., ver
+          HEADER_ACCENT_SOLID) van con el acento liso. Aquí NO es un
+          degradado difuminado de esquina a esquina — es un fondo oscuro del
+          acento con un CÍRCULO de un tono bastante más claro del mismo
+          acento "cortado" con un borde nítido (sin difuminar) asomando por
+          la esquina de la foto, tal y como se pidió recuperar de una
+          versión antigua de la app. Sigue siendo un rectángulo pegado
+          arriba del todo, sin esquinas redondeadas. */}
       <header
-        className="sticky top-0 z-10 bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
-        style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
+        className="sticky top-0 z-10 px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
+        style={{
+          paddingTop: 'calc(0.875rem + env(safe-area-inset-top))',
+          backgroundColor: 'var(--color-brand-800)',
+          backgroundImage:
+            'radial-gradient(circle at 92% -15%, var(--color-brand-300) 0%, var(--color-brand-300) 50%, transparent 51%)',
+        }}
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <button

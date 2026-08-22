@@ -301,12 +301,15 @@ export default function SettingsPage() {
       className="min-h-screen pb-28"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      {/* HEADER_ACCENT_RECT: pegada arriba del todo, en rectángulo completo
+      {/* HEADER_ACCENT_SOLID: pegada arriba del todo, en rectángulo completo
           (sin ninguna esquina redondeada, ni arriba ni abajo — solo una
-          línea recta) y con el degradado de varias tonalidades del acento
-          del usuario como fondo. Mismo patrón en todas las cabeceras. */}
+          línea recta) y con el acento del usuario LISO como fondo, sin
+          degradado — el degradado (con un brillo suave junto a la foto) se
+          queda solo en la cabecera principal de "Mis listas", que es la que
+          más identidad necesita; el resto de cabeceras van a color plano
+          para no recargar. Mismo patrón en el resto de cabeceras. */}
       <header
-        className="sticky top-0 z-10 bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
+        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
         style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
       >
         <h1 className="mx-auto max-w-2xl font-display font-medium text-white">{t('profile.title')}</h1>

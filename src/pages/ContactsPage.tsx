@@ -132,10 +132,10 @@ export default function ContactsPage() {
       className="min-h-screen pb-28"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      {/* HEADER_ACCENT_RECT: mismo patrón que en el resto de pestañas — ver
+      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de pestañas — ver
           el comentario completo en SettingsPage.tsx. */}
       <header
-        className="sticky top-0 z-10 bg-gradient-to-br from-[var(--color-brand-400)] via-[var(--color-brand-500)] to-[var(--color-brand-700)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
+        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
         style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
       >
         <h1 className="mx-auto max-w-2xl font-display font-medium text-white">{t('nav.tabContacts')}</h1>
