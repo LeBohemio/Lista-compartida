@@ -228,9 +228,12 @@ export default function ListsPage() {
             onClick={() => setShowSummary(true)}
             className="flex min-w-0 items-center gap-3 rounded-lg text-left"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-md">
-              <Logo size={28} />
-            </span>
+            {/* Antes el logo iba metido pequeño (28px) dentro de una
+                "cajita" de 44px con fondo translúcido, dejando un margen
+                vacío alrededor bastante visible. El propio icono ya trae su
+                fondo de color hasta el borde, así que ahora ocupa toda la
+                cajita él solo — sin espacio desperdiciado. */}
+            <Logo size={44} className="shrink-0 rounded-2xl shadow-md" />
             <div className="min-w-0">
               {/* Ya no lleva "Buenos días/tardes/noches" delante — solo el
                   nombre, tal y como se pidió. */}

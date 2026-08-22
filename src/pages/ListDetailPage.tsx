@@ -415,13 +415,13 @@ export default function ListDetailPage() {
             Tareas/Gastos/Chat — la flecha de atrás (arriba) es la que
             saca de la conversación. */}
         {showTabsRow && (
-        <div className="mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-black/5 p-1 dark:bg-white/5">
+        <div className="relative mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-white/10 p-1">
           <button
             onClick={() => setTab('notas')}
             className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               tab === 'notas'
-                ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
-                : 'text-slate-600 dark:text-slate-300'
+                ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
+                : 'text-white/75'
             }`}
           >
             {t('nav.notes')}
@@ -431,8 +431,8 @@ export default function ListDetailPage() {
               onClick={() => setTab('gastos')}
               className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
                 tab === 'gastos'
-                  ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
-                  : 'text-slate-600 dark:text-slate-300'
+                  ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
+                  : 'text-white/75'
               }`}
             >
               {t('nav.expenses')}
@@ -442,7 +442,7 @@ export default function ListDetailPage() {
             // solo al dueño como antes.
             <button
               onClick={enableExpenses}
-              className="flex-1 rounded-full border border-dashed px-3 py-2 text-sm font-medium text-slate-500 hover:border-[var(--color-brand-400)] hover:text-[var(--color-brand-600)] border-[var(--color-glass-border)] dark:text-slate-400"
+              className="flex-1 rounded-full border border-dashed border-white/40 px-3 py-2 text-sm font-medium text-white/75 hover:border-white hover:text-white"
             >
               {t('list.enableExpensesShort')}
             </button>
@@ -451,13 +451,13 @@ export default function ListDetailPage() {
             onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               activeTab === 'chat'
-                ? 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_8px_16px_-8px_var(--color-glow)]'
-                : 'text-slate-600 dark:text-slate-300'
+                ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
+                : 'text-white/75'
             }`}
           >
             {t('nav.chat')}
             {unreadCount > 0 && activeTab !== 'chat' && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-brand-700)]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
