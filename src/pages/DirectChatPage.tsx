@@ -123,13 +123,15 @@ export default function DirectChatPage() {
       className="min-h-screen bg-[var(--color-surface-alt)]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
-      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de cabeceras — ver
+      {/* HEADER_ACCENT_FLOAT: mismo patrón que en el resto de cabeceras — ver
           el comentario completo en SettingsPage.tsx. */}
       <header
-        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-3"
+        className="sticky top-0 z-10 overflow-hidden bg-[var(--color-brand-700)] px-4 pb-3"
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
+        <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <button onClick={() => navigate('/contacts')} className="text-xl text-white/80 hover:text-white">
               ‹

@@ -72,16 +72,17 @@ export default function NotesPage() {
 
   return (
     <div className="min-h-screen pb-32">
-      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de pestañas — ver
-          el comentario completo en SettingsPage.tsx. El botón de crear pasa
-          a ser una píldora blanca: con el degradado del acento ahora también
-          de fondo, un botón relleno del mismo acento se perdía contra la
-          cabecera. */}
+      {/* HEADER_ACCENT_FLOAT: mismo patrón que en el resto de pestañas — ver
+          el comentario completo en SettingsPage.tsx. El botón de crear se
+          queda como píldora blanca: relleno del mismo acento se perdía
+          contra la cabecera. */}
       <header
-        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
+        className="sticky top-0 z-10 overflow-hidden bg-[var(--color-brand-700)] px-4 pb-4 shadow-[0_10px_24px_-16px_rgba(20,21,26,0.5)]"
         style={{ paddingTop: 'calc(0.875rem + env(safe-area-inset-top))' }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
+        <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
           <h1 className="font-display font-medium text-white">{t('apuntes.tabTitle')}</h1>
           <button
             type="button"

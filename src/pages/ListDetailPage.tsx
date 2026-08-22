@@ -238,16 +238,17 @@ export default function ListDetailPage() {
           "burbuja" de cristal flotante, separada del borde con top-3+mx-3
           — pedido explícito: que no lo parezca). Solo el borde inferior se
           queda redondeado; el resto va a bordes vivos, a todo el ancho. */}
-      {/* HEADER_ACCENT_SOLID: mismo patrón que en el resto de cabeceras — ver
-          el comentario completo en SettingsPage.tsx. Antes esta cabecera
-          llevaba una franja de 3px arriba con el color propio de la lista;
-          con el fondo ya a color entero no hacía falta y competía con el
-          degradado, así que ese color de la lista se queda solo en el punto
-          (o la miniatura) de al lado del nombre, como distintivo. */}
+      {/* HEADER_ACCENT_FLOAT: mismo patrón que en el resto de cabeceras — ver
+          el comentario completo en SettingsPage.tsx. El color propio de la
+          lista se queda solo en el punto (o la miniatura) de al lado del
+          nombre, como distintivo — la cabecera en sí ya lleva el acento del
+          usuario, no el de la lista. */}
       <header
-        className="sticky top-0 z-10 bg-[var(--color-brand-500)] px-4 pb-3.5"
+        className="sticky top-0 z-10 overflow-hidden bg-[var(--color-brand-700)] px-4 pb-3.5"
         style={{ paddingTop: 'calc(0.9rem + env(safe-area-inset-top))' }}
       >
+        <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
+        <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
         {/* Fila superior a prueba de nombres largos: el bloque de la
             izquierda (foto + nombre + editar + completar) es el que se
             encoge y trunca el nombre con "…" cuando falta sitio — el botón
@@ -257,7 +258,7 @@ export default function ListDetailPage() {
             "Completar" acababan cayendo debajo de "Invitar" — bug real
             reportado, arreglado con esta estructura en vez de con un ajuste
             visual suelto. */}
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
+        <div className="relative mx-auto flex max-w-2xl items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {/* Dentro del chat no se ve la fila de pestañas (Tareas /
                 Gastos / Chat) — así que la flecha de atrás pasa a ser la
