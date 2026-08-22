@@ -223,7 +223,7 @@ export default function ListsPage() {
       >
         <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
         <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
-        <div className="relative mx-auto flex max-w-2xl items-center justify-between">
+        <div className="relative mx-auto flex max-w-2xl items-center">
           <button
             onClick={() => setShowSummary(true)}
             className="flex min-w-0 items-center gap-3 rounded-lg text-left"
@@ -248,26 +248,33 @@ export default function ListsPage() {
               botón "Mis gastos" que ya existe dentro de Ajustes — dos
               caminos al mismo sitio no aportaban nada, solo ruido en la
               cabecera. */}
-          <button onClick={() => navigate('/settings')} className="relative shrink-0 rounded-full" aria-label={t('profile.title')}>
-            {/* Antes la foto llevaba un anillo "de historia" (blanco -
-                acento claro - blanco) alrededor, que le restaba varios
-                píxeles de grosor y la dejaba más pequeña de lo que su hueco
-                permitía. Se ha quitado ese anillo y la foto ahora ocupa
-                los 44px enteros del hueco, igual que el logo de al lado. */}
-            <Avatar
-              username={profile?.username ?? '?'}
-              avatarUrl={profile?.avatar_url}
-              size={44}
-              enlargeOnClick={false}
-              className="shadow-md"
-            />
-            {invitations.length > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-surface)]">
-                {invitations.length > 9 ? '9+' : invitations.length}
-              </span>
-            )}
-          </button>
         </div>
+        {/* Foto de perfil "flotante": ya no va metida en la fila junto al
+            nombre, sino como una mancha circular grande que asoma por la
+            esquina superior derecha de la cabecera, igual que las dos
+            manchas decorativas de arriba pero con la foto real en vez de
+            un color difuminado. Al medir sobre la captura de referencia
+            (el círculo dibujado a mano) salía más grande que la propia
+            cabecera, así que se corta por arriba y por abajo gracias al
+            overflow-hidden de la cabecera — tal y como se pidió. */}
+        <button
+          onClick={() => navigate('/settings')}
+          aria-label={t('profile.title')}
+          className="absolute -right-4 -top-6 h-32 w-32 shrink-0 rounded-full"
+        >
+          <Avatar
+            username={profile?.username ?? '?'}
+            avatarUrl={profile?.avatar_url}
+            size={128}
+            enlargeOnClick={false}
+            className="shadow-lg"
+          />
+          {invitations.length > 0 && (
+            <span className="absolute bottom-8 left-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white ring-2 ring-[var(--color-brand-700)]">
+              {invitations.length > 9 ? '9+' : invitations.length}
+            </span>
+          )}
+        </button>
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
