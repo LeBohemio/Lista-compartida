@@ -21,7 +21,7 @@ export default function NoteDetailPage() {
   const { showError } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
-  const { note, members, isOwner, loading, error, refetch, updateNote } = useNoteDetail(noteId)
+  const { note, members, myMembership, isOwner, loading, error, refetch, updateNote } = useNoteDetail(noteId)
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -199,6 +199,24 @@ export default function NoteDetailPage() {
         <p className="text-slate-600 dark:text-slate-300">{t('list.errorLoad')}</p>
         <button onClick={() => navigate('/notes')} className="text-brand-600 underline dark:text-brand-400">
           {t('apuntes.tabTitle')}
+        </button>
+      </div>
+    )
+  }
+
+  // A esta pantalla se puede llegar directamente desde el aviso push de
+  // invitación (ver send-push/index.ts, handleNoteMembers) antes de haber
+  // aceptado — la política de SELECT de "notes" (migration_v23.sql) deja
+  // ver el contenido a un invitado sin aceptar todavía, pero la de UPDATE
+  // no, así que sin esta comprobación se entraba directo al editor y
+  // cualquier cambio fallaba en silencio al guardar. Mismo patrón que ya
+  // tenía ListDetailPage.tsx para listas.
+  if (!myMembership || myMembership.status !== 'accepted') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-slate-600 dark:text-slate-300">{t('apuntes.pendingInviteBody', { name: note.title })}</p>
+        <button onClick={() => navigate('/notes')} className="text-brand-600 underline dark:text-brand-400">
+          {t('apuntes.goToMyNotes')}
         </button>
       </div>
     )

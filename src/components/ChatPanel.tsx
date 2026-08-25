@@ -195,6 +195,10 @@ export default function ChatPanel({
   const [recording, setRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [slideCancelHint, setSlideCancelHint] = useState(false)
+  // Grabación "bloqueada" (deslizando el dedo hacia arriba, como WhatsApp):
+  // deja de hacer falta mantener pulsado el botón — la grabación sigue sola
+  // hasta que se pulse "detener y enviar" o "descartar".
+  const [locked, setLocked] = useState(false)
   const [micErrorKind, setMicErrorKind] = useState<'denied' | 'notfound' | 'other' | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -209,6 +213,7 @@ export default function ChatPanel({
   // se ha soltado el dedo antes de que el micrófono terminara de arrancar
   // (el permiso del navegador tarda en resolver la primera vez).
   const recordingStartXRef = useRef<number | null>(null)
+  const recordingStartYRef = useRef<number | null>(null)
   const cancelledRef = useRef(false)
   const pendingReleaseRef = useRef<'send' | 'cancel' | null>(null)
 
@@ -695,11 +700,26 @@ export default function ChatPanel({
       setRecording(false)
       setRecordingSeconds(0)
       setSlideCancelHint(false)
+      setLocked(false)
 
       const chunks = audioChunksRef.current
       audioChunksRef.current = []
       if (!send) return
+      // Si se soltó (o se pulsó "detener y enviar") casi al instante —
+      // típicamente cuando el permiso del micrófono tardó en concederse y
+      // ya se había soltado el dedo antes de que arrancara de verdad (ver
+      // "pendingReleaseRef" en startRecording) — el grabador llega a
+      // parar sin haber capturado sonido real. El contenedor de audio
+      // (webm/ogg) igualmente ocupa algunos bytes de cabecera aunque no
+      // haya nada grabado, así que blob.size==0 no basta para detectarlo:
+      // se descarta en silencio (nada de mensaje "roto" que no se puede
+      // escuchar) si duró menos de 1 segundo o el archivo es demasiado
+      // pequeño para tener audio de verdad.
+      const MIN_RECORDING_SECONDS = 1
+      const MIN_RECORDING_BYTES = 2000
+      if (durationSeconds < MIN_RECORDING_SECONDS) return
       const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+      if (blob.size < MIN_RECORDING_BYTES) return
       void sendAudioBlob(blob, durationSeconds)
     }
 
@@ -722,9 +742,11 @@ export default function ChatPanel({
       // eso, simplemente no habrá gesto de deslizar para cancelar.
     }
     recordingStartXRef.current = e.clientX
+    recordingStartYRef.current = e.clientY
     cancelledRef.current = false
     pendingReleaseRef.current = null
     setSlideCancelHint(false)
+    setLocked(false)
     // No arrancamos a grabar al instante: esperamos un poco a ver si de
     // verdad es un "mantener pulsado" y no un toque suelto.
     micHoldTimerRef.current = setTimeout(() => {
@@ -733,9 +755,21 @@ export default function ChatPanel({
     }, MIC_HOLD_THRESHOLD_MS)
   }
 
+  const LOCK_THRESHOLD_PX = 80
+
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!recording || recordingStartXRef.current == null) return
+    // Una vez bloqueada, ya no hace falta seguir el dedo (puede incluso
+    // haberse soltado) — la grabación sigue sola hasta que se pulse uno de
+    // los botones de la barra bloqueada.
+    if (!recording || locked || recordingStartXRef.current == null || recordingStartYRef.current == null) return
     const dx = e.clientX - recordingStartXRef.current
+    const dy = e.clientY - recordingStartYRef.current
+    if (dy < -LOCK_THRESHOLD_PX) {
+      setLocked(true)
+      cancelledRef.current = false
+      setSlideCancelHint(false)
+      return
+    }
     const shouldCancel = dx < -CANCEL_THRESHOLD_PX
     cancelledRef.current = shouldCancel
     setSlideCancelHint(shouldCancel)
@@ -754,12 +788,19 @@ export default function ChatPanel({
       clearTimeout(micHoldTimerRef.current)
       micHoldTimerRef.current = null
       recordingStartXRef.current = null
+      recordingStartYRef.current = null
       cancelledRef.current = false
       setSlideCancelHint(false)
       return
     }
-    const shouldSend = !cancelledRef.current
     recordingStartXRef.current = null
+    recordingStartYRef.current = null
+    if (locked) {
+      // Grabación bloqueada: soltar el dedo no la corta, sigue grabando
+      // sola — se corta con los botones de "descartar" / "detener y enviar".
+      return
+    }
+    const shouldSend = !cancelledRef.current
     setSlideCancelHint(false)
     if (recording) {
       stopRecording(shouldSend)
@@ -937,7 +978,11 @@ export default function ChatPanel({
                       <span className="tabular-nums text-sm text-slate-500 dark:text-slate-400">
                         {formatDuration(recordingSeconds)}
                       </span>
-                      <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">{t('chat.slideToCancel')}</span>
+                      {!locked && (
+                        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                          {t('chat.slideToCancel')} · {t('chat.slideToLock')}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -1015,6 +1060,20 @@ export default function ChatPanel({
                 </>
               )}
 
+              {/* Grabación bloqueada: botón para descartarla sin enviar nada
+                  (aparece a la izquierda del botón de enviar/detener). */}
+              {recording && locked && (
+                <button
+                  type="button"
+                  onClick={() => stopRecording(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 hover:text-red-500 dark:text-slate-300"
+                  aria-label={t('chat.cancelRecording')}
+                  title={t('chat.cancelRecording')}
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              )}
+
               {!recording && editTarget ? (
                 <button
                   type="submit"
@@ -1031,6 +1090,21 @@ export default function ChatPanel({
                   disabled={sending}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-10px_var(--color-glow)] disabled:opacity-50"
                   aria-label={t('chat.send')}
+                >
+                  <SendIcon className="h-4 w-4" />
+                </button>
+              ) : recording && locked ? (
+                // Grabación bloqueada: este botón sustituye al micrófono
+                // (el gesto de mantener pulsado ya terminó al soltar el
+                // dedo tras deslizar hacia arriba) — un toque normal detiene
+                // la grabación y la manda, como el botón de enviar de texto.
+                <button
+                  type="button"
+                  onClick={() => stopRecording(true)}
+                  disabled={sending}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_10px_20px_-10px_var(--color-glow)] disabled:opacity-50"
+                  aria-label={t('chat.stopAndSendRecording')}
+                  title={t('chat.stopAndSendRecording')}
                 >
                   <SendIcon className="h-4 w-4" />
                 </button>

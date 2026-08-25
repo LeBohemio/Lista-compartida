@@ -270,6 +270,28 @@ async function handleNoteMembers(record: Record<string, unknown>) {
   })
 }
 
+// Petición de contacto ("amistad") recibida — ver migration_v17.sql
+// (contact_requests) y migration_v42.sql (el trigger que llama a esto).
+// Reutiliza la preferencia notify_invites en vez de crear una nueva: es la
+// misma idea que una invitación a lista/nota (alguien quiere conectar
+// contigo), y así no hace falta ni una columna ni un interruptor nuevo en
+// Ajustes.
+async function handleContactRequest(record: Record<string, unknown>) {
+  if (record.status !== 'pending') return
+  const fromUserId = record.from_user_id as string
+  const toUserId = record.to_user_id as string
+
+  const { data: sender } = await supabaseAdmin.from('profiles').select('username').eq('id', fromUserId).maybeSingle()
+  if (!sender) return
+
+  await notifyUser(toUserId, 'notify_invites', {
+    title: 'NoteUs',
+    body: `${sender.username} quiere ser tu contacto`,
+    url: `/contacts`,
+    tag: `contact-request-${fromUserId}`,
+  })
+}
+
 async function handleSettlements(record: Record<string, unknown>) {
   // Solo interesa el caso "pendiente de confirmar" (ver migration_v11.sql):
   // lo registró el deudor (from_user) y todavía no lo ha confirmado quien
@@ -331,6 +353,9 @@ Deno.serve(async (req) => {
         break
       case 'note_members':
         await handleNoteMembers(body.record)
+        break
+      case 'contact_requests':
+        await handleContactRequest(body.record)
         break
       case 'settlements':
         await handleSettlements(body.record)
