@@ -308,6 +308,27 @@ export function NumberedListIcon(props: IconProps) {
   )
 }
 
+export function PaletteIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M12 3.5c-4.7 0-8.5 3.6-8.5 8 0 3.4 2.6 4.6 4.4 4.6h1c.7 0 1.2.6 1.2 1.2 0 .3-.1.6-.3.8-.3.4-.5.8-.5 1.3 0 .8.8 1.6 2.2 1.6 4.7 0 8.5-3.9 8.5-8.7 0-4.9-3.8-8.8-8-8.8Z" />
+      <circle cx="8.3" cy="10.3" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.7" cy="10.3" r="1.1" fill="currentColor" stroke="none" />
+    </Base>
+  )
+}
+
+export function HelpCircleIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="8.2" />
+      <path d="M9.6 9.4c.2-1 1.1-1.7 2.2-1.7 1.2 0 2.2.8 2.2 1.9 0 1.4-2.2 1.6-2.2 3.2" />
+      <path d="M12 16.4h.01" />
+    </Base>
+  )
+}
+
 export function FileAttachmentIcon(props: IconProps) {
   return (
     <Base {...props}>

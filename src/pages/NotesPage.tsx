@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react'
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -6,17 +6,18 @@ import { useNotes } from '../hooks/useNotes'
 import { supabase } from '../lib/supabaseClient'
 import CreateNoteModal from '../components/CreateNoteModal'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { NotesIcon, TrashIcon } from '../components/icons'
-import { colorForNote } from '../lib/colors'
+import ContextMenu from '../components/ContextMenu'
+import { useLongPress } from '../hooks/useLongPress'
+import { FolderIcon, NotesIcon, PaletteIcon, PinIcon, TrashIcon } from '../components/icons'
+import { PALETTE, colorForNote } from '../lib/colors'
+import type { NoteWithMembership } from '../lib/types'
 
 // Pantalla de "Notas comunes" (ver migration_v23.sql) — algo aparte de las
-// listas, con su propia pestaña en la barra inferior. Versión simple a
-// propósito (sin fijar/reordenar/archivar, que sí tiene "Mis listas") para
-// poder dejarla lista hoy; se puede ampliar después si hace falta.
+// listas, con su propia pestaña en la barra inferior.
 export default function NotesPage() {
   const { profile } = useAuth()
   const { t } = useLanguage()
-  const { notes, invitations, loading, error, refetch } = useNotes()
+  const { notes, invitations, loading, error, refetch, togglePin } = useNotes()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -24,7 +25,16 @@ export default function NotesPage() {
     null,
   )
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
+  // Nota cuyo color se está eligiendo desde el menú de opciones (sin tener
+  // que entrar en ella) — null cuando la hoja está cerrada.
+  const [colorPickerNote, setColorPickerNote] = useState<NoteWithMembership | null>(null)
   const navigate = useNavigate()
+
+  const changeNoteColor = async (noteId: string, color: string) => {
+    setColorPickerNote(null)
+    await supabase.from('notes').update({ color }).eq('id', noteId)
+    refetch()
+  }
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const visibleNotes = useMemo(() => {
@@ -164,56 +174,18 @@ export default function NotesPage() {
             </p>
           ) : (
             <ul className="space-y-2.5">
-              {visibleNotes.map((n) => {
-                const isOwner = n.owner_id === profile?.id
-                const snippet = n.body.trim().slice(0, 80)
-                return (
-                  <li key={n.id}>
-                    {/* Misma "tarjeta con lengüeta" que el detalle de la
-                        nota (ver NoteDetailPage.tsx), con el mismo color —
-                        elegido a mano, o uno estable según el título (ver
-                        colorForNote) — para que el listado y el detalle se
-                        sientan como la misma pieza. */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => navigate(`/notes/${n.id}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') navigate(`/notes/${n.id}`)
-                      }}
-                      className="glass-panel relative flex w-full items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition"
-                    >
-                      <span
-                        className="absolute left-5 top-0 h-2 w-10 rounded-b-md"
-                        style={{ backgroundColor: colorForNote(n) }}
-                        aria-hidden="true"
-                      />
-                      <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
-                        <NotesIcon className="h-5 w-5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-slate-900 dark:text-slate-100">
-                          {n.title}
-                        </span>
-                        {snippet && (
-                          <span className="block truncate text-sm text-slate-500 dark:text-slate-400">
-                            {snippet}
-                          </span>
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => requestDeleteOrLeave(e, n.id, n.title, isOwner)}
-                        aria-label={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
-                        title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
-                        className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
+              {visibleNotes.map((n) => (
+                <li key={n.id}>
+                  <NoteRow
+                    note={n}
+                    isOwner={n.owner_id === profile?.id}
+                    onOpen={() => navigate(`/notes/${n.id}`)}
+                    onTogglePin={() => togglePin(n.id, !n.membership.pinned)}
+                    onChangeColor={() => setColorPickerNote(n)}
+                    onDeleteRequest={(e) => requestDeleteOrLeave(e, n.id, n.title, n.owner_id === profile?.id)}
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </section>
@@ -225,7 +197,10 @@ export default function NotesPage() {
           onCreated={(noteId) => {
             setShowCreate(false)
             refetch()
-            navigate(`/notes/${noteId}`)
+            // justCreated activa el aviso discreto de "toca el color de
+            // arriba para cambiarlo" en NoteDetailPage.tsx, solo esta
+            // primera vez.
+            navigate(`/notes/${noteId}`, { state: { justCreated: true } })
           }}
         />
       )}
@@ -238,6 +213,127 @@ export default function NotesPage() {
           danger
           onConfirm={confirmDeleteOrLeave}
           onCancel={() => setConfirmTarget(null)}
+        />
+      )}
+
+      {colorPickerNote && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => setColorPickerNote(null)}
+        >
+          <div
+            className="glass-panel w-full max-w-sm rounded-t-[28px] p-5 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-4 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {colorPickerNote.title}
+            </p>
+            <div className="mb-4 flex flex-wrap gap-2.5">
+              {PALETTE.map((c) => (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => changeNoteColor(colorPickerNote.id, c)}
+                  aria-label={`Color ${c}`}
+                  className="h-9 w-9 rounded-full"
+                  style={{
+                    backgroundColor: c,
+                    boxShadow: colorPickerNote.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setColorPickerNote(null)}
+              className="w-full rounded-2xl px-4 py-2.5 text-center text-sm font-medium text-slate-500 hover:bg-white/60 dark:text-slate-400 dark:hover:bg-white/10"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Misma "tarjeta con lengüeta" que el detalle de la nota (ver
+// NoteDetailPage.tsx), con el mismo color — elegido a mano, o uno estable
+// según el título (ver colorForNote) — para que el listado y el detalle se
+// sientan como la misma pieza. Una pulsación larga abre el menú de
+// opciones (Abrir/Fijar/Cambiar color), igual que en "Mis listas".
+function NoteRow({
+  note: n,
+  isOwner,
+  onOpen,
+  onTogglePin,
+  onChangeColor,
+  onDeleteRequest,
+}: {
+  note: NoteWithMembership
+  isOwner: boolean
+  onOpen: () => void
+  onTogglePin: () => void
+  onChangeColor: () => void
+  onDeleteRequest: (e: MouseEvent) => void
+}) {
+  const { t } = useLanguage()
+  const [showMenu, setShowMenu] = useState(false)
+  const longPress = useLongPress(() => setShowMenu(true))
+  const snippet = n.body.trim().slice(0, 80)
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') onOpen()
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={handleKeyDown}
+      className="glass-panel relative flex w-full select-none items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition"
+      {...longPress}
+    >
+      <span
+        className="absolute left-5 top-0 h-2 w-10 rounded-b-md"
+        style={{ backgroundColor: colorForNote(n) }}
+        aria-hidden="true"
+      />
+      <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
+        <NotesIcon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold text-slate-900 dark:text-slate-100">
+          {n.membership.pinned && (
+            <PinIcon className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-[var(--color-brand-500)]" />
+          )}
+          {n.title}
+        </span>
+        {snippet && <span className="block truncate text-sm text-slate-500 dark:text-slate-400">{snippet}</span>}
+      </span>
+      <button
+        type="button"
+        onClick={onDeleteRequest}
+        aria-label={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
+        title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
+        className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </button>
+
+      {showMenu && (
+        <ContextMenu
+          title={n.title}
+          onClose={() => setShowMenu(false)}
+          actions={[
+            { label: t('menu.open'), icon: <FolderIcon className="h-5 w-5" />, onSelect: onOpen },
+            {
+              label: n.membership.pinned ? t('menu.unpinNote') : t('menu.pinNote'),
+              icon: <PinIcon className="h-5 w-5" />,
+              onSelect: onTogglePin,
+            },
+            { label: t('menu.changeColor'), icon: <PaletteIcon className="h-5 w-5" />, onSelect: onChangeColor },
+          ]}
         />
       )}
     </div>

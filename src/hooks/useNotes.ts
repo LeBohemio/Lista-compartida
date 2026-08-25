@@ -42,7 +42,12 @@ export function useNotes() {
       else invited.push(withMembership)
     }
 
-    accepted.sort((a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime())
+    // Fijadas primero (igual que "Mis listas"), y dentro de cada grupo por
+    // actividad más reciente.
+    accepted.sort((a, b) => {
+      if (a.membership.pinned !== b.membership.pinned) return a.membership.pinned ? -1 : 1
+      return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+    })
 
     setNotes(accepted)
     setInvitations(invited)
@@ -71,5 +76,14 @@ export function useNotes() {
     }
   }, [user, fetchNotes])
 
-  return { notes, invitations, loading, error, refetch: fetchNotes }
+  const togglePin = useCallback(
+    async (noteId: string, pinned: boolean) => {
+      if (!user) return
+      await supabase.from('note_members').update({ pinned }).eq('note_id', noteId).eq('user_id', user.id)
+      fetchNotes()
+    },
+    [user, fetchNotes],
+  )
+
+  return { notes, invitations, loading, error, refetch: fetchNotes, togglePin }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useNoteDetail } from '../hooks/useNoteDetail'
@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
-import { NumberedListIcon, TrashIcon } from '../components/icons'
+import { CloseIcon, HelpCircleIcon, NumberedListIcon, TrashIcon } from '../components/icons'
 import { PALETTE, colorForNote } from '../lib/colors'
 
 const AUTOSAVE_DELAY_MS = 800
@@ -17,6 +17,7 @@ export default function NoteDetailPage() {
   const { user, profile } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const location = useLocation()
   const { note, members, isOwner, loading, error, refetch, updateNote } = useNoteDetail(noteId)
 
   const [title, setTitle] = useState('')
@@ -24,6 +25,13 @@ export default function NoteDetailPage() {
   const [showMembers, setShowMembers] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showNumberedHelp, setShowNumberedHelp] = useState(false)
+  // Aviso discreto de "toca aquí para cambiar el color" — solo aparece la
+  // vez que se acaba de crear la nota (CreateNoteModal navega aquí con
+  // justCreated:true, ver NotesPage.tsx), no cada vez que se abre la nota.
+  const [showColorHint, setShowColorHint] = useState(
+    () => Boolean((location.state as { justCreated?: boolean } | null)?.justCreated),
+  )
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   // Sustituye a la idea de mostrar "editado hace X" (no guardamos quién ni
   // cuándo se tocó por última vez el título/cuerpo por separado, solo
@@ -296,6 +304,19 @@ export default function NoteDetailPage() {
                 </div>
               </>
             )}
+            {showColorHint && (
+              <div className="mb-3 mt-4 flex items-start gap-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+                <span className="flex-1">{t('apuntes.colorHint')}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowColorHint(false)}
+                  aria-label={t('common.close')}
+                  className="shrink-0 text-brand-400 hover:text-brand-600 dark:hover:text-brand-200"
+                >
+                  <CloseIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <textarea
               ref={titleAreaRef}
               value={title}
@@ -324,7 +345,7 @@ export default function NoteDetailPage() {
                 líneas que tengas seleccionadas — nunca sobre toda la nota
                 de golpe (ver toggleNumberedList). Pulsarlo otra vez sobre
                 líneas ya numeradas quita la numeración. */}
-            <div className="mb-2 flex items-center">
+            <div className="relative mb-2 flex items-center gap-1">
               <button
                 type="button"
                 onClick={toggleNumberedList}
@@ -335,6 +356,29 @@ export default function NoteDetailPage() {
                 <NumberedListIcon className="h-4 w-4" />
                 {t('apuntes.numberedList')}
               </button>
+              <button
+                type="button"
+                onClick={() => setShowNumberedHelp((s) => !s)}
+                aria-label={t('apuntes.numberedListHelpCta')}
+                title={t('apuntes.numberedListHelpCta')}
+                className="rounded-full p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
+              >
+                <HelpCircleIcon className="h-4 w-4" />
+              </button>
+              {showNumberedHelp && (
+                <>
+                  {/* Mismo patrón que el selector de color de arriba: un
+                      fondo invisible a pantalla completa solo para poder
+                      cerrar tocando fuera. */}
+                  <div className="fixed inset-0 z-[5]" onClick={() => setShowNumberedHelp(false)} />
+                  <div
+                    className="glass-panel absolute left-0 top-full z-10 mt-1 rounded-xl p-3 text-xs leading-relaxed text-slate-600 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)] dark:text-slate-300"
+                    style={{ width: '230px' }}
+                  >
+                    {t('apuntes.numberedListHelpText')}
+                  </div>
+                </>
+              )}
             </div>
             <textarea
               ref={bodyAreaRef}
