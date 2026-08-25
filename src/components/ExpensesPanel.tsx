@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { formatCurrency } from '../lib/balances'
 import type { CurrencyCode } from '../lib/currencies'
 import type { Expense, ExpenseCategory, ListMember, Settlement } from '../lib/types'
@@ -38,6 +39,7 @@ export default function ExpensesPanel({
 }) {
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const { showError } = useToast()
   const [showNew, setShowNew] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -115,7 +117,8 @@ export default function ExpensesPanel({
     setLastPendingId(expenseId)
     const timer = setTimeout(async () => {
       timersRef.current.delete(expenseId)
-      await supabase.from('expenses').delete().eq('id', expenseId)
+      const { error: err } = await supabase.from('expenses').delete().eq('id', expenseId)
+      if (err) showError(t('common.deleteError'))
       setPendingDeleteIds((prev) => {
         const next = new Set(prev)
         next.delete(expenseId)

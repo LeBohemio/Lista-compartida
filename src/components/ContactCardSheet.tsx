@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import Avatar from './Avatar'
 import ConfirmDialog from './ConfirmDialog'
 import CreateListModal from './CreateListModal'
@@ -42,6 +43,7 @@ export default function ContactCardSheet({
 }) {
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const { showError } = useToast()
   const navigate = useNavigate()
 
   const [state, setState] = useState<CardState>({ kind: 'loading' })
@@ -103,12 +105,13 @@ export default function ContactCardSheet({
   const togglePinned = async () => {
     if (state.kind !== 'contact' || !user) return
     setBusy(true)
-    await supabase
+    const { error: err } = await supabase
       .from('contacts')
       .update({ pinned: !state.contact.pinned })
       .eq('user_id', user.id)
       .eq('contact_user_id', targetProfile.id)
     setBusy(false)
+    if (err) setError(t('common.saveError'))
     fetchState()
     notify()
   }
@@ -130,12 +133,13 @@ export default function ContactCardSheet({
   const applyMute = async (duration: MuteDuration | null) => {
     if (state.kind !== 'contact' || !user) return
     setBusy(true)
-    await supabase
+    const { error: err } = await supabase
       .from('contacts')
       .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('user_id', user.id)
       .eq('contact_user_id', targetProfile.id)
     setBusy(false)
+    if (err) setError(t('common.saveError'))
     fetchState()
     notify()
   }
@@ -239,7 +243,10 @@ export default function ContactCardSheet({
   const handleListCreated = async (listId: string) => {
     setShowCreateList(false)
     if (user) {
-      await supabase.from('list_members').insert({
+      // Aviso vía el toast global (no el "error" local de este componente):
+      // la hoja se cierra y navegamos a la lista nueva justo después, así
+      // que un mensaje local nunca llegaría a verse.
+      const { error: err } = await supabase.from('list_members').insert({
         list_id: listId,
         user_id: targetProfile.id,
         role: 'member',
@@ -247,6 +254,7 @@ export default function ContactCardSheet({
         invited_identifier: targetProfile.email,
         invited_by: user.id,
       })
+      if (err) showError(t('common.saveError'))
     }
     onClose()
     navigate(`/lists/${listId}`)

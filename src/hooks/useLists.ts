@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { ListWithMembership, Profile } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../lib/i18n'
 
 export type ItemStats = { done: number; total: number }
 
@@ -16,6 +18,8 @@ export type ItemStats = { done: number; total: number }
  */
 export function useLists() {
   const { user } = useAuth()
+  const { showError } = useToast()
+  const { t } = useLanguage()
   const [lists, setLists] = useState<ListWithMembership[]>([])
   const [invitations, setInvitations] = useState<ListWithMembership[]>([])
   const [itemStats, setItemStats] = useState<Record<string, ItemStats>>({})
@@ -126,23 +130,25 @@ export function useLists() {
   const togglePin = useCallback(
     async (listId: string, pinned: boolean) => {
       if (!user) return
-      await supabase.from('list_members').update({ pinned }).eq('list_id', listId).eq('user_id', user.id)
+      const { error } = await supabase.from('list_members').update({ pinned }).eq('list_id', listId).eq('user_id', user.id)
+      if (error) showError(t('common.saveError'))
       fetchLists()
     },
-    [user, fetchLists],
+    [user, fetchLists, showError, t],
   )
 
   const reorderLists = useCallback(
     async (orderedListIds: string[]) => {
       if (!user) return
-      await Promise.all(
+      const results = await Promise.all(
         orderedListIds.map((listId, idx) =>
           supabase.from('list_members').update({ position: idx }).eq('list_id', listId).eq('user_id', user.id),
         ),
       )
+      if (results.some((r) => r.error)) showError(t('common.saveError'))
       fetchLists()
     },
-    [user, fetchLists],
+    [user, fetchLists, showError, t],
   )
 
   return {

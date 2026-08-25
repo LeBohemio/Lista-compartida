@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from './supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import type { Language } from './types'
 
 // Diccionario de traducciones. De momento cubre las pantallas y textos más
@@ -69,6 +70,9 @@ const translations = {
     'common.search': 'Buscar',
     'common.saving': 'Guardando…',
     'common.undo': 'Deshacer',
+    'common.offline': 'Sin conexión — los cambios se guardarán en cuanto vuelvas a tener internet.',
+    'common.saveError': 'No se ha podido guardar el cambio. Vuelve a intentarlo.',
+    'common.deleteError': 'No se ha podido eliminar. Vuelve a intentarlo.',
     'lists.title': 'Mis listas',
     'lists.create': 'Crear tu primera lista',
     'lists.createFab': 'Crear lista',
@@ -672,6 +676,9 @@ const translations = {
     'common.search': 'Search',
     'common.saving': 'Saving…',
     'common.undo': 'Undo',
+    'common.offline': "You're offline — changes will save once your connection comes back.",
+    'common.saveError': "Couldn't save the change. Please try again.",
+    'common.deleteError': "Couldn't delete. Please try again.",
     'lists.title': 'My lists',
     'lists.create': 'Create your first list',
     'lists.createFab': 'Create list',
@@ -1231,6 +1238,7 @@ const LOCAL_STORAGE_KEY = 'listas-en-comun-language'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { user, profile, refreshProfile } = useAuth()
+  const { showError } = useToast()
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === 'undefined') return 'es'
     const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY)
@@ -1250,10 +1258,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           .from('profiles')
           .update({ language: lang })
           .eq('id', user.id)
-          .then(() => refreshProfile())
+          .then(({ error }) => {
+            // Si falla, el idioma ya cambió en pantalla (setLanguageState de
+            // arriba) — solo avisamos de que no se ha guardado para la
+            // próxima vez que entres, no bloqueamos nada.
+            if (error) {
+              showError(translations[lang]['common.saveError'])
+              return
+            }
+            refreshProfile()
+          })
       }
     },
-    [user, refreshProfile],
+    [user, refreshProfile, showError],
   )
 
   const t = useCallback(

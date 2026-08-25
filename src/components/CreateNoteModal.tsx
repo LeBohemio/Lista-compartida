@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { PALETTE } from '../lib/colors'
 
 export default function CreateNoteModal({
@@ -11,6 +12,7 @@ export default function CreateNoteModal({
   onCreated: (noteId: string) => void
 }) {
   const { t } = useLanguage()
+  const { showError } = useToast()
   const [title, setTitle] = useState('')
   // Sin elegir por defecto: si no se toca ningún color, la nota se queda
   // con uno estable calculado a partir del título (ver colorForNote) — el
@@ -46,7 +48,10 @@ export default function CreateNoteModal({
     // tiene cualquier miembro sobre su propia nota recién creada (ver
     // migration_v32.sql), es más simple y hace exactamente lo mismo.
     if (color) {
-      await supabase.from('notes').update({ color }).eq('id', note.id)
+      // Toast global, no el "error" local: este modal se cierra justo
+      // después (onCreated), así que un aviso local no llegaría a verse.
+      const { error: colorErr } = await supabase.from('notes').update({ color }).eq('id', note.id)
+      if (colorErr) showError(t('common.saveError'))
     }
 
     setSubmitting(false)

@@ -64,7 +64,8 @@ export async function enablePush(userId: string) {
     .upsert({ user_id: userId, endpoint, p256dh, auth }, { onConflict: 'endpoint' })
   if (error) throw error
 
-  await supabase.from('profiles').update({ notify_push_enabled: true }).eq('id', userId)
+  const { error: profileErr } = await supabase.from('profiles').update({ notify_push_enabled: true }).eq('id', userId)
+  if (profileErr) throw profileErr
 }
 
 /**
@@ -74,7 +75,8 @@ export async function enablePush(userId: string) {
  * dispositivos de la persona, no solo a este — es la casilla general).
  */
 export async function disablePush(userId: string) {
-  await supabase.from('profiles').update({ notify_push_enabled: false }).eq('id', userId)
+  const { error: profileErr } = await supabase.from('profiles').update({ notify_push_enabled: false }).eq('id', userId)
+  if (profileErr) throw profileErr
 
   if (!isPushSupported()) return
   try {

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { formatCurrency } from '../lib/balances'
 import { DEFAULT_CURRENCY, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import ConfirmDialog from './ConfirmDialog'
 import { CloseIcon } from './icons'
 
@@ -19,6 +20,7 @@ function monthKey(dateStr: string) {
 export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const { user, profile, refreshProfile } = useAuth()
   const { t, language } = useLanguage()
+  const { showError } = useToast()
   // El total agregado del mes (que puede sumar gastos de varias listas) se
   // muestra en tu divisa de perfil — no hay conversión real, así que si
   // mezclas listas con divisas distintas ese total es solo orientativo. Cada
@@ -70,7 +72,11 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const doReset = async () => {
     if (!user) return
     setResetting(true)
-    await supabase.from('profiles').update({ expenses_reset_at: new Date().toISOString() }).eq('id', user.id)
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ expenses_reset_at: new Date().toISOString() })
+      .eq('id', user.id)
+    if (err) showError(t('common.saveError'))
     await refreshProfile()
     setResetting(false)
     setConfirmReset(false)

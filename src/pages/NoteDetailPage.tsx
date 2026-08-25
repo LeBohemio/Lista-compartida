@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { useNoteDetail } from '../hooks/useNoteDetail'
 import { supabase } from '../lib/supabaseClient'
 import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
@@ -16,6 +17,7 @@ export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
   const { user, profile } = useAuth()
   const { t } = useLanguage()
+  const { showError } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const { note, members, isOwner, loading, error, refetch, updateNote } = useNoteDetail(noteId)
@@ -154,7 +156,8 @@ export default function NoteDetailPage() {
 
   const removeMember = async () => {
     if (!confirmRemove || !noteId) return
-    await supabase.from('note_members').delete().eq('note_id', noteId).eq('user_id', confirmRemove.userId)
+    const { error: err } = await supabase.from('note_members').delete().eq('note_id', noteId).eq('user_id', confirmRemove.userId)
+    if (err) showError(t('common.deleteError'))
     setConfirmRemove(null)
     refetch()
   }

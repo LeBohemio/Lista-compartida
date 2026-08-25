@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../lib/i18n'
 import { attachReplyPreviews, MESSAGES_SELECT_BASIC } from '../lib/messagesQuery'
 import type { Message, Profile } from '../lib/types'
 
@@ -16,6 +18,8 @@ import type { Message, Profile } from '../lib/types'
  */
 export function useDirectMessages(peerId: string | undefined) {
   const { user } = useAuth()
+  const { showError } = useToast()
+  const { t } = useLanguage()
   const [peerProfile, setPeerProfile] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [chatClearedAt, setChatClearedAt] = useState<string | null>(null)
@@ -92,13 +96,14 @@ export function useDirectMessages(peerId: string | undefined) {
 
   const clearChat = useCallback(async () => {
     if (!peerId || !user) return
-    await supabase
+    const { error } = await supabase
       .from('contacts')
       .update({ chat_cleared_at: new Date().toISOString() })
       .eq('user_id', user.id)
       .eq('contact_user_id', peerId)
+    if (error) showError(t('common.saveError'))
     await fetchAll()
-  }, [peerId, user, fetchAll])
+  }, [peerId, user, fetchAll, showError, t])
 
   return { peerProfile, messages, chatClearedAt, loading, error, refetch: fetchAll, clearChat }
 }

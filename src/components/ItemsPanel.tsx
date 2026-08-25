@@ -12,6 +12,7 @@ import {
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { useLongPress } from '../hooks/useLongPress'
 import { useDragReorder } from '../hooks/useDragReorder'
 import { formatCurrency } from '../lib/balances'
@@ -97,6 +98,7 @@ export default function ItemsPanel({
 }) {
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const { showError } = useToast()
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -158,7 +160,10 @@ export default function ItemsPanel({
   )
 
   const persistOrder = async (ordered: Item[]) => {
-    await Promise.all(ordered.map((it, idx) => supabase.from('items').update({ position: idx }).eq('id', it.id)))
+    const results = await Promise.all(
+      ordered.map((it, idx) => supabase.from('items').update({ position: idx }).eq('id', it.id)),
+    )
+    if (results.some((r) => r.error)) showError(t('common.saveError'))
   }
 
   const pendingReorder = useDragReorder<Item>({
@@ -210,10 +215,21 @@ export default function ItemsPanel({
   const createItem = async (rawContent: string) => {
     const trimmed = rawContent.trim()
     if (!trimmed || !user) return
-    await supabase
+    const { error: err } = await supabase
       .from('items')
       .insert({ list_id: listId, content: trimmed, created_by: user.id, category: detectItemCategory(trimmed) })
-    await supabase.rpc('bump_item_suggestion', { p_list_id: listId, p_content: trimmed })
+    if (err) {
+      showError(t('common.saveError'))
+      return
+    }
+    // El contador de sugerencias es un detalle menor (solo afecta a qué
+    // aparece luego como autocompletado) — si falla, no merece la pena
+    // avisar, la nota en sí ya se ha creado bien.
+    const { error: suggestionErr } = await supabase.rpc('bump_item_suggestion', {
+      p_list_id: listId,
+      p_content: trimmed,
+    })
+    if (suggestionErr) console.error('[bump_item_suggestion] error:', suggestionErr)
     fetchSuggestions()
   }
 
@@ -240,25 +256,29 @@ export default function ItemsPanel({
   }
 
   const toggleDone = async (item: Item) => {
-    await supabase
+    const { error: err } = await supabase
       .from('items')
       .update({ done: !item.done, done_at: !item.done ? new Date().toISOString() : null })
       .eq('id', item.id)
+    if (err) showError(t('common.saveError'))
   }
 
   const saveEdit = async (itemId: string, newContent: string) => {
     setEditingId(null)
     const trimmed = newContent.trim()
     if (!trimmed) return
-    await supabase.from('items').update({ content: trimmed }).eq('id', itemId)
+    const { error: err } = await supabase.from('items').update({ content: trimmed }).eq('id', itemId)
+    if (err) showError(t('common.saveError'))
   }
 
   const setDueDate = async (itemId: string, dueDate: string | null) => {
-    await supabase.from('items').update({ due_date: dueDate }).eq('id', itemId)
+    const { error: err } = await supabase.from('items').update({ due_date: dueDate }).eq('id', itemId)
+    if (err) showError(t('common.saveError'))
   }
 
   const setPrice = async (itemId: string, price: number | null) => {
-    await supabase.from('items').update({ price }).eq('id', itemId)
+    const { error: err } = await supabase.from('items').update({ price }).eq('id', itemId)
+    if (err) showError(t('common.saveError'))
   }
 
   // Al crear el gasto a partir de lo comprado, quitamos el precio de esas
@@ -266,12 +286,13 @@ export default function ItemsPanel({
   // segundo gasto duplicado — la nota se queda tal cual (marcada como
   // hecha), solo se limpia el precio.
   const clearBoughtPrices = async () => {
-    await supabase
+    const { error: err } = await supabase
       .from('items')
       .update({ price: null })
       .eq('list_id', listId)
       .eq('done', true)
       .not('price', 'is', null)
+    if (err) showError(t('common.saveError'))
   }
 
   const requestDelete = (itemId: string) => {
@@ -279,7 +300,8 @@ export default function ItemsPanel({
     setLastPendingId(itemId)
     const timer = setTimeout(async () => {
       timersRef.current.delete(itemId)
-      await supabase.from('items').delete().eq('id', itemId)
+      const { error: err } = await supabase.from('items').delete().eq('id', itemId)
+      if (err) showError(t('common.deleteError'))
       setPendingDeleteIds((prev) => {
         const next = new Set(prev)
         next.delete(itemId)
@@ -306,15 +328,17 @@ export default function ItemsPanel({
 
   const emptyDone = async () => {
     setConfirmEmpty(false)
-    await supabase.from('items').delete().eq('list_id', listId).eq('done', true)
+    const { error: err } = await supabase.from('items').delete().eq('list_id', listId).eq('done', true)
+    if (err) showError(t('common.deleteError'))
   }
 
   const markAllDone = async () => {
-    await supabase
+    const { error: err } = await supabase
       .from('items')
       .update({ done: true, done_at: new Date().toISOString() })
       .eq('list_id', listId)
       .eq('done', false)
+    if (err) showError(t('common.saveError'))
   }
 
   return (

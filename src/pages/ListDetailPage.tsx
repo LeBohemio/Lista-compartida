@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { useListData } from '../hooks/useListData'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
@@ -27,6 +28,7 @@ export default function ListDetailPage() {
   const { listId } = useParams<{ listId: string }>()
   const { user, profile } = useAuth()
   const { t } = useLanguage()
+  const { showError } = useToast()
   const navigate = useNavigate()
   const {
     list,
@@ -94,7 +96,12 @@ export default function ListDetailPage() {
       .update({ last_read_message_at: new Date().toISOString() })
       .eq('list_id', listId)
       .eq('user_id', user.id)
-      .then(() => {})
+      .then(({ error: err }) => {
+        // Marcar como leído es un detalle de fondo (a lo sumo el contador de
+        // no leídos tarda en bajar) — no interrumpimos con un aviso, solo
+        // dejamos rastro en la consola por si hay que investigar.
+        if (err) console.error('[list_members] no se pudo marcar como leído:', err)
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, messages.length, user, listId])
 
@@ -190,18 +197,21 @@ export default function ListDetailPage() {
 
   const completeList = async () => {
     setConfirmComplete(false)
-    await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', list.id)
+    const { error: err } = await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', list.id)
+    if (err) showError(t('common.saveError'))
     refetch()
   }
 
   const reactivateList = async () => {
-    await supabase.from('lists').update({ archived_at: null }).eq('id', list.id)
+    const { error: err } = await supabase.from('lists').update({ archived_at: null }).eq('id', list.id)
+    if (err) showError(t('common.saveError'))
     refetch()
   }
 
   const removeMember = async () => {
     if (!confirmRemove) return
-    await supabase.from('list_members').delete().eq('list_id', list.id).eq('user_id', confirmRemove.userId)
+    const { error: err } = await supabase.from('list_members').delete().eq('list_id', list.id).eq('user_id', confirmRemove.userId)
+    if (err) showError(t('common.deleteError'))
     setConfirmRemove(null)
     refetch()
   }
@@ -221,11 +231,12 @@ export default function ListDetailPage() {
 
   const applyMute = async (duration: MuteDuration | null) => {
     if (!user || !myMembership) return
-    await supabase
+    const { error: err } = await supabase
       .from('list_members')
       .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('list_id', list.id)
       .eq('user_id', user.id)
+    if (err) showError(t('common.saveError'))
     refetch()
   }
 

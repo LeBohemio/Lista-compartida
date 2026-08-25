@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { PALETTE, colorForName } from '../lib/colors'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { DEFAULT_CURRENCY } from '../lib/currencies'
@@ -26,6 +27,7 @@ export default function CreateListModal({
 }) {
   const { user, profile } = useAuth()
   const { t } = useLanguage()
+  const { showError } = useToast()
   const [name, setName] = useState('')
   const [expensesEnabled, setExpensesEnabled] = useState(false)
   const [color, setColor] = useState<string | null>(null)
@@ -60,10 +62,15 @@ export default function CreateListModal({
     // La lista hereda la divisa preferida de tu perfil sin preguntarte nada
     // aquí — se puede cambiar después, por esa lista en concreto, desde sus
     // ajustes si hace falta una distinta.
-    await supabase
+    //
+    // Aviso vía el toast global, no el "error" local de este modal: en
+    // cuanto onCreated() se llama de aquí abajo, este modal se cierra, así
+    // que un mensaje local nunca llegaría a verse.
+    const { error: colorErr } = await supabase
       .from('lists')
       .update({ color: color ?? colorForName(name.trim()), currency: profile?.currency ?? DEFAULT_CURRENCY })
       .eq('id', list.id)
+    if (colorErr) showError(t('common.saveError'))
 
     setSubmitting(false)
     onCreated(list.id)

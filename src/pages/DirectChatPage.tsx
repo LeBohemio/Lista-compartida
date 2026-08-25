@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import { useDirectMessages } from '../hooks/useDirectMessages'
 import { supabase } from '../lib/supabaseClient'
 import ChatPanel from '../components/ChatPanel'
@@ -17,6 +18,7 @@ export default function DirectChatPage() {
   const { userId: peerId } = useParams<{ userId: string }>()
   const { user, profile } = useAuth()
   const { t } = useLanguage()
+  const { showError } = useToast()
   const navigate = useNavigate()
   const { peerProfile, messages, loading, error, clearChat } = useDirectMessages(peerId)
   const [myContact, setMyContact] = useState<Contact | null>(null)
@@ -49,7 +51,10 @@ export default function DirectChatPage() {
       .update({ last_read_message_at: new Date().toISOString() })
       .eq('user_id', user.id)
       .eq('contact_user_id', peerId)
-      .then(() => {})
+      .then(({ error: err }) => {
+        // Igual que en ListDetailPage.tsx: detalle de fondo, solo consola.
+        if (err) console.error('[contacts] no se pudo marcar como leído:', err)
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, user, peerId])
 
@@ -84,11 +89,12 @@ export default function DirectChatPage() {
 
   const applyMute = async (duration: MuteDuration | null) => {
     if (!user || !peerId || !myContact) return
-    await supabase
+    const { error: err } = await supabase
       .from('contacts')
       .update(duration ? { muted: true, muted_until: muteUntilFor(duration) } : { muted: false, muted_until: null })
       .eq('user_id', user.id)
       .eq('contact_user_id', peerId)
+    if (err) showError(t('common.saveError'))
     fetchMyContact()
   }
 

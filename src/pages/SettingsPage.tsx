@@ -159,7 +159,8 @@ export default function SettingsPage() {
     field: 'notify_chat' | 'notify_expenses' | 'notify_invites' | 'notify_settlements',
     value: boolean,
   ) => {
-    await supabase.from('profiles').update({ [field]: value }).eq('id', user.id)
+    const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', user.id)
+    if (err) setError(t('common.saveError'))
     await refreshProfile()
   }
 
@@ -223,7 +224,8 @@ export default function SettingsPage() {
   }
 
   const setTheme = async (theme: Theme) => {
-    await supabase.from('profiles').update({ theme }).eq('id', user.id)
+    const { error: err } = await supabase.from('profiles').update({ theme }).eq('id', user.id)
+    if (err) setError(t('common.saveError'))
     await refreshProfile()
   }
 
@@ -232,17 +234,20 @@ export default function SettingsPage() {
   // listas que ya existen no cambian — su divisa se edita aparte, en los
   // ajustes de cada lista.
   const setCurrency = async (currency: (typeof CURRENCIES)[number]['code']) => {
-    await supabase.from('profiles').update({ currency }).eq('id', user.id)
+    const { error: err } = await supabase.from('profiles').update({ currency }).eq('id', user.id)
+    if (err) setError(t('common.saveError'))
     await refreshProfile()
   }
 
   const setAccentColor = async (color: string | null) => {
-    await supabase.from('profiles').update({ accent_color: color }).eq('id', user.id)
+    const { error: err } = await supabase.from('profiles').update({ accent_color: color }).eq('id', user.id)
+    if (err) setError(t('common.saveError'))
     await refreshProfile()
   }
 
   const setBackgroundColor = async (color: string | null) => {
-    await supabase.from('profiles').update({ background_color: color }).eq('id', user.id)
+    const { error: err } = await supabase.from('profiles').update({ background_color: color }).eq('id', user.id)
+    if (err) setError(t('common.saveError'))
     await refreshProfile()
   }
 

@@ -93,15 +93,14 @@ export default function ListsPage() {
   }
 
   const respondInvitation = async (listId: string, accept: boolean) => {
-    if (accept) {
-      await supabase
-        .from('list_members')
-        .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('list_id', listId)
-        .eq('user_id', profile!.id)
-    } else {
-      await supabase.from('list_members').delete().eq('list_id', listId).eq('user_id', profile!.id)
-    }
+    const { error: err } = accept
+      ? await supabase
+          .from('list_members')
+          .update({ status: 'accepted', responded_at: new Date().toISOString() })
+          .eq('list_id', listId)
+          .eq('user_id', profile!.id)
+      : await supabase.from('list_members').delete().eq('list_id', listId).eq('user_id', profile!.id)
+    if (err) setActionError(t('common.saveError'))
     refetch()
   }
 
@@ -158,12 +157,14 @@ export default function ListsPage() {
     if (!confirmComplete) return
     const { listId } = confirmComplete
     setConfirmComplete(null)
-    await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', listId)
+    const { error: err } = await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', listId)
+    if (err) setActionError(t('common.saveError'))
     refetch()
   }
 
   const reactivateList = async (listId: string) => {
-    await supabase.from('lists').update({ archived_at: null }).eq('id', listId)
+    const { error: err } = await supabase.from('lists').update({ archived_at: null }).eq('id', listId)
+    if (err) setActionError(t('common.saveError'))
     refetch()
   }
 
@@ -180,7 +181,11 @@ export default function ListsPage() {
     }
 
     // La copia mantiene la divisa de la lista original, no la del perfil.
-    await supabase.from('lists').update({ color: l.color, currency: l.currency }).eq('id', newList.id)
+    const { error: colorErr } = await supabase
+      .from('lists')
+      .update({ color: l.color, currency: l.currency })
+      .eq('id', newList.id)
+    if (colorErr) setActionError(t('common.saveError'))
 
     const { data: sourceItems } = await supabase.from('items').select('content').eq('list_id', l.id)
     if (sourceItems && sourceItems.length > 0 && profile) {
@@ -189,7 +194,8 @@ export default function ListsPage() {
         content: it.content,
         created_by: profile.id,
       }))
-      await supabase.from('items').insert(rows)
+      const { error: itemsErr } = await supabase.from('items').insert(rows)
+      if (itemsErr) setActionError(t('common.saveError'))
     }
 
     refetch()

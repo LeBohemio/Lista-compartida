@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { NoteWithMembership } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../lib/i18n'
 
 /**
  * Carga las notas comunes del usuario actual (ver migration_v23.sql),
@@ -11,6 +13,8 @@ import { useAuth } from '../context/AuthContext'
  */
 export function useNotes() {
   const { user } = useAuth()
+  const { showError } = useToast()
+  const { t } = useLanguage()
   const [notes, setNotes] = useState<NoteWithMembership[]>([])
   const [invitations, setInvitations] = useState<NoteWithMembership[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,23 +89,25 @@ export function useNotes() {
   const togglePin = useCallback(
     async (noteId: string, pinned: boolean) => {
       if (!user) return
-      await supabase.from('note_members').update({ pinned }).eq('note_id', noteId).eq('user_id', user.id)
+      const { error } = await supabase.from('note_members').update({ pinned }).eq('note_id', noteId).eq('user_id', user.id)
+      if (error) showError(t('common.saveError'))
       fetchNotes()
     },
-    [user, fetchNotes],
+    [user, fetchNotes, showError, t],
   )
 
   const reorderNotes = useCallback(
     async (orderedNoteIds: string[]) => {
       if (!user) return
-      await Promise.all(
+      const results = await Promise.all(
         orderedNoteIds.map((noteId, idx) =>
           supabase.from('note_members').update({ position: idx }).eq('note_id', noteId).eq('user_id', user.id),
         ),
       )
+      if (results.some((r) => r.error)) showError(t('common.saveError'))
       fetchNotes()
     },
-    [user, fetchNotes],
+    [user, fetchNotes, showError, t],
   )
 
   return { notes, invitations, loading, error, refetch: fetchNotes, togglePin, reorderNotes }

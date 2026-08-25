@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Note, NoteMember } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../lib/i18n'
 
 /**
  * Carga una nota común concreta y sus miembros (ver migration_v23.sql).
@@ -11,6 +13,8 @@ import { useAuth } from '../context/AuthContext'
  */
 export function useNoteDetail(noteId: string | undefined) {
   const { user } = useAuth()
+  const { showError } = useToast()
+  const { t } = useLanguage()
   const [note, setNote] = useState<Note | null>(null)
   const [members, setMembers] = useState<NoteMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,12 +65,13 @@ export function useNoteDetail(noteId: string | undefined) {
   const updateNote = useCallback(
     async (patch: { title?: string; body?: string; color?: string | null }) => {
       if (!noteId) return
-      await supabase
+      const { error } = await supabase
         .from('notes')
         .update({ ...patch, last_activity_at: new Date().toISOString() })
         .eq('id', noteId)
+      if (error) showError(t('common.saveError'))
     },
-    [noteId],
+    [noteId, showError, t],
   )
 
   const myMembership = members.find((m) => m.user_id === user?.id) ?? null

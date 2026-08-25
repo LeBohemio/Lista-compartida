@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { computeNetBalances, formatCurrency, simplifyDebts } from '../lib/balances'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { useToast } from '../context/ToastContext'
 import type { CurrencyCode } from '../lib/currencies'
 import type { Expense, ListMember, Settlement, SuggestedDebt } from '../lib/types'
 import SettleUpModal from './SettleUpModal'
@@ -23,6 +24,7 @@ export default function BalanceSummary({
 }) {
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const { showError } = useToast()
   const [settling, setSettling] = useState<SuggestedDebt | null>(null)
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [actingOnId, setActingOnId] = useState<string | null>(null)
@@ -34,13 +36,15 @@ export default function BalanceSummary({
 
   const confirmSettlement = async (id: string) => {
     setActingOnId(id)
-    await supabase.from('settlements').update({ confirmed_at: new Date().toISOString() }).eq('id', id)
+    const { error: err } = await supabase.from('settlements').update({ confirmed_at: new Date().toISOString() }).eq('id', id)
+    if (err) showError(t('common.saveError'))
     setActingOnId(null)
   }
 
   const removeSettlement = async (id: string) => {
     setActingOnId(id)
-    await supabase.from('settlements').delete().eq('id', id)
+    const { error: err } = await supabase.from('settlements').delete().eq('id', id)
+    if (err) showError(t('common.deleteError'))
     setActingOnId(null)
   }
 

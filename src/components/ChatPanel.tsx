@@ -773,7 +773,8 @@ export default function ChatPanel({
     setLastPendingId(messageId)
     const timer = setTimeout(async () => {
       timersRef.current.delete(messageId)
-      await supabase.from('messages').delete().eq('id', messageId)
+      const { error: err } = await supabase.from('messages').delete().eq('id', messageId)
+      if (err) setError(t('common.deleteError'))
       setPendingDeleteIds((prev) => {
         const next = new Set(prev)
         next.delete(messageId)

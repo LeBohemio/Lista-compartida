@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Expense, Item, List, ListMember, Message, Settlement } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../lib/i18n'
 import { attachReplyPreviews, MESSAGES_SELECT_BASIC } from '../lib/messagesQuery'
 
 export function useListData(listId: string | undefined) {
   const { user } = useAuth()
+  const { showError } = useToast()
+  const { t } = useLanguage()
   const [list, setList] = useState<List | null>(null)
   const [members, setMembers] = useState<ListMember[]>([])
   const [items, setItems] = useState<Item[]>([])
@@ -127,13 +131,14 @@ export function useListData(listId: string | undefined) {
 
   const clearChat = useCallback(async () => {
     if (!listId || !user) return
-    await supabase
+    const { error } = await supabase
       .from('list_members')
       .update({ chat_cleared_at: new Date().toISOString() })
       .eq('list_id', listId)
       .eq('user_id', user.id)
+    if (error) showError(t('common.saveError'))
     await fetchAll()
-  }, [listId, user, fetchAll])
+  }, [listId, user, fetchAll, showError, t])
 
   return {
     list,

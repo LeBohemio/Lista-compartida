@@ -60,7 +60,8 @@ export default function NotesPage() {
 
   const changeNoteColor = async (noteId: string, color: string) => {
     setColorPickerNote(null)
-    await supabase.from('notes').update({ color }).eq('id', noteId)
+    const { error: err } = await supabase.from('notes').update({ color }).eq('id', noteId)
+    if (err) setActionError(t('common.saveError'))
     refetch()
   }
 
@@ -88,15 +89,14 @@ export default function NotesPage() {
   }
 
   const respondInvitation = async (noteId: string, accept: boolean) => {
-    if (accept) {
-      await supabase
-        .from('note_members')
-        .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('note_id', noteId)
-        .eq('user_id', profile!.id)
-    } else {
-      await supabase.from('note_members').delete().eq('note_id', noteId).eq('user_id', profile!.id)
-    }
+    const { error: err } = accept
+      ? await supabase
+          .from('note_members')
+          .update({ status: 'accepted', responded_at: new Date().toISOString() })
+          .eq('note_id', noteId)
+          .eq('user_id', profile!.id)
+      : await supabase.from('note_members').delete().eq('note_id', noteId).eq('user_id', profile!.id)
+    if (err) setActionError(t('common.saveError'))
     refetch()
   }
 
@@ -141,7 +141,8 @@ export default function NotesPage() {
       setActionError(rpcErr?.message ?? t('apuntes.createError'))
       return
     }
-    await supabase.from('notes').update({ body: n.body, color: n.color }).eq('id', newNote.id)
+    const { error: bodyErr } = await supabase.from('notes').update({ body: n.body, color: n.color }).eq('id', newNote.id)
+    if (bodyErr) setActionError(t('common.saveError'))
     refetch()
     navigate(`/notes/${newNote.id}`)
   }

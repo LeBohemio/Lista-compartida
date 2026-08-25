@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { useLanguage } from './lib/i18n'
 import { applyTheme } from './lib/theme'
+import OfflineBanner from './components/OfflineBanner'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -42,7 +43,9 @@ function App() {
   }
 
   return (
-    <Routes>
+    <>
+      <OfflineBanner />
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -102,7 +105,8 @@ function App() {
       />
       <Route path="/" element={<Navigate to="/lists" replace />} />
       <Route path="*" element={<Navigate to="/lists" replace />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }
 
