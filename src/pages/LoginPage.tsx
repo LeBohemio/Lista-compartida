@@ -42,8 +42,9 @@ export default function LoginPage() {
           className="space-y-4 rounded-2xl p-6 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.email')}</label>
+            <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.email')}</label>
             <input
+              id="login-email"
               type="email"
               required
               autoComplete="email"
@@ -55,7 +56,7 @@ export default function LoginPage() {
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.password')}</label>
+              <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.password')}</label>
               <button
                 type="button"
                 onClick={() => setShowForgot(true)}
@@ -65,6 +66,7 @@ export default function LoginPage() {
               </button>
             </div>
             <input
+              id="login-password"
               type="password"
               required
               autoComplete="current-password"

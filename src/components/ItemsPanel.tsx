@@ -362,6 +362,7 @@ export default function ItemsPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('notes.searchPlaceholder')}
+          aria-label={t('common.search')}
           className="mb-4 w-full rounded-lg border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface)] dark:text-slate-100"
         />
       )}
@@ -377,10 +378,10 @@ export default function ItemsPanel({
 
       {visibleItems.length === 0 ? (
         searching ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('notes.emptySearch')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('notes.emptySearch')}</p>
         ) : (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-slate-400">{t('notes.empty')}</p>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">{t('notes.empty')}</p>
             {!readOnly && (
               <button
                 onClick={() => setShowAddSheet(true)}
@@ -471,11 +472,11 @@ export default function ItemsPanel({
                       <span className="flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                         {t(meta.labelKey)}
                       </span>
-                      <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                      <span className="shrink-0 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                         {doneCount}/{total}
                       </span>
                       <span
-                        className={`shrink-0 text-[10px] text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+                        className={`shrink-0 text-[10px] text-slate-500 dark:text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
                         aria-hidden="true"
                       >
                         ▾
@@ -564,7 +565,7 @@ export default function ItemsPanel({
 
             {doneItems.length > 0 && (
               <div className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-glass-border)]">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {t('notes.doneSectionLabel')} ({doneItems.length})
                 </p>
                 {!readOnly && (
@@ -787,6 +788,7 @@ function AddNoteSheet({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('notes.addPlaceholder')}
+            aria-label={t('notes.addTitle')}
             className="flex-1 rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
           />
           <button
@@ -848,6 +850,7 @@ function DueDateSheet({
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          aria-label={t('menu.dueDate')}
           className="mb-5 w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
         />
         <div className="flex gap-3">
@@ -907,6 +910,7 @@ function PriceSheet({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={t('notes.pricePlaceholder')}
+          aria-label={t('menu.price')}
           className="mb-5 w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
         />
         <div className="flex gap-3">
@@ -1041,7 +1045,7 @@ function ItemRow({
               // pointerup. Se trata igual que soltar el dedo normal.
               onPointerCancel={onDragPointerUp}
               aria-label={t('lists.dragHandle')}
-              className="-m-2 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+              className="-m-2 select-none p-2 text-slate-400 touch-none dark:text-slate-600"
               style={{ cursor: 'grab' }}
             >
               ⠿
@@ -1064,6 +1068,7 @@ function ItemRow({
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => onSaveEdit(draft)}
+              aria-label={t('notes.editItemInput')}
               className="w-full rounded border border-brand-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100 bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           ) : (
@@ -1076,7 +1081,19 @@ function ItemRow({
             <div className="flex items-end gap-2">
               <p
                 onClick={readOnly || inReorder ? undefined : startEdit}
-                className={`min-w-0 flex-1 break-words text-sm leading-[40px] ${item.done ? 'text-slate-400 line-through decoration-slate-300' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
+                onKeyDown={
+                  readOnly || inReorder
+                    ? undefined
+                    : (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          startEdit()
+                        }
+                      }
+                }
+                role={readOnly || inReorder ? undefined : 'button'}
+                tabIndex={readOnly || inReorder ? undefined : 0}
+                className={`min-w-0 flex-1 break-words text-sm leading-[40px] ${item.done ? 'text-slate-500 line-through decoration-slate-400 dark:text-slate-400 dark:decoration-slate-500' : readOnly ? 'text-slate-800 dark:text-slate-100' : 'cursor-text text-slate-800 dark:text-slate-100'}`}
               >
                 {item.content}
               </p>
@@ -1098,7 +1115,7 @@ function ItemRow({
                     ? 'font-medium text-red-500 dark:text-red-400'
                     : dueToday
                       ? 'font-medium text-amber-600 dark:text-amber-400'
-                      : 'text-slate-400'
+                      : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 {t('notes.due')}: {formatDueDate(item.due_date, language)}

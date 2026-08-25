@@ -1,0 +1,14 @@
+// Proyecto Android mínimo para envolver NoteUs como Trusted Web Activity
+// (TWA) — una app nativa que abre tu web (lista-compartida-app.vercel.app)
+// a pantalla completa, sin barra de navegador, usando Chrome por debajo.
+//
+// IMPORTANTE — esto es una referencia sin compilar aquí (este entorno no
+// tiene Android SDK ni acceso a internet para descargarlo), no un proyecto
+// verificado. Antes de usarlo de verdad, lee ANDROID_PLAY_STORE_SETUP.md:
+// para alguien sin experiencia en Android, el camino recomendado es
+// PWABuilder.com (que genera y compila todo esto por ti, sin instalar
+// nada) — este proyecto es solo por si en algún momento un desarrollador
+// quiere partir de una base ya montada en vez de usar PWABuilder.
+
+include ':app'
+rootProject.name = "NoteUs"

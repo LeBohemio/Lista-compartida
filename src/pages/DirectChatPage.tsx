@@ -108,7 +108,7 @@ export default function DirectChatPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-400">{t('list.loading')}</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('list.loading')}</p>
       </div>
     )
   }
@@ -139,7 +139,11 @@ export default function DirectChatPage() {
         <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
         <div className="relative mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <button onClick={() => navigate('/contacts')} className="text-xl text-white/80 hover:text-white">
+            <button
+              onClick={() => navigate('/contacts')}
+              aria-label={t('common.back')}
+              className="text-xl text-white/80 hover:text-white"
+            >
               ‹
             </button>
             <Avatar

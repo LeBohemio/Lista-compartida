@@ -815,7 +815,7 @@ export default function ChatPanel({
     <div>
       <div className="space-y-3 pb-24">
         {visibleMessages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('chat.empty')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('chat.empty')}</p>
         ) : (
           visibleMessages.map((m, idx) => {
             const prev = idx > 0 ? visibleMessages[idx - 1] : null
@@ -887,7 +887,7 @@ export default function ChatPanel({
                 type="button"
                 onClick={() => setReplyTarget(null)}
                 aria-label={t('common.close')}
-                className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="shrink-0 text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 <CloseIcon className="h-4 w-4" />
               </button>
@@ -906,7 +906,7 @@ export default function ChatPanel({
                 type="button"
                 onClick={cancelEdit}
                 aria-label={t('common.close')}
-                className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="shrink-0 text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 <CloseIcon className="h-4 w-4" />
               </button>
@@ -936,7 +936,7 @@ export default function ChatPanel({
                       <span className="tabular-nums text-sm text-slate-500 dark:text-slate-400">
                         {formatDuration(recordingSeconds)}
                       </span>
-                      <span className="ml-auto text-xs text-slate-400">{t('chat.slideToCancel')}</span>
+                      <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">{t('chat.slideToCancel')}</span>
                     </>
                   )}
                 </div>
@@ -993,6 +993,7 @@ export default function ChatPanel({
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleComposerKeyDown}
                     placeholder={t('chat.placeholder')}
+                    aria-label={t('chat.placeholder')}
                     rows={1}
                     // Fondo translúcido con el mismo color que ".glass-panel"
                     // pero SIN backdrop-filter: ese desenfoque, aplicado a un
@@ -1116,6 +1117,7 @@ export default function ChatPanel({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder={t('chat.captionPlaceholder')}
+              aria-label={t('chat.captionPlaceholder')}
               className="mb-3 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
             {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
@@ -1157,7 +1159,7 @@ export default function ChatPanel({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{pendingFile.name}</p>
-                <p className="text-xs text-slate-400">{formatFileSize(pendingFile.size)}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{formatFileSize(pendingFile.size)}</p>
               </div>
             </div>
             <input
@@ -1165,6 +1167,7 @@ export default function ChatPanel({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder={t('chat.captionPlaceholder')}
+              aria-label={t('chat.captionPlaceholder')}
               className="mb-3 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
             {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
@@ -1455,10 +1458,10 @@ function MessageBubble({
                 // eslint-disable-next-line jsx-a11y/media-has-caption
                 <audio controls preload="metadata" src={audioUrl} className="h-10 w-56 max-w-full" />
               ) : (
-                <p className="text-xs italic text-slate-400">{t('chat.loadingAudio')}</p>
+                <p className="text-xs italic text-slate-500 dark:text-slate-400">{t('chat.loadingAudio')}</p>
               )}
               {m.audio_duration_seconds != null && (
-                <span className={`text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-400'}`}>
+                <span className={`text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
                   {formatDuration(m.audio_duration_seconds)}
                 </span>
               )}
@@ -1490,7 +1493,7 @@ function MessageBubble({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{m.file_name ?? t('chat.replyFile')}</span>
                 {m.file_size_bytes != null && (
-                  <span className={`text-xs ${isMine ? 'text-white/70' : 'text-slate-400'}`}>
+                  <span className={`text-xs ${isMine ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
                     {formatFileSize(m.file_size_bytes)}
                   </span>
                 )}
@@ -1500,7 +1503,7 @@ function MessageBubble({
           {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
           </div>
         </div>
-        <p className="mt-0.5 px-1 text-[10px] text-slate-400">
+        <p className="mt-0.5 px-1 text-[10px] text-slate-500 dark:text-slate-400">
           {m.edited_at && `${t('chat.edited')} · `}
           {new Date(m.created_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'es-ES', {
             hour: '2-digit',

@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">NoteUs</string>
+
+    <!-- Declaración "de ida" (además del assetlinks.json "de vuelta" que
+         tiene que estar en tu web) — le dice a Android qué web tiene
+         permiso para abrirse sin barra de Chrome dentro de esta app.
+         Tiene que apuntar exactamente a tu dominio real. -->
+    <string name="asset_statements">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {
+                \"namespace\": \"web\",
+                \"site\": \"https://lista-compartida-app.vercel.app\"
+            }
+        }]
+    </string>
+</resources>

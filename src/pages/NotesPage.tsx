@@ -23,7 +23,7 @@ import {
   SortDateIcon,
   TrashIcon,
 } from '../components/icons'
-import { PALETTE, colorForNote } from '../lib/colors'
+import { PALETTE, colorForNote, colorNameKey } from '../lib/colors'
 import type { NoteWithMembership } from '../lib/types'
 
 // Pantalla de "Notas comunes" (ver migration_v23.sql) — algo aparte de las
@@ -249,14 +249,14 @@ export default function NotesPage() {
           )}
 
           {loading ? (
-            <p className="py-6 text-center text-sm text-slate-400">{t('list.loading')}</p>
+            <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('list.loading')}</p>
           ) : activeNotes.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">{t('apuntes.empty')}</p>
+            <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('apuntes.empty')}</p>
           ) : normalizedQuery ? (
             // Mientras se busca, sin arrastre (igual que "Mis listas") — no
             // tiene sentido reordenar un subconjunto filtrado.
             visibleNotes.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">{t('lists.emptySearch')}</p>
+              <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('lists.emptySearch')}</p>
             ) : (
               <ul className="space-y-2.5">
                 {visibleNotes.map((n) => (
@@ -356,7 +356,7 @@ export default function NotesPage() {
                   type="button"
                   key={c}
                   onClick={() => changeNoteColor(colorPickerNote.id, c)}
-                  aria-label={`Color ${c}`}
+                  aria-label={t(colorNameKey(c))}
                   className="h-9 w-9 rounded-full"
                   style={{
                     backgroundColor: c,
@@ -497,13 +497,13 @@ function NoteRow({
           onPointerUp={onDragPointerUp}
           onPointerCancel={onDragPointerUp}
           aria-label={t('lists.dragHandle')}
-          className="-m-2 mt-0.5 shrink-0 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+          className="-m-2 mt-0.5 shrink-0 select-none p-2 text-slate-400 touch-none dark:text-slate-600"
           style={{ cursor: 'grab' }}
         >
           ⠿
         </button>
       ) : (
-        <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
+        <span className="mt-0.5 shrink-0 text-slate-500 dark:text-slate-400">
           <NotesIcon className="h-5 w-5" />
         </span>
       )}
@@ -522,7 +522,7 @@ function NoteRow({
           onClick={onDeleteRequest}
           aria-label={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
           title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
-          className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
+          className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
         >
           <TrashIcon className="h-4 w-4" />
         </button>

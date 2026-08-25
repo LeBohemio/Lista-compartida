@@ -101,11 +101,11 @@ export default function AvatarPicker({
           {selected ? (
             <img
               src={selected}
-              alt=""
+              alt={t('avatarPicker.currentSelection')}
               className="h-24 w-24 rounded-full object-cover ring-4 ring-brand-100 dark:ring-brand-950/50"
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed text-xs text-slate-400 border-[var(--color-glass-border)]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed text-xs text-slate-500 dark:text-slate-400 border-[var(--color-glass-border)]">
               {t('avatarPicker.noneSelected')}
             </div>
           )}

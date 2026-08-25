@@ -34,14 +34,14 @@ export default function GreetingSummary({
             onClick={onClose}
             aria-label={t('common.close')}
             title={t('common.close')}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-full p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
             <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 
         {lists.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-slate-400">{t('lists.empty')}</p>
+          <p className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
         ) : (
           <div className="flex-1 overflow-y-auto px-2 pb-3">
             {lists.map((l) => {

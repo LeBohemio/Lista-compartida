@@ -100,6 +100,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           onChange={(e) => setConfirmText(e.target.value)}
           className="mb-4 w-full rounded-2xl border px-3 py-2.5 text-base focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
           placeholder={confirmWord}
+          aria-label={t('account.typeToConfirm', { word: confirmWord })}
         />
 
         {error && (

@@ -23,7 +23,7 @@ export default function AccountDeletionPage() {
         <div className="mb-8 text-center">
           <Logo size={48} className="mx-auto mb-3 rounded-2xl shadow-md" />
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('legal.deletionTitle')}</h1>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{t('legal.deletionUpdated')}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('legal.deletionUpdated')}</p>
         </div>
 
         <div className="space-y-5 rounded-2xl p-6 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">

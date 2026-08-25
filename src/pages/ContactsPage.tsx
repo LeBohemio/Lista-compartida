@@ -277,6 +277,7 @@ export default function ContactsPage() {
                   value={addIdentifier}
                   onChange={(e) => setAddIdentifier(e.target.value)}
                   placeholder={t('contacts.addPlaceholder')}
+                  aria-label={t('contacts.addPlaceholder')}
                   autoFocus
                   className="min-w-0 flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
                 />
@@ -303,17 +304,18 @@ export default function ContactsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('invite.searchContacts')}
+              aria-label={t('common.search')}
               className="mb-3 w-full rounded-full border px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             />
           )}
 
           <div className="glass-panel overflow-hidden rounded-[26px]">
             {loading ? (
-              <p className="py-8 text-center text-sm text-slate-400">{t('common.loading')}</p>
+              <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
             ) : contacts.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">{t('contacts.empty')}</p>
+              <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('contacts.empty')}</p>
             ) : visibleContacts.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">{t('invite.noContactsMatch')}</p>
+              <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('invite.noContactsMatch')}</p>
             ) : (
               <ul className="divide-y divide-[var(--color-glass-border)]">
                 {visibleContacts.map((c) => (
@@ -339,10 +341,10 @@ export default function ContactsPage() {
                         )}
                         {c.contact!.username}
                         {isCurrentlyMuted(c.muted, c.muted_until) && (
-                          <BellOffIcon className="ml-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-slate-400" />
+                          <BellOffIcon className="ml-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-slate-500 dark:text-slate-400" />
                         )}
                         {c.blocked_at && (
-                          <span className="ml-1 inline-flex align-middle text-slate-400" title={t('contacts.blockedBadge')}>
+                          <span className="ml-1 inline-flex align-middle text-slate-500 dark:text-slate-400" title={t('contacts.blockedBadge')}>
                             <BlockIcon className="h-3.5 w-3.5" />
                           </span>
                         )}
@@ -359,7 +361,7 @@ export default function ContactsPage() {
                             : t('card.openChat')
                         }
                         title={t('card.openChat')}
-                        className="relative shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                        className="relative shrink-0 rounded-full p-1.5 text-slate-500 dark:text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
                       >
                         <ChatBubbleIcon className="h-5 w-5" />
                         {/* Cuántos mensajes suyos no has abierto todavía —
@@ -383,7 +385,7 @@ export default function ContactsPage() {
                         }}
                         aria-label={t('contacts.remove')}
                         title={t('contacts.remove')}
-                        className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        className="shrink-0 rounded-full p-1.5 text-slate-500 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>

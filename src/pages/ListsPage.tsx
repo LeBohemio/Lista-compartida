@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useMemo, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -368,7 +368,7 @@ export default function ListsPage() {
           )}
 
           {loading ? (
-            <p className="text-sm text-slate-400">{t('lists.loadingLists')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('lists.loadingLists')}</p>
           ) : activeLists.length === 0 ? (
             <div className="glass-panel rounded-[26px] p-8 text-center">
               <p className="mb-4 text-slate-500 dark:text-slate-400">{t('lists.empty')}</p>
@@ -384,7 +384,7 @@ export default function ListsPage() {
             // (no tiene sentido reordenar un subconjunto) — el orden real no
             // se toca para nada.
             visibleActiveLists.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">{t('lists.emptySearch')}</p>
+              <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('lists.emptySearch')}</p>
             ) : (
               <div className="glass-panel overflow-hidden rounded-[26px]">
                 {visibleActiveLists.map((l) => (
@@ -603,10 +603,16 @@ function ListRow({
   }
 
   const inReorder = reorderMode && !!onDragPointerDown
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') onOpen()
+  }
+
   return (
     <div
       ref={onRowRef}
       onClick={inReorder ? undefined : onOpen}
+      onKeyDown={inReorder ? undefined : handleKeyDown}
       role={inReorder ? undefined : 'button'}
       tabIndex={inReorder ? undefined : 0}
       className={`w-full p-4 text-left transition ${inReorder ? 'select-none' : ''} ${
@@ -641,7 +647,7 @@ function ListRow({
               // trata igual que soltar el dedo normal.
               onPointerCancel={onDragPointerUp}
               aria-label={t('lists.dragHandle')}
-              className="-m-2 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+              className="-m-2 select-none p-2 text-slate-400 touch-none dark:text-slate-600"
               style={{ cursor: 'grab' }}
             >
               ⠿
@@ -700,11 +706,11 @@ function ListRow({
             onClick={onDeleteRequest}
             aria-label={isOwner ? t('lists.deleteList') : t('lists.leaveList')}
             title={isOwner ? t('lists.deleteList') : t('lists.leaveList')}
-            className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
           >
             <TrashIcon className="h-4 w-4" />
           </button>
-          <span className="text-slate-300 dark:text-slate-600">›</span>
+          <span className="text-slate-400 dark:text-slate-600">›</span>
         </div>
       </div>
       {progressPct !== null && (
@@ -712,7 +718,7 @@ function ListRow({
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
             <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${progressPct}%` }} />
           </div>
-          <span className="shrink-0 text-[11px] text-slate-400">
+          <span className="shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
             {stats!.done}/{stats!.total}
           </span>
         </div>

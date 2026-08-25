@@ -463,7 +463,7 @@ export default function SettingsPage() {
                     }}
                   >
                     {opt.value === null && (
-                      <span className="absolute inset-0 flex items-center justify-center text-slate-400">
+                      <span className="absolute inset-0 flex items-center justify-center text-slate-500 dark:text-slate-400">
                         <CloseIcon className="h-3 w-3" />
                       </span>
                     )}
@@ -494,8 +494,9 @@ export default function SettingsPage() {
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.currency')}</p>
+            <p id="settings-currency-label" className="mb-2 text-xs text-slate-500 dark:text-slate-400">{t('profile.currency')}</p>
             <select
+              aria-labelledby="settings-currency-label"
               value={profile.currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
               className="w-full rounded-2xl border px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
@@ -506,7 +507,7 @@ export default function SettingsPage() {
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">{t('profile.currencyHint')}</p>
+            <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">{t('profile.currencyHint')}</p>
           </div>
         </div>
 
@@ -514,7 +515,7 @@ export default function SettingsPage() {
           <p className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('profile.notifications')}</p>
 
           {!isPushSupported() ? (
-            <p className="text-xs text-slate-400">{t('profile.pushUnsupported')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.pushUnsupported')}</p>
           ) : (
             <>
               <button
@@ -616,12 +617,12 @@ export default function SettingsPage() {
                       <span className="min-w-0 flex-1">
                         <span
                           className={`block text-sm font-medium ${
-                            row.value ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'
+                            row.value ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
                           }`}
                         >
                           {row.label}
                         </span>
-                        <span className="block text-[11.5px] text-slate-400 dark:text-slate-500">{row.desc}</span>
+                        <span className="block text-[11.5px] text-slate-500 dark:text-slate-400">{row.desc}</span>
                       </span>
                       <span
                         aria-hidden="true"
@@ -647,13 +648,14 @@ export default function SettingsPage() {
           <p className="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('profile.accountSection')}</p>
 
           <div className="space-y-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeUsername')}</p>
+            <p id="settings-username-label" className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeUsername')}</p>
             <form onSubmit={handleChangeUsername} className="space-y-2">
               <input
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder={profile.username}
+                aria-labelledby="settings-username-label"
                 className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {usernameMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{usernameMessage}</p>}
@@ -668,13 +670,14 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2 border-t pt-4 border-[var(--color-glass-border)]">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeEmail')}</p>
+            <p id="settings-email-label" className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changeEmail')}</p>
             <form onSubmit={handleChangeEmail} className="space-y-2">
               <input
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder={t('profile.newEmailPlaceholder')}
+                aria-labelledby="settings-email-label"
                 className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {emailMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{emailMessage}</p>}
@@ -689,14 +692,15 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2 border-t pt-4 border-[var(--color-glass-border)]">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changePhone')}</p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">{t('profile.phoneHint')}</p>
+            <p id="settings-phone-label" className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changePhone')}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('profile.phoneHint')}</p>
             <form onSubmit={handleChangePhone} className="space-y-2">
               <input
                 type="tel"
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 placeholder={profile.phone ?? t('profile.phonePlaceholder')}
+                aria-labelledby="settings-phone-label"
                 className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {phoneMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{phoneMessage}</p>}
@@ -718,6 +722,7 @@ export default function SettingsPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t('profile.newPassword')}
+                aria-label={t('profile.newPassword')}
                 className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               <input
@@ -725,6 +730,7 @@ export default function SettingsPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t('profile.repeatPassword')}
+                aria-label={t('profile.repeatPassword')}
                 className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {passwordMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{passwordMessage}</p>}
@@ -748,12 +754,12 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setShowDelete(true)}
-          className="mt-4 w-full text-center text-xs text-red-400 hover:text-red-600"
+          className="mt-4 w-full text-center text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
         >
           {t('profile.deleteAccount')}
         </button>
 
-        <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
           <Link to="/legal/privacidad" className="underline hover:text-slate-600 dark:hover:text-slate-300">
             {t('legal.privacyLinkSettings')}
           </Link>

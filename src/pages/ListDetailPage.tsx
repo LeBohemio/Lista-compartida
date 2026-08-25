@@ -159,7 +159,7 @@ export default function ListDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-alt)]">
-        <p className="text-slate-400">{t('list.loading')}</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('list.loading')}</p>
       </div>
     )
   }
@@ -295,6 +295,7 @@ export default function ListDetailPage() {
                 siempre. */}
             <button
               onClick={() => (tab === 'chat' ? setTab('notas') : navigate('/lists'))}
+              aria-label={t('common.back')}
               className="shrink-0 text-xl text-white/80 hover:text-white"
             >
               ‹
@@ -429,7 +430,7 @@ export default function ListDetailPage() {
                             ? setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? t('list.thisUser') })
                             : showOwnerOnlyToast(t('list.ownerOnlyRemoveMember'))
                         }
-                        className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
+                        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
                         aria-label={t('list.removeMember')}
                         title={t('list.removeMember')}
                       >
@@ -543,7 +544,7 @@ export default function ListDetailPage() {
               <div className="mb-3 flex items-center justify-end gap-3">
                 <button
                   onClick={toggleMuted}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400"
                 >
                   {isCurrentlyMuted(myMembership.muted, myMembership.muted_until) ? (
                     <BellOffIcon className="h-3.5 w-3.5" />
@@ -556,7 +557,7 @@ export default function ListDetailPage() {
                   type="button"
                   onClick={() => setShowChatMenu(true)}
                   aria-label={t('common.more')}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   <MoreIcon className="h-5 w-5" />
                 </button>

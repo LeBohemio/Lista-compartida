@@ -1,0 +1,8 @@
+<resources>
+    <!-- Mismo morado de acento que usa la app por defecto (--color-brand-600
+         en src/index.css). Si cambias el acento por defecto de la web,
+         puedes actualizar esto a juego, aunque no es obligatorio. -->
+    <color name="colorPrimary">#4f46e5</color>
+    <color name="colorPrimaryDark">#4338ca</color>
+    <color name="backgroundColor">#ffffff</color>
+</resources>

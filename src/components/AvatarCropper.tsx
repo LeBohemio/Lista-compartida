@@ -142,6 +142,7 @@ export default function AvatarCropper({
             setScale(next)
             setOffset((prev) => clamp(prev))
           }}
+          aria-label={t('avatar.zoomLabel')}
           className="mt-5 w-full accent-brand-600"
         />
 

@@ -106,7 +106,20 @@ const translations = {
     'accent.pink': 'Rosa',
     'accent.red': 'Rojo',
     'accent.indigo': 'Índigo',
+    'accent.violet': 'Violeta',
+    'accent.teal': 'Verde azulado',
     'accent.black': 'Negro',
+    // Claves añadidas en la pasada de accesibilidad: aria-label del botón
+    // "volver" (antes solo tenía el glifo "‹" sin nombre accesible), del
+    // campo de zoom del recortador de avatar, del input de editar una nota
+    // de la lista, de los campos de reparto personalizado por persona, y del
+    // avatar grande seleccionado en AvatarPicker.
+    'common.back': 'Volver',
+    'avatar.zoomLabel': 'Nivel de zoom',
+    'notes.editItemInput': 'Editar el texto de la nota',
+    'expenses.percentForLabel': 'Porcentaje de {name}',
+    'expenses.amountForLabel': 'Importe de {name}',
+    'avatarPicker.currentSelection': 'Avatar seleccionado actualmente',
     'profile.notifications': 'Notificaciones',
     'profile.pushEnableToggle': 'Activar notificaciones',
     'profile.pushUnsupported': 'Tu navegador no admite notificaciones push.',
@@ -713,7 +726,15 @@ const translations = {
     'accent.pink': 'Pink',
     'accent.red': 'Red',
     'accent.indigo': 'Indigo',
+    'accent.violet': 'Violet',
+    'accent.teal': 'Teal',
     'accent.black': 'Black',
+    'common.back': 'Back',
+    'avatar.zoomLabel': 'Zoom level',
+    'notes.editItemInput': 'Edit the item text',
+    'expenses.percentForLabel': "{name}'s percentage",
+    'expenses.amountForLabel': "{name}'s amount",
+    'avatarPicker.currentSelection': 'Currently selected avatar',
     'profile.notifications': 'Notifications',
     'profile.pushEnableToggle': 'Enable notifications',
     'profile.pushUnsupported': 'Your browser does not support push notifications.',

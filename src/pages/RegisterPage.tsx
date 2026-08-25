@@ -68,8 +68,9 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl p-6 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.username')}</label>
+            <label htmlFor="register-username" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.username')}</label>
             <input
+              id="register-username"
               type="text"
               required
               value={username}
@@ -79,8 +80,9 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.email')}</label>
+            <label htmlFor="register-email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.email')}</label>
             <input
+              id="register-email"
               type="email"
               required
               autoComplete="email"
@@ -91,8 +93,9 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.password')}</label>
+            <label htmlFor="register-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('auth.password')}</label>
             <input
+              id="register-password"
               type="password"
               required
               autoComplete="new-password"
@@ -113,7 +116,7 @@ export default function RegisterPage() {
             {submitting ? t('auth.creatingAccount') : t('auth.createAccount')}
           </button>
 
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
             {t('legal.privacyLinkRegister')}{' '}
             <Link to="/legal/privacidad" className="underline hover:text-slate-600 dark:hover:text-slate-300">
               {t('legal.privacyLinkSettings').toLowerCase()}

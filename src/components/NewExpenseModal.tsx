@@ -342,7 +342,7 @@ export default function NewExpenseModal({
             />
             <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
             {!previewUrl && isEditing && editing?.receipt_image_path && (
-              <p className="mt-2 text-xs text-slate-400">{t('expenses.receiptSavedHint')}</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('expenses.receiptSavedHint')}</p>
             )}
             {previewUrl && (
               <img src={previewUrl} alt={t('expenses.receiptPreviewAlt')} className="mt-3 max-h-48 rounded-lg object-contain" />
@@ -360,10 +360,11 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="new-expense-amount" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('expenses.totalAmount', { symbol: currencySymbol(currency) })}
             </label>
             <input
+              id="new-expense-amount"
               type="text"
               inputMode="decimal"
               value={amountInput}
@@ -378,8 +379,9 @@ export default function NewExpenseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.description')}</label>
+            <label htmlFor="new-expense-description" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.description')}</label>
             <input
+              id="new-expense-description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -419,15 +421,16 @@ export default function NewExpenseModal({
               <span>
                 <span className="font-medium">{t('expenses.noDebt')}</span>
                 <br />
-                <span className="text-xs text-slate-400">{t('expenses.noDebtHint')}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.noDebtHint')}</span>
               </span>
             </label>
           </div>
 
           {!noDebt && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.whoPaid')}</label>
+              <label htmlFor="new-expense-paid-by" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('expenses.whoPaid')}</label>
               <select
+                id="new-expense-paid-by"
                 value={paidBy}
                 onChange={(e) => setPaidBy(e.target.value)}
                 className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
@@ -516,9 +519,10 @@ export default function NewExpenseModal({
                           value={percentAmounts[m.user_id] ?? ''}
                           onChange={(e) => setPercentAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))}
                           placeholder="0"
+                          aria-label={t('expenses.percentForLabel', { name: m.profile?.username ?? m.user_id })}
                           className="w-16 rounded-2xl border px-2 py-1.5 pr-5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
                         />
-                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400">%</span>
                       </div>
                       <span className="w-16 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400">
                         {(() => {
@@ -537,6 +541,7 @@ export default function NewExpenseModal({
                         setCustomAmounts((prev) => ({ ...prev, [m.user_id]: e.target.value }))
                       }
                       placeholder="0.00"
+                      aria-label={t('expenses.amountForLabel', { name: m.profile?.username ?? m.user_id })}
                       className="w-24 rounded-2xl border px-2 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
                     />
                   )}
@@ -561,7 +566,7 @@ export default function NewExpenseModal({
               </p>
             )}
             {!splitComplete && (splitMode === 'custom' || splitMode === 'percent') && (
-              <p className="mt-2 text-xs text-slate-400">{t('expenses.draftHint')}</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('expenses.draftHint')}</p>
             )}
           </div>
 

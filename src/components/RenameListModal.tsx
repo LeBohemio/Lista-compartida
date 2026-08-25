@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
-import { PALETTE } from '../lib/colors'
+import { PALETTE, colorNameKey } from '../lib/colors'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import { useLanguage } from '../lib/i18n'
 import AvatarCropper from './AvatarCropper'
@@ -142,8 +142,9 @@ export default function RenameListModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('list.name')}</label>
+            <label htmlFor="rename-list-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('list.name')}</label>
             <input
+              id="rename-list-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -159,7 +160,7 @@ export default function RenameListModal({
                   type="button"
                   key={c}
                   onClick={() => setColor(c)}
-                  aria-label={`Color ${c}`}
+                  aria-label={t(colorNameKey(c))}
                   className="h-8 w-8 rounded-full ring-offset-2 transition"
                   style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
                 />
@@ -168,8 +169,9 @@ export default function RenameListModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.currency')}</label>
+            <label htmlFor="rename-list-currency" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.currency')}</label>
             <select
+              id="rename-list-currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
               className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"

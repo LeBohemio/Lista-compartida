@@ -53,6 +53,7 @@ export default function ForgotPasswordModal({ onClose }: { onClose: () => void }
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('auth.emailPlaceholder')}
+              aria-label={t('auth.email')}
               className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
             />
             {error && (

@@ -214,7 +214,7 @@ export default function ExpensesPanel({
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('expenses.historic')}</h3>
-          <p className="text-xs text-slate-400">{t('expenses.historicSubtitle')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.historicSubtitle')}</p>
         </div>
         {categoryFilter && (
           <button
@@ -233,18 +233,19 @@ export default function ExpensesPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('expenses.searchPlaceholder')}
+          aria-label={t('common.search')}
           className="mb-3 w-full rounded-full border px-3.5 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
         />
       )}
 
       {filteredLedger.length === 0 ? (
         categoryFilter ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('expenses.emptyCategoryFilter')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('expenses.emptyCategoryFilter')}</p>
         ) : search.trim() ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('expenses.emptySearch')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('expenses.emptySearch')}</p>
         ) : (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-slate-400">{t('expenses.empty')}</p>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">{t('expenses.empty')}</p>
             {!readOnly && (
               <button
                 onClick={() => setShowNew(true)}
@@ -287,7 +288,7 @@ export default function ExpensesPanel({
                             ? ` · ${t('expenses.paidBy', { name: row.data.payer?.username ?? '—' })}`
                             : ''}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(row.data.created_at).toLocaleString(language === 'en' ? 'en-US' : 'es-ES')}
                         {row.data.is_draft && (
                           <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">{t('expenses.draftBadge')}</span>
@@ -305,7 +306,7 @@ export default function ExpensesPanel({
                               e.stopPropagation()
                               setEditingExpense(row.data)
                             }}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                             aria-label={t('expenses.edit')}
                             title={t('expenses.edit')}
                           >
@@ -314,7 +315,7 @@ export default function ExpensesPanel({
                         )}
                         <button
                           onClick={(e) => requestDelete(e, row.data.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
+                          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
                           aria-label={t('expenses.delete')}
                           title={t('expenses.delete')}
                         >
@@ -331,7 +332,7 @@ export default function ExpensesPanel({
                         {receiptUrl ? (
                           <img src={receiptUrl} alt={t('expenses.ticket')} className="max-h-64 rounded-lg object-contain" />
                         ) : (
-                          <p className="text-xs text-slate-400">{t('expenses.loadingImage')}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.loadingImage')}</p>
                         )}
                       </div>
                     )}

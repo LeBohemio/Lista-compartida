@@ -284,7 +284,7 @@ export default function ContactCardSheet({
         )}
 
         <div className="px-6 pb-6">
-          {state.kind === 'loading' && <p className="py-6 text-center text-sm text-slate-400">{t('card.loading')}</p>}
+          {state.kind === 'loading' && <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('card.loading')}</p>}
 
           {state.kind === 'contact' && (
             <div className="space-y-2">
@@ -465,7 +465,7 @@ function CardAction({
       <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
       <span className="flex-1">
         {label}
-        {hint && <span className="block text-xs font-normal text-slate-400">{hint}</span>}
+        {hint && <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">{hint}</span>}
       </span>
     </button>
   )

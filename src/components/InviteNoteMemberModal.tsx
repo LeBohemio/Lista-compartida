@@ -167,7 +167,7 @@ export default function InviteNoteMemberModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-6">
           {!loadingContacts && contacts.length > 0 && (
             <div className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t('invite.yourContacts')}
               </p>
               <input
@@ -175,10 +175,11 @@ export default function InviteNoteMemberModal({
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
                 placeholder={t('invite.searchContacts')}
+                aria-label={t('common.search')}
                 className="mb-2 w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               {availableContacts.length === 0 ? (
-                <p className="py-3 text-center text-sm text-slate-400">
+                <p className="py-3 text-center text-sm text-slate-500 dark:text-slate-400">
                   {normalizedSearch ? t('invite.noContactsMatch') : t('invite.allContactsAdded')}
                 </p>
               ) : (
@@ -214,6 +215,7 @@ export default function InviteNoteMemberModal({
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={t('invite.placeholder')}
+                aria-label={t('invite.placeholder')}
                 className="min-w-0 flex-1 rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
               />
               <button

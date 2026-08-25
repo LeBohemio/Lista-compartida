@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useLanguage } from '../lib/i18n'
 import { useToast } from '../context/ToastContext'
-import { PALETTE } from '../lib/colors'
+import { PALETTE, colorNameKey } from '../lib/colors'
 
 export default function CreateNoteModal({
   onClose,
@@ -68,10 +68,11 @@ export default function CreateNoteModal({
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('apuntes.createTitle')}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="create-note-title" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('apuntes.titleLabel')}
             </label>
             <input
+              id="create-note-title"
               type="text"
               autoFocus
               value={title}
@@ -92,7 +93,7 @@ export default function CreateNoteModal({
                   type="button"
                   key={c}
                   onClick={() => setColor((cur) => (cur === c ? null : c))}
-                  aria-label={`Color ${c}`}
+                  aria-label={t(colorNameKey(c))}
                   className="h-8 w-8 rounded-full transition"
                   style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
                 />

@@ -109,7 +109,7 @@ export default function BalanceSummary({
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Balance</h3>
         <button
           onClick={shareBalance}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           aria-label={t('balance.share')}
           title={t('balance.share')}
         >
@@ -179,7 +179,7 @@ export default function BalanceSummary({
                     ? 'text-green-600 dark:text-green-400'
                     : balance < -0.004
                       ? 'text-red-500 dark:text-red-400'
-                      : 'text-slate-400'
+                      : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 {balance > 0.004
@@ -194,7 +194,7 @@ export default function BalanceSummary({
       </div>
 
       {suggestedDebts.length === 0 ? (
-        <p className="text-sm text-slate-400">{t('balance.noDebts')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('balance.noDebts')}</p>
       ) : (
         <div className="space-y-2 border-t pt-3 border-[var(--color-glass-border)]">
           {suggestedDebts.map((d, idx) => {

@@ -10,7 +10,7 @@ import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
 import { CloseIcon, HelpCircleIcon, NumberedListIcon, TrashIcon } from '../components/icons'
-import { PALETTE, colorForNote } from '../lib/colors'
+import { PALETTE, colorForNote, colorNameKey } from '../lib/colors'
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -188,7 +188,7 @@ export default function NoteDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-400">{t('list.loading')}</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('list.loading')}</p>
       </div>
     )
   }
@@ -218,7 +218,11 @@ export default function NoteDetailPage() {
         <span className="pointer-events-none absolute -right-8 -top-16 h-36 w-36 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
         <span className="pointer-events-none absolute -bottom-10 right-14 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
         <div className="relative mx-auto flex max-w-2xl items-center justify-between gap-2">
-          <button onClick={() => navigate('/notes')} className="shrink-0 text-xl text-white/80 hover:text-white">
+          <button
+            onClick={() => navigate('/notes')}
+            aria-label={t('common.back')}
+            className="shrink-0 text-xl text-white/80 hover:text-white"
+          >
             ‹
           </button>
           <div className="min-w-0 flex-1">
@@ -256,7 +260,7 @@ export default function NoteDetailPage() {
                       {isOwner && m.role !== 'owner' && (
                         <button
                           onClick={() => setConfirmRemove({ userId: m.user_id, username: m.profile?.username ?? t('list.thisUser') })}
-                          className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
+                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
                           aria-label={t('list.removeMember')}
                           title={t('list.removeMember')}
                         >
@@ -320,7 +324,7 @@ export default function NoteDetailPage() {
                         updateNote({ color: c })
                         setShowColorPicker(false)
                       }}
-                      aria-label={`Color ${c}`}
+                      aria-label={t(colorNameKey(c))}
                       className="h-7 w-7 rounded-full"
                       style={{ backgroundColor: c, boxShadow: note.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
                     />
@@ -335,7 +339,7 @@ export default function NoteDetailPage() {
                   type="button"
                   onClick={() => setShowColorHint(false)}
                   aria-label={t('common.close')}
-                  className="shrink-0 text-brand-400 hover:text-brand-600 dark:hover:text-brand-200"
+                  className="shrink-0 text-brand-600 hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
                 >
                   <CloseIcon className="h-3.5 w-3.5" />
                 </button>
@@ -360,7 +364,7 @@ export default function NoteDetailPage() {
               className="w-full resize-none overflow-hidden border-0 bg-transparent px-0 font-display text-xl font-bold leading-snug text-slate-900 focus:outline-none focus:ring-0 dark:text-slate-100"
             />
             {saveStatus !== 'idle' && (
-              <p className="mb-1.5 mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="mb-1.5 mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {saveStatus === 'saving' ? t('apuntes.saving') : t('apuntes.saved')}
               </p>
             )}
@@ -385,7 +389,7 @@ export default function NoteDetailPage() {
                 onClick={() => setShowNumberedHelp((s) => !s)}
                 aria-label={t('apuntes.numberedListHelpCta')}
                 title={t('apuntes.numberedListHelpCta')}
-                className="rounded-full p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
               >
                 <HelpCircleIcon className="h-4 w-4" />
               </button>

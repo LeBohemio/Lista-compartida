@@ -125,14 +125,14 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           aria-label={t('common.close')}
           title={t('common.close')}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
         >
           <CloseIcon className="h-4 w-4" />
         </button>
         <h2 className="mb-1 pr-8 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('myExpenses.title')}</h2>
         <div className="mb-4 flex items-center justify-between gap-2">
           {profile?.expenses_reset_at ? (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('myExpenses.resetSince', {
                 date: new Date(profile.expenses_reset_at).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES'),
               })}
@@ -140,7 +140,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           ) : (
             <span />
           )}
-          <button onClick={() => setConfirmReset(true)} className="text-xs font-medium text-slate-400 hover:text-red-500 dark:hover:text-red-400">
+          <button onClick={() => setConfirmReset(true)} className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400">
             {t('myExpenses.resetAction')}
           </button>
         </div>
@@ -148,7 +148,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
         <div className="mb-5 flex items-center justify-between">
           <button
             onClick={() => setMonthOffset((o) => o + 1)}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
             aria-label={t('myExpenses.prevMonth')}
           >
             ‹
@@ -157,7 +157,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={() => setMonthOffset((o) => Math.max(0, o - 1))}
             disabled={monthOffset === 0}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
             aria-label={t('myExpenses.nextMonth')}
           >
             ›
@@ -165,9 +165,9 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {loading ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('common.loading')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
         ) : byList.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">{t('myExpenses.empty')}</p>
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('myExpenses.empty')}</p>
         ) : (
           <>
             <div className="mb-5 space-y-3">

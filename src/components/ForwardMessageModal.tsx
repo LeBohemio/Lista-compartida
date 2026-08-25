@@ -153,14 +153,14 @@ export default function ForwardMessageModal({
         {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="py-6 text-center text-sm text-slate-400">{t('forward.loadingLists')}</p>
+          <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('forward.loadingLists')}</p>
         ) : lists.length === 0 && contacts.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">{t('forward.noOtherLists')}</p>
+          <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('forward.noOtherLists')}</p>
         ) : (
           <div className="space-y-4">
             {lists.length > 0 && (
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('nav.tabLists')}</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('nav.tabLists')}</p>
                 <div className="space-y-2">
                   {lists.map((l) => (
                     <button
@@ -171,7 +171,7 @@ export default function ForwardMessageModal({
                     >
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorForList(l) }} />
                       <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{l.name}</span>
-                      {sendingTo === l.id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
+                      {sendingTo === l.id && <span className="text-xs text-slate-500 dark:text-slate-400">{t('forward.sending')}</span>}
                     </button>
                   ))}
                 </div>
@@ -180,7 +180,7 @@ export default function ForwardMessageModal({
 
             {contacts.length > 0 && (
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('nav.tabContacts')}</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('nav.tabContacts')}</p>
                 <div className="space-y-2">
                   {contacts.map((c) => (
                     <button
@@ -191,7 +191,7 @@ export default function ForwardMessageModal({
                     >
                       <Avatar username={c.contact!.username} avatarUrl={c.contact!.avatar_url} size={24} enlargeOnClick={false} />
                       <span className="flex-1 truncate text-slate-800 dark:text-slate-100">{c.contact!.username}</span>
-                      {sendingTo === c.contact_user_id && <span className="text-xs text-slate-400">{t('forward.sending')}</span>}
+                      {sendingTo === c.contact_user_id && <span className="text-xs text-slate-500 dark:text-slate-400">{t('forward.sending')}</span>}
                     </button>
                   ))}
                 </div>

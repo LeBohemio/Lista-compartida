@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { PALETTE, colorForName } from '../lib/colors'
+import { PALETTE, colorForName, colorNameKey } from '../lib/colors'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { DEFAULT_CURRENCY } from '../lib/currencies'
 import { CloseIcon } from './icons'
@@ -95,8 +95,9 @@ export default function CreateListModal({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.nameFieldLabel')}</label>
+            <label htmlFor="create-list-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('lists.nameFieldLabel')}</label>
             <input
+              id="create-list-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -136,7 +137,7 @@ export default function CreateListModal({
                   type="button"
                   key={c}
                   onClick={() => setColor(c)}
-                  aria-label={`Color ${c}`}
+                  aria-label={t(colorNameKey(c))}
                   className="h-8 w-8 rounded-full transition"
                   style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
                 />

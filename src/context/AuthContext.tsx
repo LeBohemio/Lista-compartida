@@ -57,6 +57,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signUp: AuthContextValue['signUp'] = async (email, password, username) => {
+    const lang = getAuthErrorLanguage()
+    const normalizedEmail = email.trim().toLowerCase()
+
+    const precheck = await checkAuthRateLimit('signup', normalizedEmail)
+    if (precheck?.locked) {
+      return { error: formatLockoutMessage(precheck.seconds_remaining, lang) }
+    }
+
+    // Contamos el intento ANTES de llamar a Supabase, así un script que
+    // dispara registros muy rápido no consigue colarse entre la comprobación
+    // y el conteo (evita la típica carrera de "comprobar y luego actuar").
+    const attempt = await registerAuthAttempt('signup', normalizedEmail)
+    if (attempt?.locked) {
+      return { error: formatLockoutMessage(attempt.seconds_remaining, lang) }
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -67,8 +83,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn: AuthContextValue['signIn'] = async (email, password) => {
+    const lang = getAuthErrorLanguage()
+    const normalizedEmail = email.trim().toLowerCase()
+
+    const precheck = await checkAuthRateLimit('login', normalizedEmail)
+    if (precheck?.locked) {
+      return { error: formatLockoutMessage(precheck.seconds_remaining, lang) }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { error: translateAuthError(error.message) }
+    if (error) {
+      const attempt = await registerAuthAttempt('login', normalizedEmail)
+      if (attempt?.locked) {
+        return { error: formatLockoutMessage(attempt.seconds_remaining, lang) }
+      }
+      const translated = translateAuthError(error.message)
+      if (attempt) {
+        return { error: appendAttemptsRemaining(translated, attempt.attempts_remaining, lang) }
+      }
+      return { error: translated }
+    }
+
+    clearAuthRateLimit('login', normalizedEmail)
     return { error: null }
   }
 
@@ -185,4 +221,77 @@ function translateAuthError(message: string): string {
     return 'El email no es válido.'
   }
   return message
+}
+
+// ----------------------------------------------------------------------------
+// Protección básica contra fuerza bruta (login) y contra registros repetidos
+// a lo loco (signup) — ver migration_v39.sql. Todo el conteo vive en la base
+// de datos (tabla auth_rate_limits + funciones RPC), aquí solo se llama a
+// esas funciones y se traduce el resultado a un mensaje para la persona.
+//
+// Límites elegidos: en login, 5 contraseñas incorrectas seguidas (en una
+// ventana de 15 minutos) bloquean ESE email 15 minutos — igual que hacen la
+// mayoría de apps con inicio de sesión. En signup, 5 intentos de registro
+// con el mismo email en 15 minutos bloquean ese email otros 15 minutos —
+// pensado sobre todo para frenar un script que insiste una y otra vez con
+// la misma dirección, no para parar a alguien que se equivoca una vez.
+const LOGIN_MAX_ATTEMPTS = 5
+const LOGIN_WINDOW_MINUTES = 15
+const LOGIN_LOCKOUT_MINUTES = 15
+const SIGNUP_MAX_ATTEMPTS = 5
+const SIGNUP_WINDOW_MINUTES = 15
+const SIGNUP_LOCKOUT_MINUTES = 15
+
+function formatLockoutMessage(secondsRemaining: number, lang: 'en' | 'es'): string {
+  const minutes = Math.max(1, Math.ceil(secondsRemaining / 60))
+  if (lang === 'en') {
+    return minutes === 1
+      ? 'Too many attempts. Try again in 1 minute.'
+      : `Too many attempts. Try again in ${minutes} minutes.`
+  }
+  return minutes === 1
+    ? 'Demasiados intentos. Vuelve a intentarlo en 1 minuto.'
+    : `Demasiados intentos. Vuelve a intentarlo en ${minutes} minutos.`
+}
+
+function appendAttemptsRemaining(message: string, attemptsRemaining: number, lang: 'en' | 'es'): string {
+  // Solo lo añadimos cuando ya quedan pocos, para no ser alarmistas desde
+  // el primer fallo — a partir de 2 intentos restantes sí merece la pena
+  // avisar de que la cuenta se va a bloquear pronto.
+  if (attemptsRemaining > 2) return message
+  if (lang === 'en') {
+    return `${message} (${attemptsRemaining} attempt${attemptsRemaining === 1 ? '' : 's'} left before a temporary lock.)`
+  }
+  return `${message} (te queda${attemptsRemaining === 1 ? '' : 'n'} ${attemptsRemaining} intento${attemptsRemaining === 1 ? '' : 's'} antes de un bloqueo temporal.)`
+}
+
+type RateLimitCheck = { locked: boolean; seconds_remaining: number }
+type RateLimitAttempt = { locked: boolean; seconds_remaining: number; attempts_remaining: number }
+
+async function checkAuthRateLimit(kind: 'login' | 'signup', email: string): Promise<RateLimitCheck | null> {
+  const { data, error } = await supabase.rpc('check_auth_rate_limit', { p_kind: kind, p_email: email })
+  if (error || !data || data.length === 0) return null
+  return data[0] as RateLimitCheck
+}
+
+async function registerAuthAttempt(kind: 'login' | 'signup', email: string): Promise<RateLimitAttempt | null> {
+  const isLogin = kind === 'login'
+  const { data, error } = await supabase.rpc('register_auth_attempt', {
+    p_kind: kind,
+    p_email: email,
+    p_max_attempts: isLogin ? LOGIN_MAX_ATTEMPTS : SIGNUP_MAX_ATTEMPTS,
+    p_window_minutes: isLogin ? LOGIN_WINDOW_MINUTES : SIGNUP_WINDOW_MINUTES,
+    p_lockout_minutes: isLogin ? LOGIN_LOCKOUT_MINUTES : SIGNUP_LOCKOUT_MINUTES,
+  })
+  if (error || !data || data.length === 0) return null
+  return data[0] as RateLimitAttempt
+}
+
+function clearAuthRateLimit(kind: 'login' | 'signup', email: string) {
+  // No bloqueamos la respuesta de un login/registro correcto esperando a
+  // esto — si falla, lo peor que pasa es que el contador tarde un poco más
+  // en limpiarse solo (se resetea igualmente en cuanto pase la ventana).
+  supabase.rpc('clear_auth_rate_limit', { p_kind: kind, p_email: email }).then(({ error }) => {
+    if (error) console.error('[auth_rate_limits] no se pudo limpiar el contador:', error)
+  })
 }

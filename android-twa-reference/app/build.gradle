@@ -1,0 +1,44 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.noteus.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.noteus.app"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    // Para generar la build FIRMADA que se sube a Play Console, hace falta
+    // tu propio keystore (Android Studio → Build → Generate Signed Bundle,
+    // te lo crea él mismo la primera vez si no tienes uno). Ver
+    // ANDROID_PLAY_STORE_SETUP.md — con Play App Signing (recomendado),
+    // Google guarda la clave final por ti y esto ni siquiera hace falta
+    // rellenarlo aquí.
+    // signingConfigs {
+    //     release {
+    //         storeFile file("noteus-release.keystore")
+    //         storePassword "TU_CONTRASEÑA"
+    //         keyAlias "noteus"
+    //         keyPassword "TU_CONTRASEÑA"
+    //     }
+    // }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    // Librería de Google que hace todo el trabajo de mostrar tu web como
+    // Trusted Web Activity (pantalla completa, sin barra de Chrome visible,
+    // usando el propio Chrome instalado en el móvil por debajo).
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}

@@ -1,0 +1,19 @@
+// Build raíz. Las versiones de aquí abajo (Android Gradle Plugin) son las
+// habituales en 2025 — si Android Studio te sugiere actualizarlas al abrir
+// el proyecto, acepta la sugerencia sin miedo, no rompe nada de la TWA.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

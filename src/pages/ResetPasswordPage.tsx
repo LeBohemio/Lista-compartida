@@ -65,10 +65,11 @@ export default function ResetPasswordPage() {
           className="space-y-4 rounded-2xl p-6 shadow-sm ring-1 bg-[var(--color-surface)] ring-[var(--color-surface-border)]"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="reset-new-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('profile.newPassword')}
             </label>
             <input
+              id="reset-new-password"
               type="password"
               required
               value={password}
@@ -78,10 +79,11 @@ export default function ResetPasswordPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="reset-confirm-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('profile.repeatPassword')}
             </label>
             <input
+              id="reset-confirm-password"
               type="password"
               required
               value={confirm}
