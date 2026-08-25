@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { extractReceiptTotal, OCR_CONFIDENCE_THRESHOLD } from '../lib/ocr'
+import { compressImage } from '../lib/imageCompression'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
 import { formatCurrency, splitEqually } from '../lib/balances'
 import { currencySymbol, type CurrencyCode } from '../lib/currencies'
@@ -186,10 +187,14 @@ export default function NewExpenseModal({
   const persistExpense = async (): Promise<string | null> => {
     let receiptPath: string | null = editing?.receipt_image_path ?? null
     if (file) {
-      const ext = file.name.split('.').pop() || 'jpg'
+      // El OCR ya se ejecutó sobre "file" tal cual salió de la cámara/galería
+      // (ver handleFile) — comprimimos justo antes de subir, no antes, para
+      // no arriesgar precisión del OCR con una versión ya reducida.
+      const uploadFile = await compressImage(file)
+      const ext = uploadFile.name.split('.').pop() || 'jpg'
       const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-      const { error: uploadErr } = await supabase.storage.from('receipts').upload(path, file, {
-        contentType: file.type || 'image/jpeg',
+      const { error: uploadErr } = await supabase.storage.from('receipts').upload(path, uploadFile, {
+        contentType: uploadFile.type || 'image/jpeg',
       })
       if (uploadErr) return t('expenses.errorReceiptUpload', { message: uploadErr.message })
       receiptPath = path

@@ -249,6 +249,27 @@ async function handleListMembers(record: Record<string, unknown>) {
   })
 }
 
+// Invitación a una nota compartida (Notas comunes) — mismo patrón que
+// handleListMembers, pero mirando la tabla "notes" en vez de "lists". Antes
+// de esto, invitar a alguien a una nota no mandaba ningún aviso push (solo
+// las invitaciones a listas lo hacían) — ver migration_v40.sql para el
+// trigger que hacía falta añadir.
+async function handleNoteMembers(record: Record<string, unknown>) {
+  if (record.status !== 'invited') return
+  const noteId = record.note_id as string
+  const userId = record.user_id as string
+
+  const { data: note } = await supabaseAdmin.from('notes').select('title').eq('id', noteId).maybeSingle()
+  if (!note) return
+
+  await notifyUser(userId, 'notify_invites', {
+    title: 'NoteUs',
+    body: `Te han invitado a "${note.title}"`,
+    url: `/notes/${noteId}`,
+    tag: `invite-note-${noteId}`,
+  })
+}
+
 async function handleSettlements(record: Record<string, unknown>) {
   // Solo interesa el caso "pendiente de confirmar" (ver migration_v11.sql):
   // lo registró el deudor (from_user) y todavía no lo ha confirmado quien
@@ -277,7 +298,12 @@ async function handleSettlements(record: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  if (webhookSecret && req.headers.get('x-webhook-secret') !== webhookSecret) {
+  // Antes, si WEBHOOK_SECRET no estaba configurado en Supabase, esta
+  // comprobación se saltaba entera (webhookSecret quedaba "falsy" y el "&&"
+  // cortaba ahí) — cualquiera podía llamar a esta función sin cabecera
+  // ninguna y colarle avisos falsos. Ahora, si falta la variable de entorno,
+  // se rechaza la petición en vez de dejarla pasar sin comprobar nada.
+  if (!webhookSecret || req.headers.get('x-webhook-secret') !== webhookSecret) {
     return new Response('unauthorized', { status: 401 })
   }
 
@@ -302,6 +328,9 @@ Deno.serve(async (req) => {
         break
       case 'list_members':
         await handleListMembers(body.record)
+        break
+      case 'note_members':
+        await handleNoteMembers(body.record)
         break
       case 'settlements':
         await handleSettlements(body.record)

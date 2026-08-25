@@ -230,14 +230,17 @@ export default function NoteDetailPage() {
               {acceptedMembers.length} {acceptedMembers.length === 1 ? t('list.member') : t('list.membersPlural')}
             </button>
           </div>
-          {isOwner && (
-            <button
-              onClick={() => setShowInvite(true)}
-              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-brand-700)] shadow-[0_8px_18px_-8px_rgba(20,21,26,0.4)]"
-            >
-              {t('list.inviteButton')}
-            </button>
-          )}
+          {/* Invitar ahora está abierto a cualquier miembro, no solo al
+              dueño (ver migration_v40.sql) — igual que ya pasaba en listas
+              (ver ListDetailPage.tsx). Como esta pantalla solo se llega a
+              pintar siendo ya miembro aceptado, no hace falta comprobación
+              extra aquí; la de verdad vive en la política de note_members. */}
+          <button
+            onClick={() => setShowInvite(true)}
+            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-brand-700)] shadow-[0_8px_18px_-8px_rgba(20,21,26,0.4)]"
+          >
+            {t('list.inviteButton')}
+          </button>
         </div>
 
         {showMembers && (

@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
+import { compressImage } from '../lib/imageCompression'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import Toast from './Toast'
@@ -512,7 +513,7 @@ export default function ChatPanel({
     setError(null)
     setSending(true)
 
-    const file = pendingImage.file
+    const file = await compressImage(pendingImage.file)
     const ext = file.name.split('.').pop() || 'jpg'
     const path = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const { error: uploadErr } = await supabase.storage
