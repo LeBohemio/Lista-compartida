@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient'
 // claves, hay que cambiar esta constante Y el secreto de la función a la
 // vez, o dejarán de coincidir y todas las suscripciones existentes dejarán
 // de funcionar (habrá que volver a activar las notificaciones).
-export const VAPID_PUBLIC_KEY = 'BM0shUcI03BEFXs3bbwTH396SS797xTK6gnS00bUVO1DzTeuP-ZcNgBC-tP9xRHh8nKzBKSLI_T5Cr8VxUt7vig'
+export const VAPID_PUBLIC_KEY = 'BCaB1l35YbexCy7Lj8o7pUz2Aq4nW5HsSXVncXoKTSTTvWrn-RHX9gFBDCv8d1zpRqlcS0F1w0Vt6RzX_rLrDcQ'
 
 export function isPushSupported() {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window

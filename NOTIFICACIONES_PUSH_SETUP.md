@@ -15,13 +15,22 @@ contenido → Run. Dos, en este orden:
 
 Añade estos 4:
 
-- `VAPID_PUBLIC_KEY` = `BM0shUcI03BEFXs3bbwTH396SS797xTK6gnS00bUVO1DzTeuP-ZcNgBC-tP9xRHh8nKzBKSLI_T5Cr8VxUt7vig`
-- `VAPID_PRIVATE_KEY` = `I5bD1s4RqJYFWJHwxgouAUSG6OIVGmfWvJSbRePzorc`
+- `VAPID_PUBLIC_KEY` = `BCaB1l35YbexCy7Lj8o7pUz2Aq4nW5HsSXVncXoKTSTTvWrn-RHX9gFBDCv8d1zpRqlcS0F1w0Vt6RzX_rLrDcQ`
+- `VAPID_PRIVATE_KEY` = `ecU0Wi5A4SPhftVDnVx0nNHx362luc1lpMwvLqkZdHI`
 - `VAPID_SUBJECT` = `mailto:tu-correo@ejemplo.com` (pon un correo real tuyo — lo exige el estándar, no lo ve nadie más)
 - `WEBHOOK_SECRET` = inventa una contraseña larga cualquiera (opcional pero recomendado — evita que alguien más pueda llamar a la función)
 
 La clave pública ya va puesta también en el código (`src/lib/push.ts`) — es
-la misma pareja, no la cambies sin cambiar las dos a la vez.
+la misma pareja, no la cambies sin cambiar las dos a la vez. Si algún día
+las notificaciones dejan de llegar a todo el mundo de golpe (todo activado,
+la función se ejecuta sin caerse, pero nada llega), mira los Logs de la
+función `send-push`: un error `statusCode=403` con el texto "the VAPID
+credentials in the authorization header do not correspond to the
+credentials used to create the subscriptions" significa exactamente esto —
+que esta clave pública y `VAPID_PRIVATE_KEY` ya no son la misma pareja — y
+hay que generar una pareja nueva y volver a poner las dos a la vez (aquí Y
+en `src/lib/push.ts`), avisando a todo el mundo de que vuelva a activar las
+notificaciones después.
 
 ## 3. Despliega la función
 
