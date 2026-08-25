@@ -97,11 +97,13 @@ export default function InviteNoteMemberModal({
     // email o por teléfono según lo que parezca haber escrito la persona.
     const isPhone = looksLikePhone(rawValue)
     const value = isPhone ? normalizePhone(rawValue) : rawValue.toLowerCase()
-    const query = supabase.from('profiles').select('*')
-    const { data: profile, error: findErr } = await (isPhone
-      ? query.eq('phone', value)
-      : query.ilike('email', value)
-    ).maybeSingle()
+    // Búsqueda exacta vía RPC (no una consulta abierta a "profiles"): ver el
+    // comentario de find_profile_by_contact en migration_v36.sql.
+    const { data: found, error: findErr } = await supabase.rpc('find_profile_by_contact', {
+      p_email: isPhone ? null : value,
+      p_phone: isPhone ? value : null,
+    })
+    const profile = (found as { id: string; username: string; avatar_url: string | null }[] | null)?.[0] ?? null
 
     if (findErr) {
       setError(findErr.message)

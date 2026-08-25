@@ -107,11 +107,13 @@ export default function ContactsPage() {
 
     setAddSubmitting(true)
 
-    const query = supabase.from('profiles').select('*')
-    const { data: foundProfile, error: findErr } = await (isPhone
-      ? query.eq('phone', value)
-      : query.ilike('email', value)
-    ).maybeSingle()
+    // Búsqueda exacta vía RPC (no una consulta abierta a "profiles"): ver el
+    // comentario de find_profile_by_contact en migration_v36.sql.
+    const { data: found, error: findErr } = await supabase.rpc('find_profile_by_contact', {
+      p_email: isPhone ? null : value,
+      p_phone: isPhone ? value : null,
+    })
+    const foundProfile = (found as { id: string; username: string; avatar_url: string | null }[] | null)?.[0] ?? null
 
     if (findErr) {
       setAddSubmitting(false)

@@ -157,6 +157,9 @@ function translateAuthError(message: string): string {
     if (m.includes('invalid login credentials')) {
       return 'Incorrect email or password.'
     }
+    if (m.includes('email') && m.includes('not confirmed')) {
+      return 'Confirm your email first — check your inbox for the confirmation link we sent you.'
+    }
     if (m.includes('password') && m.includes('least')) {
       return 'Password must be at least 6 characters long.'
     }
@@ -171,6 +174,9 @@ function translateAuthError(message: string): string {
   }
   if (m.includes('invalid login credentials')) {
     return 'Email o contraseña incorrectos.'
+  }
+  if (m.includes('email') && m.includes('not confirmed')) {
+    return 'Confirma tu email antes de entrar — revisa tu bandeja de entrada, te mandamos un enlace de confirmación.'
   }
   if (m.includes('password') && m.includes('least')) {
     return 'La contraseña debe tener al menos 6 caracteres.'
