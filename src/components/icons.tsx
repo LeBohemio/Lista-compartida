@@ -429,6 +429,25 @@ export function ChartIcon(props: IconProps) {
   )
 }
 
+// Play/Pausa del reproductor de audio a medida (ver ChatPanel.tsx,
+// VoiceMessagePlayer) — mismo lenguaje de trazo que el resto, nada de
+// triángulos ni barras rellenas.
+export function PlayIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M8 5.5v13l10-6.5-10-6.5Z" strokeLinejoin="round" />
+    </Base>
+  )
+}
+
+export function PauseIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M8 5v14M16 5v14" />
+    </Base>
+  )
+}
+
 /**
  * "Insignia de cristal" (propuesta B elegida): la mini-tarjeta de cristal
  * esmerilado que envuelve a cada icono. `active` cambia el cristal neutro

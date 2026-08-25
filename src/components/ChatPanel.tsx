@@ -30,6 +30,8 @@ import {
   GalleryIcon,
   LockIcon,
   MicIcon,
+  PauseIcon,
+  PlayIcon,
   ReplyIcon,
   SendIcon,
   TrashIcon,
@@ -1137,9 +1139,18 @@ export default function ChatPanel({
                       de este canal siguiendo el dedo de verdad, en vez de
                       que el bloqueo salte de golpe sin ningún aviso. */}
                   {recording && !locked && (
+                    // Altura calculada para que el CENTRO del botón, al
+                    // llegar justo al umbral de bloqueo (dragY =
+                    // -LOCK_THRESHOLD_PX), coincida con el centro del
+                    // candado — antes el canal era más alto que el
+                    // recorrido real del botón, así que nunca llegaba a
+                    // tocarlo. Si cambian mb-1 (4px), pt-2 (8px) o el
+                    // tamaño del icono (16px) hay que volver a cuadrar esta
+                    // cuenta: altura = LOCK_THRESHOLD_PX - separación - pt
+                    // - mitad_icono + mitad_botón.
                     <div
                       className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex w-11 -translate-x-1/2 items-start justify-center rounded-full bg-[var(--color-glass)] pt-2 shadow-inner"
-                      style={{ height: LOCK_THRESHOLD_PX + 28 }}
+                      style={{ height: LOCK_THRESHOLD_PX - 8 }}
                     >
                       <LockIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
@@ -1395,6 +1406,140 @@ export default function ChatPanel({
 const SWIPE_REPLY_MAX_PX = 64
 const SWIPE_REPLY_THRESHOLD_PX = 44
 
+// Solo puede sonar una nota de voz a la vez en toda la conversación (como
+// en cualquier chat de verdad) — variable de módulo a propósito, no de
+// estado de React: si se reproduce una y luego se abre otra burbuja, la
+// anterior se para sola sin tener que pasar esto por props entre
+// componentes que no tienen relación entre sí.
+let currentlyPlayingAudio: HTMLAudioElement | null = null
+
+function hashSeed(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i)
+  return Math.abs(hash)
+}
+
+// La forma de onda que se ve NO es la del audio de verdad (habría que
+// decodificarlo entero con Web Audio API para sacar los picos reales, y no
+// merece la pena solo para dibujarla) — es un dibujo con aspecto de onda,
+// pero siempre EL MISMO para el mismo audio (a partir de su propia ruta:
+// dos personas mirando el mismo mensaje ven exactamente las mismas
+// barras, y no cambia cada vez que se vuelve a pintar).
+function waveformBars(seed: string, count = 24): number[] {
+  let s = hashSeed(seed) || 1
+  const next = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    return s / 0x7fffffff
+  }
+  const bars: number[] = []
+  let phase = next() * Math.PI * 2
+  for (let i = 0; i < count; i++) {
+    phase += 0.7 + next() * 0.6
+    const wobble = (Math.sin(phase) + 1) / 2
+    bars.push(Math.min(100, 22 + wobble * 68 + next() * 10))
+  }
+  return bars
+}
+
+// Reproductor de nota de voz a medida — sustituye al <audio controls>
+// nativo del navegador (feo y, sobre todo, poco fiable: un audio grabado
+// con MediaRecorder no lleva su duración total escrita en la cabecera del
+// archivo, así que Chrome a veces es incapaz de calcularla y se queda
+// mostrando "0:00 / 0:00" aunque el audio sí tenga sonido de verdad). Aquí
+// la duración TOTAL nunca se lee del archivo — se usa siempre la que se
+// guardó al grabar (audio_duration_seconds, ver sendAudioBlob) — y del
+// elemento <audio> solo se lee lo que sí funciona bien siempre: la
+// posición actual mientras suena.
+function VoiceMessagePlayer({
+  src,
+  seed,
+  totalSeconds,
+  isMine,
+}: {
+  src: string
+  seed: string
+  totalSeconds: number
+  isMine: boolean
+}) {
+  const { t } = useLanguage()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [currentSeconds, setCurrentSeconds] = useState(0)
+  const bars = useMemo(() => waveformBars(seed), [seed])
+  const progress = totalSeconds > 0 ? Math.min(1, currentSeconds / totalSeconds) : 0
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    const onTimeUpdate = () => setCurrentSeconds(audio.currentTime)
+    const onEnded = () => {
+      setPlaying(false)
+      setCurrentSeconds(0)
+    }
+    const onPause = () => setPlaying(false)
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('ended', onEnded)
+    audio.addEventListener('pause', onPause)
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('pause', onPause)
+      if (currentlyPlayingAudio === audio) currentlyPlayingAudio = null
+    }
+  }, [])
+
+  const toggle = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) {
+      audio.pause()
+      return
+    }
+    if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) currentlyPlayingAudio.pause()
+    currentlyPlayingAudio = audio
+    void audio.play()
+    setPlaying(true)
+  }
+
+  const barBaseClass = isMine ? 'bg-white/30' : 'bg-black/10 dark:bg-white/15'
+  const barFillClass = isMine ? 'bg-white' : 'bg-[var(--color-brand-500)]'
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <button
+        type="button"
+        onClick={toggle}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+          isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
+        }`}
+        aria-label={playing ? t('chat.pauseAudio') : t('chat.playAudio')}
+      >
+        {playing ? <PauseIcon className="h-3.5 w-3.5" /> : <PlayIcon className="ml-0.5 h-3.5 w-3.5" />}
+      </button>
+      <div className="relative h-6 w-32 shrink-0">
+        <div className="absolute inset-0 flex items-center gap-[2px]">
+          {bars.map((h, i) => (
+            <span key={i} className={`min-w-[2px] flex-1 rounded-full ${barBaseClass}`} style={{ height: `${h}%` }} />
+          ))}
+        </div>
+        <div
+          className="absolute inset-0 flex items-center gap-[2px]"
+          style={{ clipPath: `inset(0 ${(100 - progress * 100).toFixed(2)}% 0 0)` }}
+        >
+          {bars.map((h, i) => (
+            <span key={i} className={`min-w-[2px] flex-1 rounded-full ${barFillClass}`} style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      </div>
+      <span className={`shrink-0 text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
+        {formatDuration(playing || currentSeconds > 0 ? currentSeconds : totalSeconds)}
+      </span>
+    </div>
+  )
+}
+
 function MessageBubble({
   message: m,
   isMine,
@@ -1569,15 +1714,14 @@ function MessageBubble({
           {m.audio_path && (
             <div className="mb-1 flex items-center gap-2">
               {audioUrl ? (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <audio controls preload="metadata" src={audioUrl} className="h-10 w-56 max-w-full" />
+                <VoiceMessagePlayer
+                  src={audioUrl}
+                  seed={m.audio_path}
+                  totalSeconds={m.audio_duration_seconds ?? 0}
+                  isMine={isMine}
+                />
               ) : (
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">{t('chat.loadingAudio')}</p>
-              )}
-              {m.audio_duration_seconds != null && (
-                <span className={`text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {formatDuration(m.audio_duration_seconds)}
-                </span>
               )}
             </div>
           )}
