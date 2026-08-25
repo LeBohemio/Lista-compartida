@@ -69,11 +69,23 @@ export default function Avatar({
               >
                 <CloseIcon className="h-5 w-5" />
               </button>
+              {/* La foto guardada es un cuadrado (la recorta así
+                  AvatarCropper.tsx, en un círculo pero sobre un lienzo
+                  cuadrado — al exportarla a JPEG, que no admite
+                  transparencia, las esquinas fuera del círculo quedan
+                  rellenas de negro dentro del propio archivo). En el
+                  avatar pequeño no se nota porque el círculo lo recorta
+                  el CSS (rounded-full), pero aquí, al ampliarla, se
+                  aplica ese mismo recorte: aspect-square + object-cover
+                  fuerza un marco cuadrado y rounded-full lo redondea a
+                  círculo, así se ve exactamente la misma foto de perfil
+                  de siempre, solo que más grande — nunca el cuadrado con
+                  las esquinas negras. */}
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <img
                 src={avatarUrl}
                 alt={username}
-                className="max-h-[85vh] max-w-full rounded-2xl object-contain"
+                className="aspect-square max-h-[75vh] max-w-[85vw] rounded-full object-cover"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>,
