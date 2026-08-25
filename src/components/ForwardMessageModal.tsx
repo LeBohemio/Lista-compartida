@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { colorForList } from '../lib/colors'
@@ -141,7 +142,7 @@ export default function ForwardMessageModal({
     onForwarded()
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -206,6 +207,7 @@ export default function ForwardMessageModal({
           {t('common.cancel')}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

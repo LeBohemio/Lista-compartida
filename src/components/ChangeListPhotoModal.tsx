@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useLanguage } from '../lib/i18n'
 import AvatarCropper from './AvatarCropper'
@@ -80,7 +81,8 @@ export default function ChangeListPhotoModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      {createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
         <div
           className="glass-panel w-full max-w-md rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
           onClick={(e) => e.stopPropagation()}
@@ -129,7 +131,9 @@ export default function ChangeListPhotoModal({
             {t('common.close')}
           </button>
         </div>
-      </div>
+      </div>,
+        document.body,
+      )}
 
       {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />}
     </>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -286,7 +287,10 @@ export default function NoteDetailPage() {
                     cerrar el selector tocando fuera — el resto de menús
                     contextuales de la app (ver ContextMenu.tsx) hacen lo
                     mismo. */}
-                <div className="fixed inset-0 z-[5]" onClick={() => setShowColorPicker(false)} />
+                {createPortal(
+                  <div className="fixed inset-0 z-[5]" onClick={() => setShowColorPicker(false)} />,
+                  document.body,
+                )}
                 <div
                   className="glass-panel absolute left-4 top-4 z-10 flex flex-wrap gap-2 rounded-2xl p-3 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)]"
                   style={{ width: '184px' }}
@@ -373,7 +377,10 @@ export default function NoteDetailPage() {
                   {/* Mismo patrón que el selector de color de arriba: un
                       fondo invisible a pantalla completa solo para poder
                       cerrar tocando fuera. */}
-                  <div className="fixed inset-0 z-[5]" onClick={() => setShowNumberedHelp(false)} />
+                  {createPortal(
+                    <div className="fixed inset-0 z-[5]" onClick={() => setShowNumberedHelp(false)} />,
+                    document.body,
+                  )}
                   <div
                     className="glass-panel absolute left-0 top-full z-10 mt-1 rounded-xl p-3 text-xs leading-relaxed text-slate-600 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)] dark:text-slate-300"
                     style={{ width: '230px' }}

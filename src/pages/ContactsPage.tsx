@@ -16,7 +16,7 @@ export default function ContactsPage() {
   const { user, profile } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const { contacts, incoming, outgoing, loading, error: loadError, refetch } =
+  const { contacts, incoming, outgoing, unreadByContact, loading, error: loadError, refetch } =
     useOutletContext<ContactRequestsData>()
 
   const [search, setSearch] = useState('')
@@ -353,11 +353,27 @@ export default function ContactsPage() {
                           e.stopPropagation()
                           navigate(`/contacts/${c.contact_user_id}/chat`)
                         }}
-                        aria-label={t('card.openChat')}
+                        aria-label={
+                          unreadByContact[c.contact_user_id] > 0
+                            ? t('contacts.unreadMessages', { count: unreadByContact[c.contact_user_id] })
+                            : t('card.openChat')
+                        }
                         title={t('card.openChat')}
-                        className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                        className="relative shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
                       >
                         <ChatBubbleIcon className="h-5 w-5" />
+                        {/* Cuántos mensajes suyos no has abierto todavía —
+                            ver useContactRequests.ts. Solo se pinta si es
+                            mayor que 0, igual que el aviso de la pestaña
+                            Chat dentro de una lista. */}
+                        {unreadByContact[c.contact_user_id] > 0 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold text-white"
+                          >
+                            {unreadByContact[c.contact_user_id] > 9 ? '9+' : unreadByContact[c.contact_user_id]}
+                          </span>
+                        )}
                       </button>
                       <button
                         type="button"

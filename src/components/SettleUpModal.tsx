@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -65,7 +66,14 @@ export default function SettleUpModal({
     onSettled()
   }
 
-  return (
+  // Portal a document.body: BalanceSummary.tsx (quien abre este diálogo)
+  // tiene "glass-panel" en su propia tarjeta, y backdrop-filter en un
+  // antepasado atrapa a cualquier hijo "fixed" dentro de la caja de ESA
+  // tarjeta en vez de la pantalla entera — por eso, aunque el diálogo ya
+  // tenía "fixed inset-0", se quedaba anclado donde estaba la tarjeta del
+  // balance en vez de ir de verdad al fondo de la pantalla. Mismo arreglo
+  // que ContextMenu.tsx.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       {/*
         max-h-[88vh] + overflow-y-auto: sin esto, con el teclado del móvil
@@ -145,6 +153,7 @@ export default function SettleUpModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

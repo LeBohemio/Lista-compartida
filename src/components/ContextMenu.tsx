@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useLanguage } from '../lib/i18n'
 
 export type ContextMenuAction = {
@@ -20,7 +21,17 @@ export default function ContextMenu({
   onClose: () => void
 }) {
   const { t } = useLanguage()
-  return (
+  // Portal a document.body: este menú se abre desde dentro de tarjetas con
+  // efecto cristal (glass-panel → backdrop-filter), y backdrop-filter en un
+  // antepasado "atrapa" a cualquier hijo "fixed" dentro de la caja de ESA
+  // tarjeta en vez de la pantalla entera (así lo define CSS: filter y
+  // backdrop-filter crean su propio "containing block" para fixed/absolute,
+  // igual que transform). Sin el portal, este menú se quedaba flotando
+  // donde estaba la tarjeta en vez de anclado de verdad abajo del todo, y no
+  // llegaba a tapar la barra de navegación inferior. Con el portal, el menú
+  // vive fuera de esa tarjeta en el DOM, así que "fixed inset-0" vuelve a
+  // referirse a la pantalla real.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       {/* select-none en todo el menú: se abre justo cuando sueltas una
           pulsación larga sobre un mensaje, y si el dedo todavía estaba algo
@@ -63,6 +74,7 @@ export default function ContextMenu({
           {t('menu.cancel')}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useLanguage } from '../lib/i18n'
 
 const CONTAINER_SIZE = 260
@@ -98,7 +99,7 @@ export default function AvatarCropper({
     )
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-xl bg-[var(--color-surface)]">
         <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('avatar.adjustTitle')}</h2>
@@ -159,6 +160,7 @@ export default function AvatarCropper({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -8,6 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
@@ -1096,7 +1097,7 @@ export default function ChatPanel({
         />
       )}
 
-      {pendingImage && (
+      {pendingImage && createPortal(
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
           onClick={cancelPendingImage}
@@ -1137,10 +1138,11 @@ export default function ChatPanel({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {pendingFile && (
+      {pendingFile && createPortal(
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
           onClick={cancelPendingFile}
@@ -1185,7 +1187,8 @@ export default function ChatPanel({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {forwardTarget && (
@@ -1197,7 +1200,7 @@ export default function ChatPanel({
         />
       )}
 
-      {viewerUrl && (
+      {viewerUrl && createPortal(
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
           onClick={() => setViewerUrl(null)}
@@ -1217,10 +1220,11 @@ export default function ChatPanel({
             className="max-h-full max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {micErrorKind && (
+      {micErrorKind && createPortal(
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
           onClick={() => setMicErrorKind(null)}
@@ -1259,7 +1263,8 @@ export default function ChatPanel({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

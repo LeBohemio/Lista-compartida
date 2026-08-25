@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -82,7 +83,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
     navigate('/login')
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel w-full max-w-sm rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -123,6 +124,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

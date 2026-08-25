@@ -1,4 +1,5 @@
 import { useMemo, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -330,11 +331,12 @@ export default function NotesPage() {
         />
       )}
 
-      {colorPickerNote && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-          onClick={() => setColorPickerNote(null)}
-        >
+      {colorPickerNote &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+            onClick={() => setColorPickerNote(null)}
+          >
           <div
             className="glass-panel w-full max-w-sm rounded-t-[28px] p-5 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
             onClick={(e) => e.stopPropagation()}
@@ -364,8 +366,9 @@ export default function NotesPage() {
               {t('common.cancel')}
             </button>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {/* Menú de opciones de una nota, y su submenú de reordenar — ver el
           comentario junto a menuTarget más arriba sobre por qué viven aquí,

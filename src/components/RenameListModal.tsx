@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { PALETTE } from '../lib/colors'
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
@@ -102,7 +103,8 @@ export default function RenameListModal({
     // hasta ese fondo y cerraría TODO este modal de golpe en vez de
     // quedarse aquí para seguir editando el resto.
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      {createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
         <div
           className="glass-panel w-full max-w-md rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
           onClick={(e) => e.stopPropagation()}
@@ -204,7 +206,9 @@ export default function RenameListModal({
           </div>
         </form>
         </div>
-      </div>
+      </div>,
+        document.body,
+      )}
 
       {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />}
     </>

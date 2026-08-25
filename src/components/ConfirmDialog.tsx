@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useLanguage } from '../lib/i18n'
 
 export default function ConfirmDialog({
@@ -21,7 +22,7 @@ export default function ConfirmDialog({
   const resolvedTitle = title ?? t('dialogs.defaultTitle')
   const resolvedConfirmLabel = confirmLabel ?? t('dialogs.defaultConfirm')
   const resolvedCancelLabel = cancelLabel ?? t('common.cancel')
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onCancel}>
       <div
         className="glass-panel w-full max-w-sm rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -48,6 +49,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

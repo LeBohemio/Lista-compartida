@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -758,7 +759,7 @@ function AddNoteSheet({
     window.localStorage.setItem(COMMA_HINT_KEY, '1')
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel w-full max-w-md rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -818,7 +819,8 @@ function AddNoteSheet({
           {t('common.done')}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -834,7 +836,7 @@ function DueDateSheet({
   const { t } = useLanguage()
   const [value, setValue] = useState(item.due_date ?? '')
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel w-full max-w-sm rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -866,7 +868,8 @@ function DueDateSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -887,7 +890,7 @@ function PriceSheet({
   const parsed = Number.parseFloat(value.replace(',', '.'))
   const valid = Number.isFinite(parsed) && parsed >= 0
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
         className="glass-panel w-full max-w-sm rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
@@ -924,7 +927,8 @@ function PriceSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
@@ -295,7 +296,7 @@ export default function NewExpenseModal({
     onCreated()
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       onClick={handleRequestClose}
@@ -584,6 +585,7 @@ export default function NewExpenseModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
