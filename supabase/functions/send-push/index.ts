@@ -77,14 +77,28 @@ async function notifyUser(userId: string, field: NotifyField, payload: PushPaylo
     .eq('id', userId)
     .maybeSingle()
 
-  if (!profile || !profile.notify_push_enabled || !(profile as Record<string, boolean>)[field]) return
+  if (!profile || !profile.notify_push_enabled || !(profile as Record<string, boolean>)[field]) {
+    // OJO: este log (y los de más abajo) son a propósito. Antes esta
+    // función nunca contaba nada del "camino feliz" (ni de por qué se
+    // descartaba un aviso ni de si el envío a un dispositivo concreto
+    // fallaba) — solo el error inesperado del Database Webhook completo, si
+    // es que llegaba a lanzarlo. Eso hacía imposible diagnosticar un caso
+    // como "la función se ejecuta sin error, pero no llega nada al móvil":
+    // en los registros (Logs) no había ni rastro de qué había pasado de
+    // verdad con ESE envío en concreto.
+    console.log(`[send-push] ${userId}: omitido — notify_push_enabled=${profile?.notify_push_enabled} ${field}=${profile ? (profile as Record<string, boolean>)[field] : 'perfil no encontrado'}`)
+    return
+  }
 
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .eq('user_id', userId)
 
-  if (!subs || subs.length === 0) return
+  if (!subs || subs.length === 0) {
+    console.log(`[send-push] ${userId}: sin ninguna suscripción guardada (push_subscriptions vacío para este usuario)`)
+    return
+  }
 
   await Promise.all(
     subs.map(async (sub) => {
@@ -93,14 +107,23 @@ async function notifyUser(userId: string, field: NotifyField, payload: PushPaylo
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify(payload),
         )
+        console.log(`[send-push] ${userId}: enviado OK a ${sub.endpoint.slice(0, 70)}...`)
       } catch (err) {
         const statusCode = (err as { statusCode?: number })?.statusCode
+        const body = (err as { body?: string })?.body
+        console.error(
+          `[send-push] ${userId}: FALLÓ el envío a ${sub.endpoint.slice(0, 70)}... — statusCode=${statusCode} body=${body} mensaje=${(err as Error)?.message}`,
+        )
         if (statusCode === 404 || statusCode === 410) {
           await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
         }
-        // Otros errores (red, VAPID mal configurado, etc.) se ignoran a
-        // propósito: que falle el aviso a UN dispositivo no debe tumbar el
-        // resto de avisos a otras personas.
+        // El resto de códigos (401/403 típicamente = claves VAPID que no
+        // coinciden entre esta función y src/lib/push.ts, o "secrets" de
+        // Supabase mal puestos) NO se limpian de la tabla — no es que el
+        // dispositivo ya no exista, es que algo del lado del servidor está
+        // mal configurado, y seguirá estándolo hasta corregirlo. El error
+        // de arriba, en los Logs de la función, dice exactamente cuál de
+        // las dos cosas es.
       }
     }),
   )
