@@ -42,10 +42,16 @@ export function useNotes() {
       else invited.push(withMembership)
     }
 
-    // Fijadas primero (igual que "Mis listas"), y dentro de cada grupo por
-    // actividad más reciente.
+    // Fijadas primero (igual que "Mis listas"); dentro de cada grupo, el
+    // orden manual si existe (ver reorderNotes/migration_v34.sql), si no
+    // por actividad más reciente.
     accepted.sort((a, b) => {
       if (a.membership.pinned !== b.membership.pinned) return a.membership.pinned ? -1 : 1
+      const pa = a.membership.position
+      const pb = b.membership.position
+      if (pa != null && pb != null && pa !== pb) return pa - pb
+      if (pa != null && pb == null) return -1
+      if (pa == null && pb != null) return 1
       return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
     })
 
@@ -85,5 +91,18 @@ export function useNotes() {
     [user, fetchNotes],
   )
 
-  return { notes, invitations, loading, error, refetch: fetchNotes, togglePin }
+  const reorderNotes = useCallback(
+    async (orderedNoteIds: string[]) => {
+      if (!user) return
+      await Promise.all(
+        orderedNoteIds.map((noteId, idx) =>
+          supabase.from('note_members').update({ position: idx }).eq('note_id', noteId).eq('user_id', user.id),
+        ),
+      )
+      fetchNotes()
+    },
+    [user, fetchNotes],
+  )
+
+  return { notes, invitations, loading, error, refetch: fetchNotes, togglePin, reorderNotes }
 }

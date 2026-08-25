@@ -467,6 +467,22 @@ export default function ListsPage() {
         +
       </button>
 
+      {/* Botón de confirmar reordenar: en espejo con el "+" de arriba, a la
+          izquierda — un atajo a mano para terminar de reordenar sin tener
+          que subir hasta el aviso de arriba. Hace lo mismo que su botón
+          "Listo". Solo se ve mientras se está reordenando. */}
+      {reorderMode && (
+        <button
+          type="button"
+          onClick={() => setReorderMode(false)}
+          aria-label={t('reorder.done')}
+          title={t('reorder.done')}
+          className="fixed bottom-24 left-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_16px_30px_-10px_var(--color-glow)] ring-1 ring-[var(--color-glass-border)]"
+        >
+          <CheckIcon className="h-6 w-6" />
+        </button>
+      )}
+
       {showCreate && (
         <CreateListModal
           onClose={() => setShowCreate(false)}

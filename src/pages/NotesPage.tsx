@@ -1,14 +1,27 @@
-import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useMemo, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useNotes } from '../hooks/useNotes'
+import { useLongPress } from '../hooks/useLongPress'
+import { useDragReorder } from '../hooks/useDragReorder'
 import { supabase } from '../lib/supabaseClient'
 import CreateNoteModal from '../components/CreateNoteModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ContextMenu from '../components/ContextMenu'
-import { useLongPress } from '../hooks/useLongPress'
-import { FolderIcon, NotesIcon, PaletteIcon, PinIcon, TrashIcon } from '../components/icons'
+import {
+  CheckIcon,
+  CopyIcon,
+  DragHandleIcon,
+  FolderIcon,
+  NotesIcon,
+  PaletteIcon,
+  PinIcon,
+  ReorderIcon,
+  SortAlphaIcon,
+  SortDateIcon,
+  TrashIcon,
+} from '../components/icons'
 import { PALETTE, colorForNote } from '../lib/colors'
 import type { NoteWithMembership } from '../lib/types'
 
@@ -16,8 +29,8 @@ import type { NoteWithMembership } from '../lib/types'
 // listas, con su propia pestaña en la barra inferior.
 export default function NotesPage() {
   const { profile } = useAuth()
-  const { t } = useLanguage()
-  const { notes, invitations, loading, error, refetch, togglePin } = useNotes()
+  const { t, language } = useLanguage()
+  const { notes, invitations, loading, error, refetch, togglePin, reorderNotes } = useNotes()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -28,6 +41,21 @@ export default function NotesPage() {
   // Nota cuyo color se está eligiendo desde el menú de opciones (sin tener
   // que entrar en ella) — null cuando la hoja está cerrada.
   const [colorPickerNote, setColorPickerNote] = useState<NoteWithMembership | null>(null)
+  // El menú de opciones de cada nota (y su submenú de "Reordenar") vivían
+  // antes como estado LOCAL de cada NoteRow, con el <ContextMenu> renderizado
+  // dentro de la propia tarjeta de esa nota (glass-panel). Eso rompía el
+  // menú: cualquier ancestro con backdrop-filter (como .glass-panel) crea un
+  // nuevo "contenedor" para todo lo que sea position:fixed dentro de él, así
+  // que la hoja inferior (fixed inset-0) del menú quedaba atrapada dentro
+  // del recuadro pequeño de esa nota en vez de cubrir toda la pantalla — se
+  // veía "encima de la nota" en lugar de pegada abajo del todo. Subiendo el
+  // estado aquí arriba, fuera de cualquier tarjeta con cristal esmerilado
+  // (igual que menuTarget en ChatPanel.tsx, o colorPickerNote aquí mismo, que
+  // nunca tuvo este problema), el menú vuelve a comportarse como en "Mis
+  // listas".
+  const [menuTarget, setMenuTarget] = useState<NoteWithMembership | null>(null)
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  const [reorderMode, setReorderMode] = useState(false)
   const navigate = useNavigate()
 
   const changeNoteColor = async (noteId: string, color: string) => {
@@ -36,11 +64,28 @@ export default function NotesPage() {
     refetch()
   }
 
+  const activeNotes = useMemo(() => notes.filter((n) => !pendingDeleteIds.has(n.id)), [notes, pendingDeleteIds])
   const normalizedQuery = searchQuery.trim().toLowerCase()
-  const visibleNotes = useMemo(() => {
-    const base = notes.filter((n) => !pendingDeleteIds.has(n.id))
-    return normalizedQuery ? base.filter((n) => n.title.toLowerCase().includes(normalizedQuery)) : base
-  }, [notes, pendingDeleteIds, normalizedQuery])
+  const visibleNotes = useMemo(
+    () =>
+      normalizedQuery ? activeNotes.filter((n) => n.title.toLowerCase().includes(normalizedQuery)) : activeNotes,
+    [activeNotes, normalizedQuery],
+  )
+
+  const reorder = useDragReorder<NoteWithMembership>({
+    items: activeNotes,
+    getId: (n) => n.id,
+    onCommit: (ordered) => reorderNotes(ordered.map((n) => n.id)),
+  })
+
+  const applySortNotes = async (criterion: 'date' | 'alpha') => {
+    const sorted = [...activeNotes].sort((a, b) =>
+      criterion === 'alpha'
+        ? a.title.localeCompare(b.title, language === 'en' ? 'en' : 'es')
+        : new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime(),
+    )
+    await reorderNotes(sorted.map((n) => n.id))
+  }
 
   const respondInvitation = async (noteId: string, accept: boolean) => {
     if (accept) {
@@ -79,6 +124,26 @@ export default function NotesPage() {
       return
     }
     refetch()
+  }
+
+  // Mismo patrón que duplicateList en ListsPage.tsx: create_note_with_owner
+  // crea la nota + la membresía del creador como owner en un único paso, y
+  // luego copiamos aparte el texto y el color (la función de la base de
+  // datos solo acepta el título, igual que al crear desde cero — ver
+  // CreateNoteModal.tsx).
+  const duplicateNote = async (n: NoteWithMembership) => {
+    setActionError(null)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('create_note_with_owner', {
+      p_title: t('lists.copySuffix', { name: n.title }),
+    })
+    const newNote = rpcData as { id: string } | null
+    if (rpcErr || !newNote) {
+      setActionError(rpcErr?.message ?? t('apuntes.createError'))
+      return
+    }
+    await supabase.from('notes').update({ body: n.body, color: n.color }).eq('id', newNote.id)
+    refetch()
+    navigate(`/notes/${newNote.id}`)
   }
 
   return (
@@ -166,22 +231,54 @@ export default function NotesPage() {
             />
           </div>
 
+          {!normalizedQuery && reorderMode && (
+            <div className="glass-panel mb-3 flex items-center justify-between rounded-2xl px-3 py-2 text-sm text-[var(--color-brand-700)] dark:text-[var(--color-brand-300)]">
+              <span>⠿ {t('reorder.bannerHint')}</span>
+              <button onClick={() => setReorderMode(false)} className="font-semibold hover:underline">
+                {t('reorder.done')}
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <p className="py-6 text-center text-sm text-slate-400">{t('list.loading')}</p>
-          ) : visibleNotes.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">
-              {normalizedQuery ? t('lists.emptySearch') : t('apuntes.empty')}
-            </p>
+          ) : activeNotes.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-400">{t('apuntes.empty')}</p>
+          ) : normalizedQuery ? (
+            // Mientras se busca, sin arrastre (igual que "Mis listas") — no
+            // tiene sentido reordenar un subconjunto filtrado.
+            visibleNotes.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">{t('lists.emptySearch')}</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {visibleNotes.map((n) => (
+                  <li key={n.id}>
+                    <NoteRow
+                      note={n}
+                      isOwner={n.owner_id === profile?.id}
+                      onOpen={() => navigate(`/notes/${n.id}`)}
+                      onOpenMenu={() => setMenuTarget(n)}
+                      onDeleteRequest={(e) => requestDeleteOrLeave(e, n.id, n.title, n.owner_id === profile?.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )
           ) : (
             <ul className="space-y-2.5">
-              {visibleNotes.map((n) => (
+              {reorder.displayItems.map((n) => (
                 <li key={n.id}>
                   <NoteRow
                     note={n}
                     isOwner={n.owner_id === profile?.id}
+                    dragging={reorder.draggingId === n.id}
+                    reorderMode={reorderMode}
+                    onRowRef={(el) => reorder.registerRow(n.id, el)}
+                    onDragPointerDown={reorder.handlePointerDown(n.id)}
+                    onDragPointerMove={reorder.handlePointerMove}
+                    onDragPointerUp={reorder.handlePointerUp}
                     onOpen={() => navigate(`/notes/${n.id}`)}
-                    onTogglePin={() => togglePin(n.id, !n.membership.pinned)}
-                    onChangeColor={() => setColorPickerNote(n)}
+                    onOpenMenu={() => setMenuTarget(n)}
                     onDeleteRequest={(e) => requestDeleteOrLeave(e, n.id, n.title, n.owner_id === profile?.id)}
                   />
                 </li>
@@ -190,6 +287,22 @@ export default function NotesPage() {
           )}
         </section>
       </main>
+
+      {/* Botón de confirmar reordenar: misma posición (en espejo, a la
+          izquierda) que el "+" de crear lista en ListsPage.tsx — solo se ve
+          mientras se está reordenando, como atajo a mano sin tener que subir
+          hasta el aviso de arriba. Hace lo mismo que su botón "Listo". */}
+      {reorderMode && (
+        <button
+          type="button"
+          onClick={() => setReorderMode(false)}
+          aria-label={t('reorder.done')}
+          title={t('reorder.done')}
+          className="fixed bottom-24 left-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)] text-white shadow-[0_16px_30px_-10px_var(--color-glow)] ring-1 ring-[var(--color-glass-border)]"
+        >
+          <CheckIcon className="h-6 w-6" />
+        </button>
+      )}
 
       {showCreate && (
         <CreateNoteModal
@@ -252,6 +365,55 @@ export default function NotesPage() {
           </div>
         </div>
       )}
+
+      {/* Menú de opciones de una nota, y su submenú de reordenar — ver el
+          comentario junto a menuTarget más arriba sobre por qué viven aquí,
+          fuera de cualquier tarjeta de cristal, y no dentro de NoteRow. */}
+      {menuTarget && (
+        <ContextMenu
+          title={menuTarget.title}
+          onClose={() => setMenuTarget(null)}
+          actions={[
+            {
+              label: t('menu.open'),
+              icon: <FolderIcon className="h-5 w-5" />,
+              onSelect: () => navigate(`/notes/${menuTarget.id}`),
+            },
+            {
+              label: menuTarget.membership.pinned ? t('menu.unpinNote') : t('menu.pinNote'),
+              icon: <PinIcon className="h-5 w-5" />,
+              onSelect: () => togglePin(menuTarget.id, !menuTarget.membership.pinned),
+            },
+            {
+              label: t('menu.duplicate'),
+              icon: <CopyIcon className="h-5 w-5" />,
+              onSelect: () => duplicateNote(menuTarget),
+            },
+            {
+              label: t('menu.reorder'),
+              icon: <ReorderIcon className="h-5 w-5" />,
+              onSelect: () => setShowSortMenu(true),
+            },
+            {
+              label: t('menu.changeColor'),
+              icon: <PaletteIcon className="h-5 w-5" />,
+              onSelect: () => setColorPickerNote(menuTarget),
+            },
+          ]}
+        />
+      )}
+
+      {showSortMenu && (
+        <ContextMenu
+          title={t('menu.reorder')}
+          onClose={() => setShowSortMenu(false)}
+          actions={[
+            { label: t('reorder.byDate'), icon: <SortDateIcon className="h-5 w-5" />, onSelect: () => applySortNotes('date') },
+            { label: t('reorder.alpha'), icon: <SortAlphaIcon className="h-5 w-5" />, onSelect: () => applySortNotes('alpha') },
+            { label: t('reorder.custom'), icon: <DragHandleIcon className="h-5 w-5" />, onSelect: () => setReorderMode(true) },
+          ]}
+        />
+      )}
     </div>
   )
 }
@@ -259,27 +421,37 @@ export default function NotesPage() {
 // Misma "tarjeta con lengüeta" que el detalle de la nota (ver
 // NoteDetailPage.tsx), con el mismo color — elegido a mano, o uno estable
 // según el título (ver colorForNote) — para que el listado y el detalle se
-// sientan como la misma pieza. Una pulsación larga abre el menú de
-// opciones (Abrir/Fijar/Cambiar color), igual que en "Mis listas".
+// sientan como la misma pieza. Una pulsación larga abre el menú de opciones
+// (Abrir/Fijar/Duplicar/Reordenar/Cambiar color), igual que en "Mis listas".
 function NoteRow({
   note: n,
   isOwner,
+  dragging,
+  reorderMode,
+  onRowRef,
+  onDragPointerDown,
+  onDragPointerMove,
+  onDragPointerUp,
   onOpen,
-  onTogglePin,
-  onChangeColor,
+  onOpenMenu,
   onDeleteRequest,
 }: {
   note: NoteWithMembership
   isOwner: boolean
+  dragging?: boolean
+  reorderMode?: boolean
+  onRowRef?: (el: HTMLElement | null) => void
+  onDragPointerDown?: (e: ReactPointerEvent) => void
+  onDragPointerMove?: (e: ReactPointerEvent) => void
+  onDragPointerUp?: (e: ReactPointerEvent) => void
   onOpen: () => void
-  onTogglePin: () => void
-  onChangeColor: () => void
+  onOpenMenu: () => void
   onDeleteRequest: (e: MouseEvent) => void
 }) {
   const { t } = useLanguage()
-  const [showMenu, setShowMenu] = useState(false)
-  const longPress = useLongPress(() => setShowMenu(true))
+  const longPress = useLongPress(onOpenMenu)
   const snippet = n.body.trim().slice(0, 80)
+  const inReorder = reorderMode && !!onDragPointerDown
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') onOpen()
@@ -287,21 +459,44 @@ function NoteRow({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={handleKeyDown}
-      className="glass-panel relative flex w-full select-none items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition"
-      {...longPress}
+      ref={onRowRef}
+      role={inReorder ? undefined : 'button'}
+      tabIndex={inReorder ? undefined : 0}
+      onClick={inReorder ? undefined : onOpen}
+      onKeyDown={inReorder ? undefined : handleKeyDown}
+      className={`glass-panel relative flex w-full items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition ${
+        inReorder ? 'select-none' : ''
+      } ${dragging ? 'shadow-lg ring-2 ring-brand-300' : ''}`}
+      {...(inReorder ? {} : longPress)}
     >
       <span
         className="absolute left-5 top-0 h-2 w-10 rounded-b-md"
         style={{ backgroundColor: colorForNote(n) }}
         aria-hidden="true"
       />
-      <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
-        <NotesIcon className="h-5 w-5" />
-      </span>
+      {inReorder ? (
+        // El asa es lo único que arrastra — el resto de la tarjeta queda
+        // libre para hacer scroll, igual que en "Mis listas" (ver ListRow en
+        // ListsPage.tsx). touch-none va puesto de forma ESTÁTICA porque
+        // tiene que estar así desde antes de tocar la pantalla para que el
+        // navegador lo respete desde el primer instante.
+        <button
+          type="button"
+          onPointerDown={onDragPointerDown}
+          onPointerMove={onDragPointerMove}
+          onPointerUp={onDragPointerUp}
+          onPointerCancel={onDragPointerUp}
+          aria-label={t('lists.dragHandle')}
+          className="-m-2 mt-0.5 shrink-0 select-none p-2 text-slate-300 touch-none dark:text-slate-600"
+          style={{ cursor: 'grab' }}
+        >
+          ⠿
+        </button>
+      ) : (
+        <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
+          <NotesIcon className="h-5 w-5" />
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold text-slate-900 dark:text-slate-100">
           {n.membership.pinned && (
@@ -311,30 +506,16 @@ function NoteRow({
         </span>
         {snippet && <span className="block truncate text-sm text-slate-500 dark:text-slate-400">{snippet}</span>}
       </span>
-      <button
-        type="button"
-        onClick={onDeleteRequest}
-        aria-label={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
-        title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
-        className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
-      >
-        <TrashIcon className="h-4 w-4" />
-      </button>
-
-      {showMenu && (
-        <ContextMenu
-          title={n.title}
-          onClose={() => setShowMenu(false)}
-          actions={[
-            { label: t('menu.open'), icon: <FolderIcon className="h-5 w-5" />, onSelect: onOpen },
-            {
-              label: n.membership.pinned ? t('menu.unpinNote') : t('menu.pinNote'),
-              icon: <PinIcon className="h-5 w-5" />,
-              onSelect: onTogglePin,
-            },
-            { label: t('menu.changeColor'), icon: <PaletteIcon className="h-5 w-5" />, onSelect: onChangeColor },
-          ]}
-        />
+      {!inReorder && (
+        <button
+          type="button"
+          onClick={onDeleteRequest}
+          aria-label={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
+          title={isOwner ? t('apuntes.deleteNote') : t('apuntes.leaveNote')}
+          className="shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
       )}
     </div>
   )

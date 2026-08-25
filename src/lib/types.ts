@@ -170,8 +170,9 @@ export type NoteMember = {
   responded_at: string | null
   invited_by: string | null
   // Preferencia personal de quien mira, no de la nota entera — igual que
-  // "pinned" en ListMember. Ver migration_v33.sql.
+  // "pinned"/"position" en ListMember. Ver migration_v33.sql / migration_v34.sql.
   pinned: boolean
+  position: number | null
   // joined
   profile?: Profile
 }
