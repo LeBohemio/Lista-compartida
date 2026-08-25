@@ -259,7 +259,12 @@ export default function ContactCardSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center gap-2 p-6 pb-4 text-center">
-          <Avatar username={targetProfile.username} avatarUrl={targetProfile.avatar_url} size={88} enlargeOnClick={false} />
+          {/* A diferencia de otros avatares de la app, este SÍ permite ampliar
+              la foto a pantalla completa al tocarla — antes estaba
+              desactivado (enlargeOnClick={false}) sin necesidad real: aquí
+              el avatar no vive dentro de otro botón que compita por el
+              toque, así que no hay conflicto. */}
+          <Avatar username={targetProfile.username} avatarUrl={targetProfile.avatar_url} size={88} />
           <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{targetProfile.username}</p>
         </div>
 
