@@ -6,6 +6,8 @@ import { applyTheme } from './lib/theme'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import AccountDeletionPage from './pages/AccountDeletionPage'
 import ListsPage from './pages/ListsPage'
 import ListDetailPage from './pages/ListDetailPage'
 import NotesPage from './pages/NotesPage'
@@ -44,6 +46,14 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/*
+        Públicas a propósito, sin ProtectedRoute — Google Play exige poder
+        abrir la política de privacidad y pedir el borrado de cuenta sin
+        tener la app instalada ni sesión iniciada. Ver PrivacyPolicyPage.tsx
+        / AccountDeletionPage.tsx.
+      */}
+      <Route path="/legal/privacidad" element={<PrivacyPolicyPage />} />
+      <Route path="/legal/borrar-cuenta" element={<AccountDeletionPage />} />
 
       {/*
         Las 3 pantallas principales comparten MainLayout, que pinta la

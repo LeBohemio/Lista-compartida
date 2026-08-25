@@ -407,6 +407,52 @@ const translations = {
     'account.typeToConfirm': 'Escribe {word} para confirmar:',
     'account.confirmWord': 'ELIMINAR',
     'account.deleting': 'Eliminando…',
+
+    // Política de privacidad (/legal/privacidad) y borrado de cuenta desde
+    // fuera de la app (/legal/borrar-cuenta) — dos páginas públicas, sin
+    // sesión iniciada, enlazadas desde Ajustes y desde el registro. Ver
+    // PrivacyPolicyPage.tsx / AccountDeletionPage.tsx.
+    'legal.privacyLinkSettings': 'Política de privacidad',
+    'legal.privacyLinkRegister': 'Al crear una cuenta aceptas nuestra',
+    'legal.privacyTitle': 'Política de privacidad',
+    'legal.privacyUpdated': 'Última actualización: agosto de 2026',
+    'legal.privacyIntroTitle': 'Resumen breve',
+    'legal.privacyIntroBody':
+      'NoteUs es una app para organizar listas, notas, gastos y chats con la gente con la que la compartas. Solo se guardan los datos necesarios para que eso funcione. No se vende ni se comparte con publicidad, ni se usa para nada distinto de hacer funcionar la app.',
+    'legal.privacyDataTitle': 'Qué datos se guardan',
+    'legal.privacyDataBody':
+      'Tu email y una contraseña (cifrada, nadie en NoteUs puede leerla), el nombre de usuario que elijas, y opcionalmente tu teléfono y una foto de perfil. Además, el contenido que crees usando la app: tus listas y notas, los gastos y quién le debe a quién, tus mensajes de chat (texto, fotos, audios y archivos que envíes) y las fotos de tickets que subas para el reconocimiento automático de importes. También quién es contacto de quién, y si activas los avisos, el identificador técnico de tu dispositivo necesario para poder enviártelos.',
+    'legal.privacyUseTitle': 'Para qué se usan',
+    'legal.privacyUseBody':
+      'Únicamente para el funcionamiento de la app: mostrarte tus listas y las de quien te invite, calcular los gastos y repartos, entregar tus mensajes a quien corresponda, y avisarte cuando algo importante pasa (si activaste los avisos). No se usan con fines publicitarios ni se analiza tu actividad con terceros.',
+    'legal.privacySharingTitle': 'Con quién se comparte',
+    'legal.privacySharingBody':
+      'Con nadie más que con la gente con la que tú decides compartir una lista, nota o chat concreto — eso es la app en sí. Los datos se alojan en la infraestructura de Supabase (el proveedor de base de datos y almacenamiento que usa NoteUs), que actúa como encargado técnico del tratamiento, no como tercero con acceso propio a tus datos. No se vende ni se cede información a redes de publicidad ni de analítica.',
+    'legal.privacyRetentionTitle': 'Cuánto tiempo se guardan',
+    'legal.privacyRetentionBody':
+      'Mientras tu cuenta exista. Si borras tu cuenta (desde Ajustes, o desde la página de borrado fuera de la app), tus datos personales y tu contenido se eliminan de forma permanente, salvo lo que siga siendo necesario para otras personas (por ejemplo, una lista compartida con más gente sigue existiendo para ellas, pasando su propiedad automáticamente a otro miembro).',
+    'legal.privacyRightsTitle': 'Tus derechos',
+    'legal.privacyRightsBody':
+      'Puedes acceder a tus datos, corregirlos o borrarlos en cualquier momento desde la propia app (Ajustes). Si no puedes entrar en la app, puedes pedir el borrado desde nuestra página de borrado de cuenta, o escribirnos directamente para cualquier otra petición sobre tus datos.',
+    'legal.privacyMinorsTitle': 'Menores de edad',
+    'legal.privacyMinorsBody':
+      'NoteUs no está dirigida específicamente a menores de edad y no se solicita ni se verifica la edad al registrarse.',
+    'legal.privacyContactTitle': 'Contacto',
+    'legal.privacyContactBody': 'Para cualquier duda sobre tus datos, escribe a:',
+    'legal.backToApp': 'Volver a la app',
+    'legal.deletionTitle': 'Borrar tu cuenta',
+    'legal.deletionUpdated': 'Última actualización: agosto de 2026',
+    'legal.deletionInAppTitle': 'Si puedes entrar en la app',
+    'legal.deletionInAppBody':
+      'Es más rápido: entra en Ajustes → Eliminar cuenta. El borrado es inmediato y no hace falta esperar respuesta de nadie.',
+    'legal.deletionOutsideTitle': 'Si no puedes o no quieres entrar en la app',
+    'legal.deletionOutsideBody':
+      'Escríbenos desde el email con el que te registraste, indicando el nombre de usuario de la cuenta que quieres borrar. Confirmaremos y procesaremos el borrado en un plazo máximo de 30 días.',
+    'legal.deletionWhatTitle': 'Qué se borra exactamente',
+    'legal.deletionWhatBody':
+      'Tu perfil, tu email y contraseña, tu foto de perfil, tus notas y mensajes, y tus fotos/audios/archivos enviados en cualquier chat. Si eras la única persona en alguna lista, esa lista se borra contigo; si la compartías con más gente, esa lista sigue existiendo para ellas y la propiedad pasa automáticamente a otro miembro. Es un borrado permanente, sin vuelta atrás.',
+    'legal.deletionEmailSubject': 'Solicitud de borrado de cuenta — NoteUs',
+    'legal.deletionEmailButton': 'Escribir para pedir el borrado',
     'myExpenses.prevMonth': 'Mes anterior',
     'myExpenses.nextMonth': 'Mes siguiente',
     'forward.title': 'Reenviar a…',
@@ -963,6 +1009,47 @@ const translations = {
     'account.typeToConfirm': 'Type {word} to confirm:',
     'account.confirmWord': 'DELETE',
     'account.deleting': 'Deleting…',
+
+    'legal.privacyLinkSettings': 'Privacy policy',
+    'legal.privacyLinkRegister': 'By creating an account you accept our',
+    'legal.privacyTitle': 'Privacy policy',
+    'legal.privacyUpdated': 'Last updated: August 2026',
+    'legal.privacyIntroTitle': 'Quick summary',
+    'legal.privacyIntroBody':
+      "NoteUs is an app for organizing lists, notes, expenses and chats with the people you share them with. We only keep the data needed to make that work. We don't sell it or share it for advertising, and we don't use it for anything other than running the app.",
+    'legal.privacyDataTitle': 'What data we keep',
+    'legal.privacyDataBody':
+      "Your email and a password (encrypted, nobody at NoteUs can read it), the username you choose, and optionally your phone number and a profile photo. Plus the content you create in the app: your lists and notes, expenses and who owes whom, your chat messages (text, photos, voice notes and files you send), and receipt photos you upload for automatic amount recognition. Also who is a contact of whom, and, if you turn on notifications, the technical device identifier needed to deliver them.",
+    'legal.privacyUseTitle': "What it's used for",
+    'legal.privacyUseBody':
+      "Only to run the app: showing you your lists and the ones shared with you, calculating expenses and splits, delivering your messages to the right people, and notifying you when something relevant happens (if you turned notifications on). We don't use it for advertising and we don't share your activity with third-party analytics.",
+    'legal.privacySharingTitle': 'Who we share it with',
+    'legal.privacySharingBody':
+      "Nobody besides the people you choose to share a specific list, note or chat with — that's the app itself. Data is hosted on Supabase's infrastructure (the database and storage provider NoteUs uses), acting as a technical data processor, not as a third party with its own access to your data. We don't sell or hand over information to advertising or analytics networks.",
+    'legal.privacyRetentionTitle': 'How long we keep it',
+    'legal.privacyRetentionBody':
+      "For as long as your account exists. If you delete your account (from Settings, or from the account-deletion page outside the app), your personal data and content are permanently removed, except for what still needs to exist for other people (for example, a list shared with others keeps existing for them, with ownership passing automatically to another member).",
+    'legal.privacyRightsTitle': 'Your rights',
+    'legal.privacyRightsBody':
+      "You can access, correct or delete your data at any time from within the app (Settings). If you can't get into the app, you can request deletion from our account-deletion page, or write to us directly for any other request about your data.",
+    'legal.privacyMinorsTitle': 'Minors',
+    'legal.privacyMinorsBody': "NoteUs isn't specifically aimed at minors, and age isn't requested or verified at sign-up.",
+    'legal.privacyContactTitle': 'Contact',
+    'legal.privacyContactBody': 'For any question about your data, write to:',
+    'legal.backToApp': 'Back to the app',
+    'legal.deletionTitle': 'Delete your account',
+    'legal.deletionUpdated': 'Last updated: August 2026',
+    'legal.deletionInAppTitle': "If you can get into the app",
+    'legal.deletionInAppBody':
+      "It's faster: go to Settings → Delete account. Deletion is immediate and you don't need to wait for a reply.",
+    'legal.deletionOutsideTitle': "If you can't or don't want to open the app",
+    'legal.deletionOutsideBody':
+      'Write to us from the email you registered with, including the username of the account you want deleted. We will confirm and process the deletion within 30 days at most.',
+    'legal.deletionWhatTitle': 'What exactly gets deleted',
+    'legal.deletionWhatBody':
+      "Your profile, your email and password, your profile photo, your notes and messages, and the photos/voice notes/files you sent in any chat. If you were the only person in a list, that list is deleted with you; if you shared it with others, it keeps existing for them and ownership passes automatically to another member. This is permanent and cannot be undone.",
+    'legal.deletionEmailSubject': 'Account deletion request — NoteUs',
+    'legal.deletionEmailButton': 'Write to request deletion',
     'myExpenses.prevMonth': 'Previous month',
     'myExpenses.nextMonth': 'Next month',
     'forward.title': 'Forward to…',

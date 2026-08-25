@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
@@ -747,6 +747,12 @@ export default function SettingsPage() {
         >
           {t('profile.deleteAccount')}
         </button>
+
+        <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
+          <Link to="/legal/privacidad" className="underline hover:text-slate-600 dark:hover:text-slate-300">
+            {t('legal.privacyLinkSettings')}
+          </Link>
+        </p>
       </main>
 
       {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} />}

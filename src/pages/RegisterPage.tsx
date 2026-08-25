@@ -112,6 +112,14 @@ export default function RegisterPage() {
           >
             {submitting ? t('auth.creatingAccount') : t('auth.createAccount')}
           </button>
+
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+            {t('legal.privacyLinkRegister')}{' '}
+            <Link to="/legal/privacidad" className="underline hover:text-slate-600 dark:hover:text-slate-300">
+              {t('legal.privacyLinkSettings').toLowerCase()}
+            </Link>
+            .
+          </p>
         </form>
 
         <p className="mt-6 text-center text-sm text-white/80">

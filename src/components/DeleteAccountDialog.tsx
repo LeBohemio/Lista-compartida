@@ -4,8 +4,56 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 
+// Antes de borrar la cuenta de verdad (delete_own_account, que cascada sobre
+// las tablas), limpiamos también los archivos que esa persona tiene en
+// Storage: nada en las tablas apunta a ellos después de borrarse, así que si
+// no se borran aquí se quedan huérfanos ahí para siempre. Las fotos de
+// LISTAS se dejan aparte a propósito: son un elemento compartido de la
+// lista, no algo personal de quien se borra — si la lista sigue existiendo
+// para el resto de miembros, su foto debe seguir ahí.
+//
+// Es un intento "a lo mejor que se pueda": si algo de esto falla (por
+// ejemplo, por estar sin conexión a mitad), no bloquea el borrado de la
+// cuenta en sí — mejor una cuenta borrada con algún archivo suelto de sobra
+// en Storage que una cuenta que no se puede borrar por un fallo en la
+// limpieza de fotos.
+async function cleanupOwnStorage(userId: string) {
+  try {
+    const { data: ownMessages } = await supabase
+      .from('messages')
+      .select('image_path, audio_path, file_path')
+      .eq('sender_id', userId)
+
+    const imagePaths = (ownMessages ?? []).map((m) => m.image_path).filter((p): p is string => !!p)
+    const audioPaths = (ownMessages ?? []).map((m) => m.audio_path).filter((p): p is string => !!p)
+    const filePaths = (ownMessages ?? []).map((m) => m.file_path).filter((p): p is string => !!p)
+
+    if (imagePaths.length) await supabase.storage.from('chat-images').remove(imagePaths)
+    if (audioPaths.length) await supabase.storage.from('chat-audio').remove(audioPaths)
+    if (filePaths.length) await supabase.storage.from('chat-files').remove(filePaths)
+
+    const { data: ownExpenses } = await supabase
+      .from('expenses')
+      .select('receipt_image_path')
+      .eq('created_by', userId)
+      .not('receipt_image_path', 'is', null)
+    const receiptPaths = (ownExpenses ?? []).map((e) => e.receipt_image_path).filter((p): p is string => !!p)
+    if (receiptPaths.length) await supabase.storage.from('receipts').remove(receiptPaths)
+
+    // La carpeta de avatares puede tener varias fotos subidas a lo largo
+    // del tiempo (no solo la que se ve ahora mismo), así que se listan y se
+    // borran todas.
+    const { data: avatarFiles } = await supabase.storage.from('avatars').list(userId)
+    if (avatarFiles && avatarFiles.length > 0) {
+      await supabase.storage.from('avatars').remove(avatarFiles.map((f) => `${userId}/${f.name}`))
+    }
+  } catch {
+    // Best-effort — ver el comentario de arriba.
+  }
+}
+
 export default function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const { t } = useLanguage()
   const [confirmText, setConfirmText] = useState('')
@@ -16,9 +64,14 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
   const canDelete = confirmText.trim().toUpperCase() === confirmWord
 
   const handleDelete = async () => {
-    if (!canDelete) return
+    if (!canDelete || !user) return
     setSubmitting(true)
     setError(null)
+    // La limpieza de Storage va ANTES del RPC: necesita seguir autenticada
+    // como esta persona (auth.uid()) para que las políticas de "borrar lo
+    // mío" de cada bucket la dejen borrar sus propios archivos — una vez
+    // borrada la cuenta, ya no habría sesión con la que hacerlo.
+    await cleanupOwnStorage(user.id)
     const { error: err } = await supabase.rpc('delete_own_account')
     if (err) {
       setSubmitting(false)
