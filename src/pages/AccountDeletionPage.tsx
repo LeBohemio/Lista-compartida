@@ -9,7 +9,7 @@ import LanguageToggle from '../components/LanguageToggle'
 // verificar quién eres automáticamente: por eso pide escribir desde el
 // propio email de la cuenta, y el borrado real se confirma a mano — ver el
 // comentario de la sección "fuera de la app" más abajo.
-const CONTACT_EMAIL = 'jorgiitoduran@gmail.com'
+const CONTACT_EMAIL = 'soporte.noteus@gmail.com'
 
 export default function AccountDeletionPage() {
   const { t } = useLanguage()

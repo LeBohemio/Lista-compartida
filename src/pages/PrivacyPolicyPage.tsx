@@ -10,7 +10,7 @@ import LanguageToggle from '../components/LanguageToggle'
 //
 // El contacto de privacidad usa el email de quien mantiene la app — si
 // cambia, se actualiza aquí y en AccountDeletionPage.tsx.
-const PRIVACY_CONTACT_EMAIL = 'jorgiitoduran@gmail.com'
+const PRIVACY_CONTACT_EMAIL = 'soporte.noteus@gmail.com'
 
 export default function PrivacyPolicyPage() {
   const { t } = useLanguage()
