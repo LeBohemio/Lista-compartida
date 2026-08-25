@@ -199,6 +199,11 @@ export default function ChatPanel({
   // deja de hacer falta mantener pulsado el botón — la grabación sigue sola
   // hasta que se pulse "detener y enviar" o "descartar".
   const [locked, setLocked] = useState(false)
+  // Cuánto se ha deslizado el dedo hacia arriba todavía (0 = reposo,
+  // -LOCK_THRESHOLD_PX = a punto de bloquear) — mueve de verdad el botón
+  // dentro del "carril" mientras se arrastra, en vez de que el bloqueo
+  // ocurra de golpe sin ningún aviso visual previo.
+  const [dragY, setDragY] = useState(0)
   const [micErrorKind, setMicErrorKind] = useState<'denied' | 'notfound' | 'other' | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -701,6 +706,7 @@ export default function ChatPanel({
       setRecordingSeconds(0)
       setSlideCancelHint(false)
       setLocked(false)
+      setDragY(0)
 
       const chunks = audioChunksRef.current
       audioChunksRef.current = []
@@ -715,7 +721,15 @@ export default function ChatPanel({
       // se descarta en silencio (nada de mensaje "roto" que no se puede
       // escuchar) si duró menos de 1 segundo o el archivo es demasiado
       // pequeño para tener audio de verdad.
-      const MIN_RECORDING_SECONDS = 1
+      // Subido de 1 a 2 segundos: en pruebas reales, las grabaciones que se
+      // quedaban justo en "1 segundo" (según este contador, que solo mide
+      // segundos completos desde que arrancó de verdad el micrófono)
+      // resultaron ser siempre audio roto — sin sonido real, y encima el
+      // propio reproductor era incapaz de calcularles la duración (se veía
+      // "0:00 / 0:00" aunque la burbuja dijera "0:01"). Una nota de voz de
+      // verdad rara vez dura menos de 2 segundos, así que este umbral no
+      // debería notarse en el uso normal.
+      const MIN_RECORDING_SECONDS = 2
       const MIN_RECORDING_BYTES = 2000
       if (durationSeconds < MIN_RECORDING_SECONDS) return
       const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
@@ -747,6 +761,7 @@ export default function ChatPanel({
     pendingReleaseRef.current = null
     setSlideCancelHint(false)
     setLocked(false)
+    setDragY(0)
     // No arrancamos a grabar al instante: esperamos un poco a ver si de
     // verdad es un "mantener pulsado" y no un toque suelto.
     micHoldTimerRef.current = setTimeout(() => {
@@ -766,10 +781,15 @@ export default function ChatPanel({
     const dy = e.clientY - recordingStartYRef.current
     if (dy < -LOCK_THRESHOLD_PX) {
       setLocked(true)
+      setDragY(0)
       cancelledRef.current = false
       setSlideCancelHint(false)
       return
     }
+    // El botón sigue al dedo de verdad mientras se arrastra hacia arriba
+    // (nunca hacia abajo del reposo) — así se nota que falta poco para
+    // bloquear, en vez de que pase de golpe al llegar al umbral.
+    setDragY(Math.max(-LOCK_THRESHOLD_PX, Math.min(0, dy)))
     const shouldCancel = dx < -CANCEL_THRESHOLD_PX
     cancelledRef.current = shouldCancel
     setSlideCancelHint(shouldCancel)
@@ -1109,22 +1129,41 @@ export default function ChatPanel({
                   <SendIcon className="h-4 w-4" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onPointerDown={handleMicPointerDown}
-                  onPointerMove={handleMicPointerMove}
-                  onPointerUp={handleMicPointerUp}
-                  onPointerCancel={handleMicPointerUp}
-                  disabled={sending && !recording}
-                  className={`flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow-[0_10px_20px_-10px_var(--color-glow)] transition-transform disabled:opacity-50 ${
-                    slideCancelHint ? 'bg-red-500' : 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)]'
-                  } ${recording ? 'scale-110' : ''}`}
-                  style={{ touchAction: 'none' }}
-                  aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
-                  title={recording ? t('chat.recording') : t('chat.attachAudio')}
-                >
-                  <MicIcon className="h-5 w-5" />
-                </button>
+                <div className="relative shrink-0">
+                  {/* El "carril": un canal fijo por encima del botón que
+                      enseña hasta dónde hay que deslizar para bloquear.
+                      Solo se ve mientras se está grabando y sin bloquear
+                      todavía — el propio botón (más abajo) se mueve dentro
+                      de este canal siguiendo el dedo de verdad, en vez de
+                      que el bloqueo salte de golpe sin ningún aviso. */}
+                  {recording && !locked && (
+                    <div
+                      className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex w-11 -translate-x-1/2 items-start justify-center rounded-full bg-[var(--color-glass)] pt-2 shadow-inner"
+                      style={{ height: LOCK_THRESHOLD_PX + 28 }}
+                    >
+                      <LockIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onPointerDown={handleMicPointerDown}
+                    onPointerMove={handleMicPointerMove}
+                    onPointerUp={handleMicPointerUp}
+                    onPointerCancel={handleMicPointerUp}
+                    disabled={sending && !recording}
+                    className={`relative flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow-[0_10px_20px_-10px_var(--color-glow)] transition-transform disabled:opacity-50 ${
+                      slideCancelHint ? 'bg-red-500' : 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)]'
+                    }`}
+                    style={{
+                      touchAction: 'none',
+                      transform: recording ? `translateY(${dragY}px) scale(1.1)` : undefined,
+                    }}
+                    aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
+                    title={recording ? t('chat.recording') : t('chat.attachAudio')}
+                  >
+                    <MicIcon className="h-5 w-5" />
+                  </button>
+                </div>
               )}
             </form>
           )}
