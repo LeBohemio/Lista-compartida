@@ -105,6 +105,23 @@ export default function ListDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, messages.length, user, listId])
 
+  // "Recientes": cada vez que entras de verdad en esta lista se guarda
+  // cuándo fue, en TU propia fila de list_members — es lo que usa "Mis
+  // listas" para subirla arriba (ver useLists.ts), y a diferencia de
+  // last_activity_at (compartida) esto no cambia por lo que haga otra
+  // persona, solo por lo que haces tú. Ver migration_v38.sql.
+  useEffect(() => {
+    if (!user || !listId) return
+    supabase
+      .from('list_members')
+      .update({ last_opened_at: new Date().toISOString() })
+      .eq('list_id', listId)
+      .eq('user_id', user.id)
+      .then(({ error: err }) => {
+        if (err) console.error('[list_members] no se pudo guardar la apertura reciente:', err)
+      })
+  }, [listId, user])
+
   // Vibración sutil cuando llega un mensaje nuevo de otra persona mientras no
   // estás mirando la pestaña de chat, para enterarte sin tener que comprobarlo.
   //

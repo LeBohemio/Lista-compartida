@@ -84,10 +84,16 @@ export default function ListsPage() {
   })
 
   const applySortLists = async (criterion: 'date' | 'alpha') => {
+    // "Por fecha" usa tu propio last_opened_at (cuándo entraste tú), igual
+    // que el orden automático por defecto (ver useLists.ts) — no
+    // last_activity_at, que es compartida. Así este botón manual da el
+    // mismo criterio que ya se aplica solo, en vez de un resultado distinto
+    // y confuso.
     const sorted = [...activeLists].sort((a, b) =>
       criterion === 'alpha'
         ? a.name.localeCompare(b.name, language === 'en' ? 'en' : 'es')
-        : new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime(),
+        : new Date(b.membership.last_opened_at ?? b.membership.created_at).getTime() -
+          new Date(a.membership.last_opened_at ?? a.membership.created_at).getTime(),
     )
     await reorderLists(sorted.map((l) => l.id))
   }

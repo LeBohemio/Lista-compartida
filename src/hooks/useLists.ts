@@ -60,7 +60,20 @@ export function useLists() {
       if (pa != null && pb != null && pa !== pb) return pa - pb
       if (pa != null && pb == null) return -1
       if (pa == null && pb != null) return 1
-      return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+      // "Recientes" para TI: se ordena por cuándo entraste tú por última
+      // vez (last_opened_at, tu propia fila) y NO por last_activity_at
+      // (compartida, sube con cualquier cambio de cualquier miembro) — así
+      // que otra persona editando o escribiendo al chat no te reordena la
+      // lista a ti. Ver migration_v38.sql. Una lista que nunca has abierto
+      // (recién invitada y aceptada, por ejemplo) cae al final de este
+      // grupo usando su fecha de creación como respaldo.
+      const oa = a.membership.last_opened_at
+        ? new Date(a.membership.last_opened_at).getTime()
+        : new Date(a.membership.created_at).getTime()
+      const ob = b.membership.last_opened_at
+        ? new Date(b.membership.last_opened_at).getTime()
+        : new Date(b.membership.created_at).getTime()
+      return ob - oa
     })
 
     setLists(accepted)

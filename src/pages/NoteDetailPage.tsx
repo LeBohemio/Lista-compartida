@@ -74,6 +74,23 @@ export default function NoteDetailPage() {
     }
   }, [])
 
+  // "Recientes": mismo mecanismo que ListDetailPage.tsx — entrar de verdad
+  // en esta nota guarda cuándo fue en TU propia fila de note_members, y eso
+  // es lo que usa "Notas" para subirla arriba (ver useNotes.ts). No cambia
+  // por lo que edite otra persona, solo por lo que abres tú. Ver
+  // migration_v38.sql.
+  useEffect(() => {
+    if (!user || !noteId) return
+    supabase
+      .from('note_members')
+      .update({ last_opened_at: new Date().toISOString() })
+      .eq('note_id', noteId)
+      .eq('user_id', user.id)
+      .then(({ error: err }) => {
+        if (err) console.error('[note_members] no se pudo guardar la apertura reciente:', err)
+      })
+  }, [noteId, user])
+
   const scheduleSave = (patch: { title?: string; body?: string }, timerRef: typeof titleTimerRef) => {
     if (timerRef.current) clearTimeout(timerRef.current)
     setSaveStatus('saving')

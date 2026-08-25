@@ -74,6 +74,12 @@ export type ListMember = {
   created_at: string
   responded_at: string | null
   last_read_message_at: string | null
+  // Cuándo entraste TÚ de verdad en esta lista por última vez — a
+  // diferencia de lists.last_activity_at (compartida, sube con cualquier
+  // cambio de cualquiera), esto es solo tuyo y decide el orden en "Mis
+  // listas" cuando no hay un orden manual puesto a mano. Ver
+  // migration_v38.sql / ListDetailPage.tsx.
+  last_opened_at: string | null
   // Silenciar el chat de ESTA lista (no afecta a otras listas ni a otros
   // tipos de aviso). Ver migration_v15.sql. Puede ser para siempre
   // (muted_until vacío) o hasta una fecha (muted_until con valor) — ver
@@ -178,6 +184,9 @@ export type NoteMember = {
   // "pinned"/"position" en ListMember. Ver migration_v33.sql / migration_v34.sql.
   pinned: boolean
   position: number | null
+  // Mismo campo y mismo motivo que en ListMember — ver migration_v38.sql /
+  // NoteDetailPage.tsx.
+  last_opened_at: string | null
   // joined
   profile?: Profile
 }

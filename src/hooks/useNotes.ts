@@ -47,8 +47,10 @@ export function useNotes() {
     }
 
     // Fijadas primero (igual que "Mis listas"); dentro de cada grupo, el
-    // orden manual si existe (ver reorderNotes/migration_v34.sql), si no
-    // por actividad más reciente.
+    // orden manual si existe (ver reorderNotes/migration_v34.sql), si no por
+    // cuándo entraste TÚ por última vez (last_opened_at, tu propia fila) —
+    // no por note.last_activity_at, que es compartida y sube con cualquier
+    // cambio de cualquier persona. Ver migration_v38.sql.
     accepted.sort((a, b) => {
       if (a.membership.pinned !== b.membership.pinned) return a.membership.pinned ? -1 : 1
       const pa = a.membership.position
@@ -56,7 +58,13 @@ export function useNotes() {
       if (pa != null && pb != null && pa !== pb) return pa - pb
       if (pa != null && pb == null) return -1
       if (pa == null && pb != null) return 1
-      return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+      const oa = a.membership.last_opened_at
+        ? new Date(a.membership.last_opened_at).getTime()
+        : new Date(a.membership.created_at).getTime()
+      const ob = b.membership.last_opened_at
+        ? new Date(b.membership.last_opened_at).getTime()
+        : new Date(b.membership.created_at).getTime()
+      return ob - oa
     })
 
     setNotes(accepted)
