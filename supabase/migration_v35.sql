@@ -1,0 +1,25 @@
+-- migration_v35: teléfono opcional en el perfil
+--
+-- Permite invitar a alguien a una lista/nota, o mandarle una petición de
+-- contacto, buscando por su número de teléfono además de por su email (ver
+-- InviteMemberModal.tsx / InviteNoteMemberModal.tsx / ContactsPage.tsx).
+--
+-- Sin verificación por SMS a propósito: mandar una invitación no da acceso a
+-- nada por sí solo, solo cuenta si la otra persona la acepta estando
+-- conectada con su propia cuenta — exactamente la misma confianza que ya
+-- tiene hoy invitar por email, así que verificar el número no añadía
+-- seguridad real, solo coste (un proveedor de SMS) y complejidad.
+--
+-- Se guarda ya normalizado (solo dígitos, con un "+" delante si lo llevaba —
+-- ver normalizePhone() en lib/phone.ts) para que buscar "612 345 678"
+-- encuentre a quien lo guardó como "612345678": se normaliza igual tanto al
+-- guardarlo en Ajustes como al buscarlo al invitar.
+--
+-- Sin política RLS nueva: "profiles_select_authenticated" ya deja a
+-- cualquiera con sesión iniciada leer perfiles ajenos (hace falta para
+-- poder buscarlos al invitar, igual que ya pasa con el email), y
+-- "profiles_update_own" ya deja a cada quien actualizar solo su propia fila.
+--
+-- Seguro de ejecutar más de una vez y sobre una base de datos ya en uso.
+
+alter table public.profiles add column if not exists phone text;

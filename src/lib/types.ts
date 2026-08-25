@@ -7,6 +7,11 @@ export type Profile = {
   id: string
   username: string
   email: string
+  // Opcional — para poder invitar/añadir como contacto buscando por
+  // teléfono además de por email (ver lib/phone.ts). Se guarda ya
+  // normalizado (solo dígitos, con "+" delante si lo llevaba). Ver
+  // migration_v35.sql.
+  phone: string | null
   avatar_url: string | null
   theme: Theme
   accent_color: string | null

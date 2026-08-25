@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
+import { looksLikePhone, normalizePhone } from '../lib/phone'
 import Avatar from './Avatar'
 import type { Contact } from '../lib/types'
 
@@ -88,15 +89,19 @@ export default function InviteNoteMemberModal({
     e.preventDefault()
     setError(null)
     setSuccess(null)
-    const value = identifier.trim().toLowerCase()
-    if (!value || !user) return
+    const rawValue = identifier.trim()
+    if (!rawValue || !user) return
     setSubmitting(true)
 
-    const { data: profile, error: findErr } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('email', value)
-      .maybeSingle()
+    // Ver el comentario equivalente en InviteMemberModal.tsx: se busca por
+    // email o por teléfono según lo que parezca haber escrito la persona.
+    const isPhone = looksLikePhone(rawValue)
+    const value = isPhone ? normalizePhone(rawValue) : rawValue.toLowerCase()
+    const query = supabase.from('profiles').select('*')
+    const { data: profile, error: findErr } = await (isPhone
+      ? query.eq('phone', value)
+      : query.ilike('email', value)
+    ).maybeSingle()
 
     if (findErr) {
       setError(findErr.message)
@@ -202,7 +207,7 @@ export default function InviteNoteMemberModal({
             </p>
             <form onSubmit={handleSubmit} className="flex gap-2">
               <input
-                type="email"
+                type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={t('invite.placeholder')}

@@ -8,6 +8,7 @@ import ContactCardSheet from '../components/ContactCardSheet'
 import { BellOffIcon, BlockIcon, ChatBubbleIcon, PinIcon, TrashIcon } from '../components/icons'
 import { useLanguage } from '../lib/i18n'
 import { isCurrentlyMuted } from '../lib/mute'
+import { looksLikePhone, normalizePhone } from '../lib/phone'
 import type { Contact, ContactRequest, Profile } from '../lib/types'
 import type { ContactRequestsData } from '../hooks/useContactRequests'
 
@@ -29,7 +30,7 @@ export default function ContactsPage() {
   // dejando que la lista de contactos suba y aproveche ese hueco cuando
   // está cerrado.
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addEmail, setAddEmail] = useState('')
+  const [addIdentifier, setAddIdentifier] = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [addSuccess, setAddSuccess] = useState<string | null>(null)
@@ -87,34 +88,43 @@ export default function ContactsPage() {
     e.preventDefault()
     setAddError(null)
     setAddSuccess(null)
-    const value = addEmail.trim().toLowerCase()
-    if (!value || !user) return
+    const rawValue = addIdentifier.trim()
+    if (!rawValue || !user) return
 
-    if (value === user.email?.toLowerCase()) {
+    // Ver el comentario equivalente en InviteMemberModal.tsx: se busca por
+    // email o por teléfono según lo que parezca haber escrito la persona.
+    const isPhone = looksLikePhone(rawValue)
+    const value = isPhone ? normalizePhone(rawValue) : rawValue.toLowerCase()
+
+    if (!isPhone && value === user.email?.toLowerCase()) {
+      setAddError(t('contacts.errorSelf'))
+      return
+    }
+    if (isPhone && profile?.phone && value === profile.phone) {
       setAddError(t('contacts.errorSelf'))
       return
     }
 
     setAddSubmitting(true)
 
-    const { data: profile, error: findErr } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('email', value)
-      .maybeSingle()
+    const query = supabase.from('profiles').select('*')
+    const { data: foundProfile, error: findErr } = await (isPhone
+      ? query.eq('phone', value)
+      : query.ilike('email', value)
+    ).maybeSingle()
 
     if (findErr) {
       setAddSubmitting(false)
       setAddError(findErr.message)
       return
     }
-    if (!profile) {
+    if (!foundProfile) {
       setAddSubmitting(false)
       setAddError(t('contacts.errorNotFound'))
       return
     }
 
-    const { error: rpcErr } = await supabase.rpc('send_contact_request', { p_to_user_id: profile.id })
+    const { error: rpcErr } = await supabase.rpc('send_contact_request', { p_to_user_id: foundProfile.id })
     setAddSubmitting(false)
     if (rpcErr) {
       if (rpcErr.message.includes('ALREADY_CONTACT')) setAddError(t('contacts.errorAlreadyContact'))
@@ -125,8 +135,8 @@ export default function ContactsPage() {
       return
     }
 
-    setAddSuccess(t('contacts.requestSent', { name: profile.username }))
-    setAddEmail('')
+    setAddSuccess(t('contacts.requestSent', { name: foundProfile.username }))
+    setAddIdentifier('')
     refetch()
   }
 
@@ -261,9 +271,9 @@ export default function ContactsPage() {
               )}
               <form onSubmit={handleAddSubmit} className="flex gap-2">
                 <input
-                  type="email"
-                  value={addEmail}
-                  onChange={(e) => setAddEmail(e.target.value)}
+                  type="text"
+                  value={addIdentifier}
+                  onChange={(e) => setAddIdentifier(e.target.value)}
                   placeholder={t('contacts.addPlaceholder')}
                   autoFocus
                   className="min-w-0 flex-1 rounded-full border px-4 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"

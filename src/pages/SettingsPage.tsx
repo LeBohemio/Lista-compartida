@@ -12,6 +12,7 @@ import { BanknoteIcon, ChatBubbleIcon, CloseIcon, HandshakeIcon, ListsIcon } fro
 import { CURRENCIES, type CurrencyCode } from '../lib/currencies'
 import type { Language, Theme } from '../lib/types'
 import { disablePush, enablePush, isPushSupported } from '../lib/push'
+import { normalizePhone } from '../lib/phone'
 
 const THEME_OPTIONS: { value: Theme; labelKey: TranslationKey }[] = [
   { value: 'light', labelKey: 'theme.light' },
@@ -115,6 +116,10 @@ export default function SettingsPage() {
   const [newEmail, setNewEmail] = useState('')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
   const [emailMessage, setEmailMessage] = useState<string | null>(null)
+
+  const [newPhone, setNewPhone] = useState('')
+  const [phoneSubmitting, setPhoneSubmitting] = useState(false)
+  const [phoneMessage, setPhoneMessage] = useState<string | null>(null)
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -271,6 +276,36 @@ export default function SettingsPage() {
     }
     setEmailMessage(t('profile.emailConfirmSent'))
     setNewEmail('')
+  }
+
+  // A diferencia del email y la contraseña, el teléfono es un dato aparte
+  // de la cuenta de acceso (no hace falta confirmarlo por correo/SMS — ver
+  // migration_v35.sql), así que es un update directo sobre "profiles",
+  // igual que el nombre de usuario. Dejar el campo vacío y guardar borra el
+  // teléfono (vuelve a null) — útil si alguien quiere quitarlo sin tener
+  // que poner otro.
+  const handleChangePhone = async (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = newPhone.trim()
+    const normalized = normalizePhone(trimmed)
+    if (trimmed && !normalized) {
+      setPhoneMessage(t('profile.phoneInvalid'))
+      return
+    }
+    setPhoneSubmitting(true)
+    setPhoneMessage(null)
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ phone: normalized || null })
+      .eq('id', user.id)
+    setPhoneSubmitting(false)
+    if (err) {
+      setPhoneMessage(err.message)
+      return
+    }
+    await refreshProfile()
+    setPhoneMessage(normalized ? t('profile.phoneUpdated') : t('profile.phoneRemoved'))
+    setNewPhone('')
   }
 
   const handleChangePassword = async (e: FormEvent) => {
@@ -644,6 +679,28 @@ export default function SettingsPage() {
                 className="w-full rounded-full border py-2 text-sm font-medium text-slate-700 hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
               >
                 {emailSubmitting ? t('common.saving') : t('profile.updateEmail')}
+              </button>
+            </form>
+          </div>
+
+          <div className="space-y-2 border-t pt-4 border-[var(--color-glass-border)]">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('profile.changePhone')}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">{t('profile.phoneHint')}</p>
+            <form onSubmit={handleChangePhone} className="space-y-2">
+              <input
+                type="tel"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder={profile.phone ?? t('profile.phonePlaceholder')}
+                className="w-full rounded-2xl border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
+              />
+              {phoneMessage && <p className="text-xs text-slate-500 dark:text-slate-400">{phoneMessage}</p>}
+              <button
+                type="submit"
+                disabled={phoneSubmitting}
+                className="w-full rounded-full border py-2 text-sm font-medium text-slate-700 hover:bg-white/60 disabled:opacity-50 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
+              >
+                {phoneSubmitting ? t('common.saving') : t('profile.updatePhone')}
               </button>
             </form>
           </div>
