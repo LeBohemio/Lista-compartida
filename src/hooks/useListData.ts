@@ -121,6 +121,29 @@ export function useListData(listId: string | undefined) {
     }
   }, [listId, user, fetchAll])
 
+  // Por qué el chat "a veces" no se actualizaba en directo: en el móvil,
+  // cuando el navegador (o la PWA instalada) pasa a segundo plano —se
+  // bloquea la pantalla, se cambia de app un momento— es habitual que el
+  // sistema corte la conexión WebSocket de Supabase Realtime para ahorrar
+  // batería, y no siempre se reconecta sola al volver. El canal de arriba
+  // se queda "vivo" pero sordo, así que los cambios que ocurren mientras
+  // tanto (un mensaje nuevo, un gasto añadido) no llegan hasta que se
+  // refresca la página a mano. Aquí refrescamos nosotros mismos en cuanto
+  // la pestaña/app vuelve a primer plano, por si acaso nos hemos perdido
+  // algo — sin esperar a que el WebSocket decida reconectarse solo.
+  useEffect(() => {
+    if (!listId || !user) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [listId, user, fetchAll])
+
   const myMembership = members.find((m) => m.user_id === user?.id) ?? null
   const acceptedMembers = members.filter((m) => m.status === 'accepted')
 

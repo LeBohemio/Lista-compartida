@@ -94,6 +94,24 @@ export function useDirectMessages(peerId: string | undefined) {
     }
   }, [peerId, user, fetchAll])
 
+  // Mismo motivo que en useListData.ts: si el móvil corta la conexión en
+  // tiempo real al pasar la app a segundo plano (bloqueo de pantalla,
+  // cambio de app...) y no se reconecta sola, el chat se queda
+  // desactualizado hasta refrescar a mano. Al volver a primer plano,
+  // refrescamos nosotros mismos por si acaso.
+  useEffect(() => {
+    if (!peerId || !user) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [peerId, user, fetchAll])
+
   const clearChat = useCallback(async () => {
     if (!peerId || !user) return
     const { error } = await supabase

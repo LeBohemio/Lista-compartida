@@ -67,8 +67,19 @@ export default function SettleUpModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      {/*
+        max-h-[88vh] + overflow-y-auto: sin esto, con el teclado del móvil
+        abierto (rellenando el importe o la nota) el diálogo podía medir más
+        que la pantalla visible y su parte de arriba (título, aviso de
+        confirmación) quedaba cortada fuera de la vista, sin forma de
+        desplazarse hasta ahí — el mismo patrón que ya usan
+        InviteMemberModal.tsx / MyExpensesModal.tsx. Fondo sólido
+        (--color-surface) en vez de "glass-panel": esta pestaña concreta
+        pedía quitar la transparencia para que no se viera el balance de
+        gastos de detrás asomando bajo el diálogo.
+      */}
       <div
-        className="glass-panel w-full max-w-md rounded-t-[28px] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
+        className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-[var(--color-surface)] p-6 shadow-[0_24px_60px_-20px_rgba(20,21,26,0.5)] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('settle.title')}</h2>
@@ -97,7 +108,7 @@ export default function SettleUpModal({
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
+              className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
             <p className="mt-1 text-xs text-slate-400">
               {t('settle.suggestedDebt', { amount: formatCurrency(debt.amount, currency, language) })}
@@ -110,7 +121,7 @@ export default function SettleUpModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t('settle.notePlaceholder')}
-              className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-glass-border)] bg-[var(--color-glass)] dark:text-slate-100"
+              className="w-full rounded-2xl border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
             />
           </div>
 
@@ -120,7 +131,7 @@ export default function SettleUpModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-white/60 border-[var(--color-glass-border)] dark:text-slate-200 dark:hover:bg-white/10"
+              className="flex-1 rounded-full border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
             >
               {t('common.cancel')}
             </button>
