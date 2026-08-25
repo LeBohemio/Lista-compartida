@@ -23,6 +23,7 @@ import {
   CloseIcon,
   CopyIcon,
   EditIcon,
+  FileAttachmentIcon,
   ForwardIcon,
   GalleryIcon,
   LockIcon,
@@ -43,16 +44,27 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+// "245 KB", "3.1 MB"... para mostrar el peso del archivo adjunto sin tener
+// que descargarlo primero (el tamaño se guarda en la fila al subirlo, ver
+// migration_v31.sql).
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 // Resumen corto de un mensaje para mostrarlo citado — encima del
 // compositor mientras se responde, o dentro de la burbuja de quien
-// respondió. Un mensaje sin texto es una foto o una nota de voz.
+// respondió. Un mensaje sin texto es una foto, una nota de voz o un
+// archivo adjunto.
 function replyPreviewText(
-  m: { content: string | null; image_path: string | null; audio_path: string | null },
+  m: { content: string | null; image_path: string | null; audio_path: string | null; file_path?: string | null; file_name?: string | null },
   t: (key: TranslationKey) => string,
 ): string {
   if (m.content) return m.content
   if (m.image_path) return t('chat.replyPhoto')
   if (m.audio_path) return t('chat.replyAudio')
+  if (m.file_path) return m.file_name ?? t('chat.replyFile')
   return ''
 }
 
@@ -64,9 +76,9 @@ const EDIT_WINDOW_MS = 15 * 60 * 1000
 
 function canEditMessage(m: Message, userId?: string): boolean {
   if (!userId || m.sender_id !== userId) return false
-  // Solo mensajes de puro texto: una foto o nota de voz ya enviada no se
-  // puede sustituir por otra cosa.
-  if (!m.content || m.image_path || m.audio_path) return false
+  // Solo mensajes de puro texto: una foto, nota de voz o archivo ya
+  // enviado no se puede sustituir por otra cosa.
+  if (!m.content || m.image_path || m.audio_path || m.file_path) return false
   return Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS
 }
 
@@ -163,15 +175,20 @@ export default function ChatPanel({
   const [error, setError] = useState<string | null>(null)
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({})
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   // Foto elegida (de cámara o galería) pendiente de confirmar: se muestra
   // en una hoja con vista previa y un texto opcional antes de subirla y
   // mandarla de verdad — antes se enviaba sola en cuanto se elegía el
   // archivo, sin poder revisarla ni añadir nada.
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null)
+  // Mismo patrón para un documento (PDF, Word…) elegido para adjuntar —
+  // aquí no hay vista previa visual, solo el icono, el nombre y el peso.
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
 
   const [recording, setRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
@@ -222,6 +239,11 @@ export default function ChatPanel({
 
   const audioPaths = useMemo(
     () => visibleMessages.filter((m) => m.audio_path).map((m) => m.audio_path as string),
+    [visibleMessages],
+  )
+
+  const filePaths = useMemo(
+    () => visibleMessages.filter((m) => m.file_path).map((m) => m.file_path as string),
     [visibleMessages],
   )
 
@@ -305,6 +327,44 @@ export default function ChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioPaths])
 
+  // Mismo patrón de reintento, contra el bucket "chat-files" (ver
+  // migration_v31.sql) para los documentos adjuntos.
+  useEffect(() => {
+    const missing = filePaths.filter((p) => !fileUrls[p])
+    if (missing.length === 0) return
+    let cancelled = false
+
+    const attempt = (retriesLeft: number) => {
+      supabase.storage
+        .from('chat-files')
+        .createSignedUrls(missing, 3600)
+        .then(({ data }) => {
+          if (cancelled) return
+          if (data) {
+            setFileUrls((prev) => {
+              const next = { ...prev }
+              for (const row of data) {
+                if (row.signedUrl && row.path) next[row.path] = row.signedUrl
+              }
+              return next
+            })
+          }
+          const stillMissing = !data || data.some((row) => !row.signedUrl)
+          if (stillMissing && retriesLeft > 0) {
+            setTimeout(() => {
+              if (!cancelled) attempt(retriesLeft - 1)
+            }, 1200)
+          }
+        })
+    }
+    attempt(3)
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filePaths])
+
   // Al entrar en una conversación hay que aterrizar YA en el mensaje más
   // reciente (como cualquier app de chat), no ir viéndolo deslizarse desde
   // arriba — así que la primera vez que hay mensajes cargados, el salto es
@@ -327,7 +387,7 @@ export default function ChatPanel({
   useEffect(() => {
     if (landedRef.current !== conversationKey) return
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })
-  }, [imageUrls, audioUrls, conversationKey])
+  }, [imageUrls, audioUrls, fileUrls, conversationKey])
 
   // Si la persona sale de la conversación (o del navegador desde otra
   // pestaña) mientras estaba grabando, no queremos dejar el micrófono
@@ -476,6 +536,66 @@ export default function ChatPanel({
     URL.revokeObjectURL(pendingImage.previewUrl)
     setPendingImage(null)
     resetImageInputs()
+    if (insertErr) {
+      setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
+      return
+    }
+    setText('')
+    setReplyTarget(null)
+  }
+
+  // Elegir un documento (PDF, Word…) tampoco lo manda solo: igual que la
+  // foto, se guarda como "pendiente" y se confirma en una hoja aparte
+  // (aquí sin vista previa visual — solo icono, nombre y peso) antes de
+  // subirlo de verdad.
+  const onSelectFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPendingFile(file)
+  }
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const cancelPendingFile = () => {
+    if (sending) return
+    setPendingFile(null)
+    resetFileInput()
+  }
+
+  const confirmSendFile = async () => {
+    if (!pendingFile || !user) return
+    setError(null)
+    setSending(true)
+
+    const file = pendingFile
+    const ext = file.name.split('.').pop() || 'bin'
+    const path = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('chat-files')
+      .upload(path, file, { contentType: file.type || 'application/octet-stream' })
+
+    if (uploadErr) {
+      setError(t('chat.errorUploadFile', { message: uploadErr.message }))
+      setSending(false)
+      return
+    }
+
+    const { error: insertErr } = await supabase.from('messages').insert({
+      ...insertPayload(target),
+      sender_id: user.id,
+      file_path: path,
+      file_name: file.name,
+      file_mime_type: file.type || null,
+      file_size_bytes: file.size,
+      content: text.trim() || null,
+      reply_to_message_id: replyTarget?.id ?? null,
+    })
+
+    setSending(false)
+    setPendingFile(null)
+    resetFileInput()
     if (insertErr) {
       setError(insertErr.code === '42501' ? t('chat.blockedError') : insertErr.message)
       return
@@ -716,6 +836,7 @@ export default function ChatPanel({
                   currentUserId={user?.id}
                   imageUrl={m.image_path ? imageUrls[m.image_path] : undefined}
                   audioUrl={m.audio_path ? audioUrls[m.audio_path] : undefined}
+                  fileUrl={m.file_path ? fileUrls[m.file_path] : undefined}
                   onLongPress={() => setMenuTarget(m)}
                   onOpenImage={setViewerUrl}
                   onSwipeReply={readOnly ? undefined : startReply}
@@ -827,7 +948,7 @@ export default function ChatPanel({
                       onClick={() => setShowPhotoMenu(true)}
                       disabled={sending}
                       className="glass-panel flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 disabled:opacity-50 dark:text-slate-300"
-                      aria-label={t('chat.attachPhoto')}
+                      aria-label={t('chat.attachMenu')}
                     >
                       <CameraIcon className="h-5 w-5" />
                     </button>
@@ -851,6 +972,17 @@ export default function ChatPanel({
                     type="file"
                     accept="image/*"
                     onChange={onSelectImage}
+                    className="hidden"
+                  />
+                  {/* Documentos (PDF, Word) — mismo patrón que las fotos: un
+                      input oculto que abre el propio selector de archivos
+                      del sistema, ofrecido desde el mismo menú del botón
+                      de adjuntar. */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={onSelectFile}
                     className="hidden"
                   />
                   <textarea
@@ -958,6 +1090,7 @@ export default function ChatPanel({
           actions={[
             { label: t('chat.takePhoto'), icon: <CameraIcon className="h-5 w-5" />, onSelect: () => cameraInputRef.current?.click() },
             { label: t('chat.choosePhoto'), icon: <GalleryIcon className="h-5 w-5" />, onSelect: () => galleryInputRef.current?.click() },
+            { label: t('chat.chooseFile'), icon: <FileAttachmentIcon className="h-5 w-5" />, onSelect: () => fileInputRef.current?.click() },
           ]}
         />
       )}
@@ -996,6 +1129,54 @@ export default function ChatPanel({
               <button
                 type="button"
                 onClick={confirmSendImage}
+                disabled={sending}
+                className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                {sending ? t('common.saving') : t('chat.send')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingFile && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={cancelPendingFile}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-4 shadow-xl sm:rounded-2xl bg-[var(--color-surface)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center gap-3 rounded-xl border px-3 py-2.5 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-glass)] text-[var(--color-brand-600)]">
+                <FileAttachmentIcon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{pendingFile.name}</p>
+                <p className="text-xs text-slate-400">{formatFileSize(pendingFile.size)}</p>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={t('chat.captionPlaceholder')}
+              className="mb-3 w-full rounded-lg border px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 border-[var(--color-surface-border)] bg-[var(--color-surface-alt)] dark:text-slate-100"
+            />
+            {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={cancelPendingFile}
+                disabled={sending}
+                className="flex-1 rounded-lg border px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 border-[var(--color-surface-border)] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmSendFile}
                 disabled={sending}
                 className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
               >
@@ -1098,6 +1279,7 @@ function MessageBubble({
   currentUserId,
   imageUrl,
   audioUrl,
+  fileUrl,
   onLongPress,
   onOpenImage,
   onSwipeReply,
@@ -1108,6 +1290,7 @@ function MessageBubble({
   currentUserId?: string
   imageUrl?: string
   audioUrl?: string
+  fileUrl?: string
   onLongPress: () => void
   onOpenImage: (url: string) => void
   // undefined cuando el chat es de solo lectura (lista completada): sin
@@ -1274,6 +1457,39 @@ function MessageBubble({
                 </span>
               )}
             </div>
+          )}
+          {m.file_path && (
+            // No hay lector de PDF/Word embebido en la app — como en
+            // cualquier chat, tocar el adjunto lo abre con el visor nativo
+            // del propio navegador/teléfono en una pestaña nueva.
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!fileUrl) e.preventDefault()
+              }}
+              className={`mb-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 ${
+                isMine ? 'bg-white/10' : 'bg-black/5 dark:bg-white/5'
+              } ${fileUrl ? 'cursor-pointer' : 'cursor-default opacity-70'}`}
+            >
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  isMine ? 'bg-white/15 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
+                }`}
+              >
+                <FileAttachmentIcon className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{m.file_name ?? t('chat.replyFile')}</span>
+                {m.file_size_bytes != null && (
+                  <span className={`text-xs ${isMine ? 'text-white/70' : 'text-slate-400'}`}>
+                    {formatFileSize(m.file_size_bytes)}
+                  </span>
+                )}
+              </span>
+            </a>
           )}
           {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
           </div>

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 import CreateNoteModal from '../components/CreateNoteModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { NotesIcon, TrashIcon } from '../components/icons'
+import { colorForNote } from '../lib/colors'
 
 // Pantalla de "Notas comunes" (ver migration_v23.sql) — algo aparte de las
 // listas, con su propia pestaña en la barra inferior. Versión simple a
@@ -162,12 +163,17 @@ export default function NotesPage() {
               {normalizedQuery ? t('lists.emptySearch') : t('apuntes.empty')}
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {visibleNotes.map((n) => {
                 const isOwner = n.owner_id === profile?.id
                 const snippet = n.body.trim().slice(0, 80)
                 return (
                   <li key={n.id}>
+                    {/* Misma "tarjeta con lengüeta" que el detalle de la
+                        nota (ver NoteDetailPage.tsx), con el mismo color —
+                        elegido a mano, o uno estable según el título (ver
+                        colorForNote) — para que el listado y el detalle se
+                        sientan como la misma pieza. */}
                     <div
                       role="button"
                       tabIndex={0}
@@ -175,8 +181,13 @@ export default function NotesPage() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') navigate(`/notes/${n.id}`)
                       }}
-                      className="glass-panel flex w-full items-start gap-3 rounded-2xl p-3.5 text-left transition"
+                      className="glass-panel relative flex w-full items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition"
                     >
+                      <span
+                        className="absolute left-5 top-0 h-2 w-10 rounded-b-md"
+                        style={{ backgroundColor: colorForNote(n) }}
+                        aria-hidden="true"
+                      />
                       <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500">
                         <NotesIcon className="h-5 w-5" />
                       </span>

@@ -7,7 +7,6 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
   type RefObject,
 } from 'react'
 import { supabase } from '../lib/supabaseClient'
@@ -501,7 +500,15 @@ export default function ItemsPanel({
               })}
             </div>
           ) : (
-          <NotepadCard isDragging={isDraggingItem}>
+          // Antes, buscar o reordenar a mano hacía saltar a un diseño viejo
+          // de "libreta de papel" (NotepadCard) totalmente distinto de las
+          // tarjetas de cristal agrupadas por categoría de la vista normal.
+          // Ahora se mantiene el mismo lenguaje visual (glass-panel): al
+          // entrar en reordenar solo aparece el asa ⠿ en cada nota (ver
+          // ItemRow, prop reorderMode) y la tarjeta deja de recortar el
+          // contenido mientras arrastras (overflow-visible), igual que ya
+          // hace ListsPage.tsx al reordenar las listas.
+          <div className={`glass-panel rounded-2xl ${isDraggingItem ? 'overflow-visible' : 'overflow-hidden'}`}>
             {pendingReorder.displayItems.map((item) => (
               <ItemRow
                 key={item.id}
@@ -531,14 +538,7 @@ export default function ItemsPanel({
             ))}
 
             {doneItems.length > 0 && (
-              // h-10 (40px) a propósito, no padding vertical suelto: la
-              // rayita de fondo de la hoja (ver NotepadCard) se repite cada
-              // 40px desde arriba de toda la tarjeta, así que si esta franja
-              // no mide EXACTAMENTE 40px, todo lo que va después (las notas
-              // ya hechas) queda desplazado respecto a esas rayitas — se ve
-              // como si los márgenes de las notas hechas no coincidieran con
-              // los de las pendientes, aunque las filas en sí midan igual.
-              <div className="flex h-10 items-center justify-between bg-[var(--color-surface-alt)] px-3">
+              <div className="flex items-center justify-between border-t px-3.5 py-2 border-[var(--color-glass-border)]">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   {t('notes.doneSectionLabel')} ({doneItems.length})
                 </p>
@@ -580,7 +580,7 @@ export default function ItemsPanel({
                 currency={currency}
               />
             ))}
-          </NotepadCard>
+          </div>
           )}
 
           {/* Cuando ya está todo marcado, no hace falta ir a buscar el ✓
@@ -684,41 +684,6 @@ export default function ItemsPanel({
           }}
         />
       )}
-    </div>
-  )
-}
-
-function NotepadCard({ children, isDragging }: { children: ReactNode; isDragging?: boolean }) {
-  return (
-    <div
-      className={`relative rounded-xl bg-[var(--color-surface)] shadow-sm ring-1 ring-[var(--color-surface-border)] ${
-        isDragging ? 'overflow-visible' : 'overflow-hidden'
-      }`}
-      style={{
-        // 40px = la altura real de una fila sencilla (2.5 de padding arriba
-        // y abajo + una línea de texto), para que la rayita caiga justo en
-        // el borde entre una nota y la siguiente en el caso más común. Con
-        // notas de dos líneas, fecha límite o el nombre de quien la añadió
-        // la fila mide más, así que a partir de ahí puede desajustarse un
-        // poco — es un patrón decorativo, no algo pensado para encajar a la
-        // perfección con cualquier alto de fila.
-        backgroundImage:
-          'repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--color-surface-line) 40px)',
-        backgroundPosition: '0 0',
-      }}
-    >
-      {/* margen izquierdo, como en una hoja pautada */}
-      <div className="pointer-events-none absolute inset-y-0 left-9 hidden w-px bg-[var(--color-surface-line)] sm:block" />
-      {/* dobladillo en la esquina superior derecha, como una hoja doblada */}
-      <div
-        className="pointer-events-none absolute right-0 top-0 h-4 w-4"
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, var(--color-surface-alt) 50%)',
-          boxShadow: '-1px 1px 3px rgba(0,0,0,0.18)',
-        }}
-        aria-hidden="true"
-      />
-      <div>{children}</div>
     </div>
   )
 }

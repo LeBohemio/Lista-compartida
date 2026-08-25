@@ -27,3 +27,8 @@ export function colorForName(name: string): string {
 export function colorForList(list: { id: string; name: string; color?: string | null }): string {
   return list.color || colorForName(list.name || list.id)
 }
+
+/** Color de una nota: el elegido a mano, o uno estable según su título. */
+export function colorForNote(note: { id: string; title: string; color?: string | null }): string {
+  return note.color || colorForName(note.title || note.id)
+}

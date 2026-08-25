@@ -290,8 +290,13 @@ export default function ListDetailPage() {
                   className="h-8 w-8 rounded-full object-cover ring-2 ring-white/50"
                 />
               ) : (
+                // Antes era un puntito de 10px, casi invisible — se pedía
+                // agrandarlo al mismo tamaño (32px) que ya usa la foto real
+                // de la lista un poco más arriba y el avatar del chat
+                // directo (ver DirectChatPage.tsx), para que invite a
+                // tocarlo igual que cualquier otra foto de la app.
                 <span
-                  className="block h-2.5 w-2.5 rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.5)]"
+                  className="block h-8 w-8 rounded-full ring-2 ring-white/50"
                   style={{ backgroundColor: listColor }}
                 />
               )}

@@ -59,7 +59,7 @@ export function useNoteDetail(noteId: string | undefined) {
   }, [noteId, user, fetchAll])
 
   const updateNote = useCallback(
-    async (patch: { title?: string; body?: string }) => {
+    async (patch: { title?: string; body?: string; color?: string | null }) => {
       if (!noteId) return
       await supabase
         .from('notes')

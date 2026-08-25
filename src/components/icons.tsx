@@ -293,6 +293,31 @@ export function SortAlphaIcon(props: IconProps) {
   )
 }
 
+export function NumberedListIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      {/* "1" y "2" a la izquierda, como en cualquier icono de lista
+          numerada, seguidos de una línea horizontal que representa cada
+          fila de texto. */}
+      <path d="M4.6 7.6v3.4" />
+      <path d="M3.9 8.1 4.8 7.5" />
+      <path d="M8 8.3h11" />
+      <path d="M4 15c0-.7.6-1.2 1.3-1.2.7 0 1.3.5 1.3 1.1 0 .9-2.6 1.6-2.6 2.9h2.6" />
+      <path d="M8 16.7h11" />
+    </Base>
+  )
+}
+
+export function FileAttachmentIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5Z" />
+      <path d="M14 3.5V7a1 1 0 0 0 1 1h3.5" />
+      <path d="M9 13h6M9 16h4" />
+    </Base>
+  )
+}
+
 export function SortDateIcon(props: IconProps) {
   return (
     <Base {...props}>

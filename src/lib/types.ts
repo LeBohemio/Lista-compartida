@@ -154,6 +154,10 @@ export type Note = {
   owner_id: string
   last_activity_at: string
   created_at: string
+  // El color elegido a mano (o null, ver colorForNote en lib/colors.ts) —
+  // mismo patrón que "color" en Lista. Se ve tanto en la lengüeta del
+  // detalle de la nota como en su fila del listado. Ver migration_v32.sql.
+  color: string | null
 }
 
 export type NoteMember = {
@@ -277,6 +281,13 @@ export type Message = {
   image_path: string | null
   audio_path: string | null
   audio_duration_seconds: number | null
+  // Archivo adjunto (PDF, Word…), estilo WhatsApp — file_name es el nombre
+  // original elegido por quien lo envió (el de Storage es uno generado, no
+  // sirve para mostrarlo). Ver migration_v31.sql.
+  file_path: string | null
+  file_name: string | null
+  file_mime_type: string | null
+  file_size_bytes: number | null
   created_at: string
   // Mensaje al que responde (cita), si lo hay — null en la mayoría de
   // mensajes. Si el mensaje citado se borra más tarde, esto pasa a null
@@ -293,6 +304,8 @@ export type Message = {
     content: string | null
     image_path: string | null
     audio_path: string | null
+    file_path: string | null
+    file_name: string | null
     sender_id: string | null
     sender?: { username: string }
   } | null

@@ -97,6 +97,28 @@ export default function ForwardMessageModal({
       }
     }
 
+    let newFilePath: string | null = null
+    if (message.file_path) {
+      const { data: blob, error: downloadErr } = await supabase.storage
+        .from('chat-files')
+        .download(message.file_path)
+      if (downloadErr || !blob) {
+        setError(t('forward.errorCopyFile'))
+        setSendingTo(null)
+        return
+      }
+      const ext = message.file_path.split('.').pop() || 'bin'
+      newFilePath = `${imagePathPrefix(target, user.id)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('chat-files')
+        .upload(newFilePath, blob, { contentType: message.file_mime_type || 'application/octet-stream' })
+      if (uploadErr) {
+        setError(t('forward.errorCopyFile'))
+        setSendingTo(null)
+        return
+      }
+    }
+
     const { error: insertErr } = await supabase.from('messages').insert({
       list_id: target.kind === 'list' ? target.listId : null,
       to_user_id: target.kind === 'direct' ? target.peerId : null,
@@ -105,6 +127,10 @@ export default function ForwardMessageModal({
       image_path: newImagePath,
       audio_path: newAudioPath,
       audio_duration_seconds: newAudioPath ? message.audio_duration_seconds : null,
+      file_path: newFilePath,
+      file_name: newFilePath ? message.file_name : null,
+      file_mime_type: newFilePath ? message.file_mime_type : null,
+      file_size_bytes: newFilePath ? message.file_size_bytes : null,
     })
 
     setSendingTo(null)

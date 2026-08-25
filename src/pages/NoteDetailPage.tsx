@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabaseClient'
 import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
-import { TrashIcon } from '../components/icons'
+import { NumberedListIcon, TrashIcon } from '../components/icons'
+import { PALETTE, colorForNote } from '../lib/colors'
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -22,6 +23,7 @@ export default function NoteDetailPage() {
   const [body, setBody] = useState('')
   const [showMembers, setShowMembers] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; username: string } | null>(null)
   // Sustituye a la idea de mostrar "editado hace X" (no guardamos quién ni
   // cuándo se tocó por última vez el título/cuerpo por separado, solo
@@ -30,6 +32,12 @@ export default function NoteDetailPage() {
   // que ya existían en las traducciones pero no se usaban en ningún sitio.
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const titleAreaRef = useRef<HTMLTextAreaElement>(null)
+  const bodyAreaRef = useRef<HTMLTextAreaElement>(null)
+  // Tras numerar (o quitar la numeración), el textarea es controlado por
+  // React así que no podemos tocar su selección directamente en el mismo
+  // gesto — guardamos aquí dónde debe quedar el cursor y la aplicamos en el
+  // useEffect de más abajo, una vez el nuevo valor ya está pintado.
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
 
   // Mientras la persona tiene el campo enfocado (escribiendo), no le
   // pisamos lo que está tecleando con lo que llegue de la base de datos
@@ -85,6 +93,55 @@ export default function NoteDetailPage() {
     const value = e.target.value
     setBody(value)
     scheduleSave({ body: value }, bodyTimerRef)
+  }
+
+  useEffect(() => {
+    const pending = pendingSelectionRef.current
+    if (!pending) return
+    pendingSelectionRef.current = null
+    const el = bodyAreaRef.current
+    if (!el) return
+    el.focus()
+    el.setSelectionRange(pending.start, pending.end)
+  }, [body])
+
+  // Numera (o, si ya estaban numeradas, quita la numeración de) solo las
+  // líneas tocadas por la selección actual — o, si no hay nada seleccionado,
+  // solo la línea donde está el cursor. A propósito no toca el resto de la
+  // nota: pedir "numerar" no debe convertir toda la nota en una lista
+  // obligatoria, solo el trozo que de verdad quieres numerar ahora mismo.
+  const toggleNumberedList = () => {
+    const el = bodyAreaRef.current
+    if (!el) return
+    const { selectionStart, selectionEnd, value } = el
+
+    // Si la selección incluye el salto de línea final (por ejemplo, al
+    // seleccionar arrastrando hasta el principio de la siguiente línea), no
+    // contamos esa línea siguiente como parte del bloque a numerar.
+    const effectiveEnd =
+      selectionEnd > selectionStart && value[selectionEnd - 1] === '\n' ? selectionEnd - 1 : selectionEnd
+
+    const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
+    const nextNewline = value.indexOf('\n', effectiveEnd)
+    const lineEnd = nextNewline === -1 ? value.length : nextNewline
+
+    const block = value.slice(lineStart, lineEnd)
+    const lines = block.split('\n')
+    const contentLines = lines.filter((line) => line.trim() !== '')
+    const alreadyNumbered = contentLines.length > 0 && contentLines.every((line) => /^\d+\.\s/.test(line))
+
+    let counter = 1
+    const newLines = lines.map((line) => {
+      if (line.trim() === '') return line
+      if (alreadyNumbered) return line.replace(/^\d+\.\s/, '')
+      return `${counter++}. ${line}`
+    })
+    const newBlock = newLines.join('\n')
+
+    const newValue = value.slice(0, lineStart) + newBlock + value.slice(lineEnd)
+    pendingSelectionRef.current = { start: lineStart, end: lineStart + newBlock.length }
+    setBody(newValue)
+    scheduleSave({ body: newValue }, bodyTimerRef)
   }
 
   const removeMember = async () => {
@@ -199,7 +256,46 @@ export default function NoteDetailPage() {
               así se queda embebida en el borde en vez de flotar suelta por
               fuera de la nota. */}
           <div className="glass-panel relative rounded-[22px] px-4 pb-4 pt-5">
-            <span className="absolute left-6 top-0 h-2.5 w-14 rounded-b-md bg-[var(--color-brand-500)]" />
+            {/* La lengüeta ahora tiene el color propio de la nota (el
+                elegido a mano, o uno estable según el título — ver
+                colorForNote) en vez del acento fijo de siempre, y se puede
+                tocar para cambiarlo. El mismo color se ve también en la
+                fila de esta nota dentro del listado (ver NotesPage.tsx). */}
+            <button
+              type="button"
+              onClick={() => setShowColorPicker((s) => !s)}
+              aria-label={t('apuntes.changeColor')}
+              title={t('apuntes.changeColor')}
+              className="absolute left-6 top-0 h-2.5 w-14 rounded-b-md"
+              style={{ backgroundColor: colorForNote(note) }}
+            />
+            {showColorPicker && (
+              <>
+                {/* Fondo invisible a pantalla completa, solo para poder
+                    cerrar el selector tocando fuera — el resto de menús
+                    contextuales de la app (ver ContextMenu.tsx) hacen lo
+                    mismo. */}
+                <div className="fixed inset-0 z-[5]" onClick={() => setShowColorPicker(false)} />
+                <div
+                  className="glass-panel absolute left-4 top-4 z-10 flex flex-wrap gap-2 rounded-2xl p-3 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)]"
+                  style={{ width: '184px' }}
+                >
+                  {PALETTE.map((c) => (
+                    <button
+                      type="button"
+                      key={c}
+                      onClick={() => {
+                        updateNote({ color: c })
+                        setShowColorPicker(false)
+                      }}
+                      aria-label={`Color ${c}`}
+                      className="h-7 w-7 rounded-full"
+                      style={{ backgroundColor: c, boxShadow: note.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
             <textarea
               ref={titleAreaRef}
               value={title}
@@ -224,7 +320,24 @@ export default function NoteDetailPage() {
               </p>
             )}
             <div className="mb-3 mt-3 h-px bg-[var(--color-glass-border)]" />
+            {/* Numerar solo actúa sobre la línea del cursor, o sobre las
+                líneas que tengas seleccionadas — nunca sobre toda la nota
+                de golpe (ver toggleNumberedList). Pulsarlo otra vez sobre
+                líneas ya numeradas quita la numeración. */}
+            <div className="mb-2 flex items-center">
+              <button
+                type="button"
+                onClick={toggleNumberedList}
+                aria-label={t('apuntes.numberedList')}
+                title={t('apuntes.numberedListHint')}
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
+              >
+                <NumberedListIcon className="h-4 w-4" />
+                {t('apuntes.numberedList')}
+              </button>
+            </div>
             <textarea
+              ref={bodyAreaRef}
               value={body}
               onChange={handleBodyChange}
               onFocus={() => (bodyFocusedRef.current = true)}

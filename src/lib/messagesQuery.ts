@@ -20,7 +20,8 @@ import type { Message } from './types'
 // caché de relaciones de PostgREST.
 export const MESSAGES_SELECT_BASIC = '*, sender:profiles!messages_sender_id_fkey(*)'
 
-const REPLY_PREVIEW_SELECT = 'id, content, image_path, audio_path, sender_id, sender:profiles!messages_sender_id_fkey(username)'
+const REPLY_PREVIEW_SELECT =
+  'id, content, image_path, audio_path, file_path, file_name, sender_id, sender:profiles!messages_sender_id_fkey(username)'
 
 /**
  * Rellena el campo "reply_to" de una lista de mensajes ya cargados (los
