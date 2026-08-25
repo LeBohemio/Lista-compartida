@@ -1,5 +1,13 @@
-import { createWorker } from 'tesseract.js'
-
+// OJO: sin "import { createWorker } from 'tesseract.js'" aquí arriba a
+// propósito. tesseract.js es, con diferencia, la dependencia más pesada de
+// toda la app (el motor de OCR en sí, en wasm) — un import normal metía
+// todo eso en el bundle principal, así que TODO el mundo se lo descargaba
+// nada más abrir la app, aunque jamás llegase a escanear un ticket. Con
+// import() dinámico (ver extractReceiptTotal más abajo), Vite lo separa en
+// su propio archivo aparte que solo se descarga la primera vez que alguien
+// pulsa "escanear ticket" — el resto de la app carga igual de rápido que
+// antes, y una vez descargado el navegador lo cachea para las siguientes
+// veces (incluida la caché de la PWA, ver vite.config.ts).
 export type ReceiptOcrResult = {
   amount: number | null
   confidence: number // 0-100
@@ -108,6 +116,7 @@ export async function extractReceiptTotal(
   image: File | Blob,
   onProgress?: (progress: number) => void,
 ): Promise<ReceiptOcrResult> {
+  const { createWorker } = await import('tesseract.js')
   const worker = await createWorker('spa+eng', undefined, {
     // Servimos nosotros mismos el worker, el core wasm y los datos de idioma
     // (en vez de depender del CDN por defecto de tesseract.js) para que el
