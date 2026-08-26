@@ -273,9 +273,20 @@ export default function ListDetailPage() {
   }
 
   return (
+    // El deslizar entre Tareas/Gastos/Chat se reconoce aquí, en el bloque
+    // de fuera que envuelve TANTO la cabecera (con las pestañas) COMO el
+    // contenido — antes solo estaba puesto en <main>, y la cabecera con las
+    // pestañas quedaba fuera de esa zona, como hermana. En todos los sitios
+    // donde deslizar ya funcionaba bien en la app (avatares, mensajes del
+    // chat…), lo que se toca justo después de deslizar está SIEMPRE dentro
+    // de la misma zona que se deslizó — nunca fuera. Con las pestañas como
+    // hermanas de <main>, esta era la única zona de deslizar donde el
+    // siguiente toque caía en un elemento de fuera, y ahí es justo donde se
+    // quedaban sin reconocer el toque hasta apretarlas una segunda vez.
     <div
-      className="min-h-screen pb-16"
+      className="min-h-screen touch-pan-y select-none pb-16 [-webkit-touch-callout:none]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+      {...swipeNav}
     >
       {/* Cabecera pegada de verdad al borde de arriba (antes era una
           "burbuja" de cristal flotante, separada del borde con top-3+mx-3
@@ -524,24 +535,11 @@ export default function ListDetailPage() {
         )}
       </header>
 
-      {/* "min-h-screen" en <main> (en vez de tocar el <div> de fuera con
-          flex, que podía afectar al alto de la cabecera de arriba) hace que
-          este bloque ocupe al menos una pantalla entera, aunque la pestaña
-          activa tenga poco contenido (por ejemplo, "Tareas" sin ninguna
-          tarea todavía) — si no, el área donde se detecta el deslizar entre
-          pestañas se quedaba tan bajita como el propio contenido, y no
-          reconocía el dedo en la mitad de abajo de la pantalla. Puede dejar
-          algo de espacio de más para hacer scroll de sobra al final, pero
-          es la opción más segura: no toca el tamaño de nada más.
-
-          select-none + touch-callout: mismo arreglo que ya llevan las filas
-          arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el
-          navegador podía confundir el dedo deslizando de lado entre
-          Tareas/Gastos/Chat con "querer seleccionar texto" y sacaba su
-          selección nativa, que se quedaba a medias hasta dar un toque para
-          quitarla (parecía que la pantalla se quedaba "colgada" tras
-          deslizar). */}
-      <main className="mx-auto min-h-screen max-w-2xl touch-pan-y select-none [-webkit-touch-callout:none] px-4 py-6" {...swipeNav}>
+      {/* El deslizar y su min-h-screen ahora viven en el <div> de fuera (ver
+          arriba) — <main> se queda simple, sin manejadores propios: le
+          llegan igual porque los eventos burbujean desde dentro hasta el
+          <div> que los escucha. */}
+      <main className="mx-auto max-w-2xl px-4 py-6">
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">

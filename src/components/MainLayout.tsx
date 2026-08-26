@@ -33,17 +33,23 @@ export default function MainLayout() {
   })
 
   return (
-    <>
-      {/* select-none + touch-callout: mismo arreglo que ya llevan las filas
-          arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el
-          navegador podía confundir el dedo deslizando de lado con "querer
-          seleccionar texto" y sacaba su selección nativa, que se quedaba a
-          medias hasta dar un toque para quitarla (parecía que la pantalla
-          se quedaba "colgada" tras deslizar). */}
-      <div className="touch-pan-y select-none [-webkit-touch-callout:none]" {...swipeNav}>
-        <Outlet context={contactRequests} />
-      </div>
+    // BottomNav va DENTRO del mismo bloque que reconoce el deslizar (antes
+    // estaba fuera, como hermano) — en todos los sitios donde deslizar ya
+    // funcionaba bien (avatares, mensajes del chat…), lo que se toca justo
+    // después de deslizar está dentro de esa misma zona, nunca fuera. Con
+    // BottomNav como hermano, era la única zona de deslizar de toda la app
+    // donde el siguiente toque caía en un elemento de fuera — y ahí es
+    // justo donde el botón se quedaba sin reconocer el toque hasta
+    // apretarlo una segunda vez. BottomNav sigue exactamente en el mismo
+    // sitio visual (es "fixed", no depende de dónde esté en el DOM).
+    //
+    // select-none + touch-callout: mismo arreglo que ya llevan las filas
+    // arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el navegador
+    // podía confundir el dedo deslizando de lado con "querer seleccionar
+    // texto" y sacaba su selección nativa.
+    <div className="touch-pan-y select-none [-webkit-touch-callout:none]" {...swipeNav}>
+      <Outlet context={contactRequests} />
       <BottomNav pendingContactRequests={contactRequests.incoming.length} />
-    </>
+    </div>
   )
 }
