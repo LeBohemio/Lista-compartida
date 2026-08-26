@@ -34,7 +34,13 @@ export default function MainLayout() {
 
   return (
     <>
-      <div className="touch-pan-y" {...swipeNav}>
+      {/* select-none + touch-callout: mismo arreglo que ya llevan las filas
+          arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el
+          navegador podía confundir el dedo deslizando de lado con "querer
+          seleccionar texto" y sacaba su selección nativa, que se quedaba a
+          medias hasta dar un toque para quitarla (parecía que la pantalla
+          se quedaba "colgada" tras deslizar). */}
+      <div className="touch-pan-y select-none [-webkit-touch-callout:none]" {...swipeNav}>
         <Outlet context={contactRequests} />
       </div>
       <BottomNav pendingContactRequests={contactRequests.incoming.length} />

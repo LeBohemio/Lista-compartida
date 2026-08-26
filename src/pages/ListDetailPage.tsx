@@ -520,8 +520,16 @@ export default function ListDetailPage() {
           ninguna tarea todavía) — si no, el área donde se detecta el
           deslizar entre pestañas se quedaba tan bajita como el propio
           contenido, y no reconocía el dedo en la mitad de abajo de la
-          pantalla. */}
-      <main className="mx-auto max-w-2xl flex-1 touch-pan-y px-4 py-6" {...swipeNav}>
+          pantalla.
+
+          select-none + touch-callout: mismo arreglo que ya llevan las filas
+          arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el
+          navegador podía confundir el dedo deslizando de lado entre
+          Tareas/Gastos/Chat con "querer seleccionar texto" y sacaba su
+          selección nativa, que se quedaba a medias hasta dar un toque para
+          quitarla (parecía que la pantalla se quedaba "colgada" tras
+          deslizar). */}
+      <main className="mx-auto max-w-2xl flex-1 touch-pan-y select-none [-webkit-touch-callout:none] px-4 py-6" {...swipeNav}>
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
