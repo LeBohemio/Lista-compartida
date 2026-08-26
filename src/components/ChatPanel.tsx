@@ -1737,7 +1737,7 @@ function VoiceMessagePlayer({
         <button
           type="button"
           onClick={cyclePlaybackRate}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
+          className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
             isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
           }`}
           aria-label={t('chat.playbackSpeed')}
@@ -1745,17 +1745,21 @@ function VoiceMessagePlayer({
           {rate}×
         </button>
       ) : (
-        <Avatar username={username} avatarUrl={avatarUrl} size={28} />
+        <Avatar username={username} avatarUrl={avatarUrl} size={42} />
       )}
+      {/* El botón de play se hace un poco más pequeño que antes para dejar
+          que la foto/velocidad (arriba) sea claramente el elemento grande
+          de la fila, como en WhatsApp — antes eran casi del mismo tamaño y
+          la foto no destacaba. */}
       <button
         type="button"
         onClick={toggle}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+        className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ${
           isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
         }`}
         aria-label={playing ? t('chat.pauseAudio') : t('chat.playAudio')}
       >
-        {playing ? <PauseIcon className="h-3.5 w-3.5" /> : <PlayIcon className="ml-0.5 h-3.5 w-3.5" />}
+        {playing ? <PauseIcon className="h-3 w-3" /> : <PlayIcon className="ml-0.5 h-3 w-3" />}
       </button>
       {/* Tocar o arrastrar sobre la onda adelanta/atrasa el audio (ver
           seekToClientX más arriba) — antes esto era solo decorativo. El
@@ -1767,7 +1771,7 @@ function VoiceMessagePlayer({
         onPointerMove={handleSeekPointerMove}
         onPointerUp={endSeek}
         onPointerCancel={endSeek}
-        className="relative h-6 w-32 shrink-0 cursor-pointer select-none"
+        className="relative h-6 w-24 shrink-0 cursor-pointer select-none"
         style={{ touchAction: 'none' }}
       >
         <div className="absolute inset-0 flex items-center gap-[2px]">
