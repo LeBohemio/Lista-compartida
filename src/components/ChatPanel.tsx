@@ -1612,11 +1612,15 @@ function VoiceMessagePlayer({
   seed,
   totalSeconds,
   isMine,
+  username,
+  avatarUrl,
 }: {
   src: string
   seed: string
   totalSeconds: number
   isMine: boolean
+  username: string
+  avatarUrl?: string | null
 }) {
   const { t } = useLanguage()
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -1723,6 +1727,26 @@ function VoiceMessagePlayer({
     <div className="flex min-w-0 flex-1 items-center gap-2">
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      {/* Mismo círculo para dos cosas, igual que en WhatsApp: en reposo (o
+          en pausa) es la foto de quien mandó la nota; en cuanto se pone a
+          sonar, se convierte en el propio botón de velocidad ("1×", "1.5×",
+          "2×" — toca para ir rotando). Así no hace falta un botón aparte
+          compitiendo por sitio, y de paso la foto pasa a notarse mucho más
+          que antes, que solo aparecía muy pequeña al lado del mensaje. */}
+      {playing ? (
+        <button
+          type="button"
+          onClick={cyclePlaybackRate}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
+            isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
+          }`}
+          aria-label={t('chat.playbackSpeed')}
+        >
+          {rate}×
+        </button>
+      ) : (
+        <Avatar username={username} avatarUrl={avatarUrl} size={28} />
+      )}
       <button
         type="button"
         onClick={toggle}
@@ -1763,19 +1787,6 @@ function VoiceMessagePlayer({
       <span className={`shrink-0 text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
         {formatDuration(playing || currentSeconds > 0 ? currentSeconds : totalSeconds)}
       </span>
-      {/* Velocidad de reproducción — se toca para ir rotando entre 1×, 1.5×
-          y 2×, igual que WhatsApp. Se guarda en estado del propio mensaje
-          (no global): cada nota de voz recuerda la suya por separado. */}
-      <button
-        type="button"
-        onClick={cyclePlaybackRate}
-        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
-          isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
-        }`}
-        aria-label={t('chat.playbackSpeed')}
-      >
-        {rate}×
-      </button>
     </div>
   )
 }
@@ -1861,15 +1872,11 @@ function MessageBubble({
     <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
       {!isMine && (
         <div className="w-7 shrink-0">
-          {/* Las notas de voz siempre llevan la foto de quien la manda, esté
-              o no al principio de su grupo de mensajes seguidos — a
-              diferencia del resto (texto, fotos…), que solo la llevan en el
-              primer mensaje del grupo. Al ser un mensaje que hay que tocar
-              para reproducir, conviene ver de quién es sin tener que subir
-              la vista hasta el mensaje anterior para comprobarlo. */}
-          {(isFirstInGroup || m.audio_path) && (
-            <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />
-          )}
+          {/* En audios ya no hace falta repetirla aquí: la propia nota de
+              voz lleva su foto integrada (ver VoiceMessagePlayer), que
+              además se convierte en el botón de velocidad al reproducirla —
+              iría por duplicado ponerla también aquí al lado. */}
+          {isFirstInGroup && <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />}
         </div>
       )}
       <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -1967,6 +1974,8 @@ function MessageBubble({
                   seed={m.audio_path}
                   totalSeconds={m.audio_duration_seconds ?? 0}
                   isMine={isMine}
+                  username={m.sender?.username ?? '?'}
+                  avatarUrl={m.sender?.avatar_url}
                 />
               ) : (
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">{t('chat.loadingAudio')}</p>
