@@ -100,27 +100,19 @@ html, body, #root {
 
    "overscroll-behavior-x: none" es aparte y para otra cosa: Chrome tiene su
    PROPIO gesto nativo de "deslizar desde el borde para volver atrás" (o
-   hacia adelante), completamente separado del deslizar entre pantallas que
-   programamos nosotros (useSwipeNav.ts) — "touch-action: pan-y" evita que
-   el contenido de la página se arrastre de lado, pero no evita ESTE gesto
-   de Chrome, que es de la propia interfaz del navegador. Sin desactivarlo,
-   Chrome se queda a medio armar ese gesto suyo durante nuestro deslizar, y
-   hacía falta un toque suelto después para que la pantalla "volviera a la
-   normalidad" y reconociera los botones otra vez. */
+   hacia adelante), que puede quedarse a medio armar si el dedo arrastra de
+   lado sobre el borde de la pantalla (p. ej. al usar un carrusel horizontal
+   como el selector de categorías de avatar) y dejar la pantalla rara hasta
+   el siguiente toque. Desactivarlo evita ese efecto. */
 html, body {
   overflow-x: hidden;
   overscroll-behavior-x: none;
 }
 
-/* CONFIRMADO con capturas reales del registro de depuración (ver
-   swipeDebug.ts): un botón pulsado poco después de deslizar (menos de un
-   segundo) a veces se quedaba sin "clic" del todo — el navegador reserva
-   un ratito tras cualquier toque en pantalla por si llega un segundo toque
-   y hay que tratarlo como "doble toque para hacer zoom", y si el botón se
-   pulsa justo en ese ratito, el clic se podía perder por el camino.
-   "touch-action: manipulation" en todo lo que se toca (botones y enlaces)
-   le dice al navegador que aquí no hace falta esperar a ver si hay un
-   segundo toque — reacciona al instante, siempre. */
+/* "touch-action: manipulation" en todo lo que se toca (botones y enlaces)
+   le dice al navegador que aquí no hace falta esperar a ver si llega un
+   segundo toque para tratarlo como "doble toque para hacer zoom" — así
+   reacciona al instante, siempre, sin ese pequeño retraso extra. */
 button, a {
   touch-action: manipulation;
 }

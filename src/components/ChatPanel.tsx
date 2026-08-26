@@ -1198,7 +1198,20 @@ export default function ChatPanel({
                     // hueco aunque no haya nada que desplazar todavía. Con
                     // "no-scrollbar" (ver index.css) se oculta esa barra sin
                     // quitarle la función de scroll cuando el texto sí crece.
-                    className="no-scrollbar border border-transparent bg-[var(--color-glass)] max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
+                    //
+                    // El borde era "border-transparent" (invisible a
+                    // propósito): con fondo de cristal claro (--color-glass)
+                    // sobre un fondo de cristal casi igual de claro
+                    // (--color-surface, en tema claro), la burbuja quedaba
+                    // sin apenas contraste — se notaba en tema oscuro porque
+                    // ahí SÍ hay bastante diferencia entre ambos tonos, pero
+                    // en tema claro los dos son casi blancos y parecía "todo
+                    // del mismo color". "--color-surface-border" es el mismo
+                    // tono que ya usamos para el borde de esta misma barra y
+                    // de las franjas de "respondiendo a"/"editando" de aquí
+                    // arriba — pensado justo para notarse sobre
+                    // --color-surface en los dos temas.
+                    className="no-scrollbar border border-[var(--color-surface-border)] bg-[var(--color-glass)] max-h-[120px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-2.5 text-base leading-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:text-slate-100"
                   />
                 </>
               )}
