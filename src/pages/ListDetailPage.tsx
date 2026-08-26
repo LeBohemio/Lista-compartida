@@ -273,7 +273,7 @@ export default function ListDetailPage() {
 
   return (
     <div
-      className="min-h-screen pb-16"
+      className="flex min-h-screen flex-col pb-16"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       {/* Cabecera pegada de verdad al borde de arriba (antes era una
@@ -514,7 +514,14 @@ export default function ListDetailPage() {
         )}
       </header>
 
-      <main className="mx-auto max-w-2xl touch-pan-y px-4 py-6" {...swipeNav}>
+      {/* "flex-1" (junto con el "flex flex-col" del div de arriba) hace que
+          este <main> ocupe siempre todo el alto disponible, aunque la
+          pestaña activa tenga poco contenido (por ejemplo, "Tareas" sin
+          ninguna tarea todavía) — si no, el área donde se detecta el
+          deslizar entre pestañas se quedaba tan bajita como el propio
+          contenido, y no reconocía el dedo en la mitad de abajo de la
+          pantalla. */}
+      <main className="mx-auto max-w-2xl flex-1 touch-pan-y px-4 py-6" {...swipeNav}>
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
