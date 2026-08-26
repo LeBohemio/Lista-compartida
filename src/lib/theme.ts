@@ -196,8 +196,20 @@ export function applyTheme(theme: Theme, accentColor: string | null, backgroundC
   // del mismo acento para botones y avatares. --color-glass/-border son la
   // superficie translúcida de los paneles; --color-glow es la sombra de
   // los elementos con degradado (botones, burbujas propias del chat).
+  //
+  // El borde en tema claro era blanco casi opaco (rgba(255,255,255,0.75)) —
+  // un borde BLANCO sobre un fondo "mesh" que también es casi blanco (ver
+  // meshFromAccent: luminosidad 90) es, en la práctica, invisible: las
+  // tarjetas de cristal (tarjetas de Notas/Contactos, botones de Ajustes,
+  // separadores…) se quedaban sin ningún borde que las distinguiera del
+  // fondo. En oscuro sí funciona, porque ahí el fondo es oscuro de verdad y
+  // un borde blanco, aunque tenue, se nota. Reutilizamos el mismo tono ya
+  // usado para --color-surface-border (gris-lavanda teñido del acento, a un
+  // 82% de luminosidad — bastante más oscuro que el 90-99% del fondo/panel)
+  // solo en tema claro, para que el borde se note de verdad sin tocar cómo
+  // se ve en oscuro.
   root.style.setProperty('--color-glass', isDark ? 'rgba(30, 29, 46, 0.55)' : 'rgba(255, 255, 255, 0.62)')
-  root.style.setProperty('--color-glass-border', isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.75)')
+  root.style.setProperty('--color-glass-border', isDark ? 'rgba(255, 255, 255, 0.12)' : surf.surfaceBorder)
   root.style.setProperty('--color-glow', hexToRgbaString(effectiveAccent, isDark ? 0.45 : 0.4))
 
   // El degradado de fondo ("mesh") solo se aplica cuando NO hay un color de
