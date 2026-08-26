@@ -1,5 +1,6 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { horizontalGestureClaim } from '../lib/gestureClaim'
+import { swipeDebugLog } from '../lib/swipeDebug'
 
 // Cuánto tiene que moverse el dedo en horizontal para contar como "quiero
 // cambiar de pantalla" — por debajo de esto es solo un toque con algo de
@@ -52,32 +53,51 @@ export function useSwipeNav<T extends string>({
   const onPointerDown = (e: ReactPointerEvent) => {
     if (horizontalGestureClaim.current) {
       startRef.current = null
+      swipeDebugLog('down: BLOQUEADO (había otro gesto interno activo)')
       return
     }
     startRef.current = { x: e.clientX, y: e.clientY }
+    swipeDebugLog(`down (${e.pointerType}) en "${current}"`)
   }
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const start = startRef.current
     startRef.current = null
-    if (!start) return
+    if (!start) {
+      swipeDebugLog('up: ignorado (no había un down previo)')
+      return
+    }
     // Se comprueba otra vez aquí, no solo al bajar el dedo: un gesto más
     // específico de más adentro puede haberse activado a mitad de camino.
-    if (horizontalGestureClaim.current) return
+    if (horizontalGestureClaim.current) {
+      swipeDebugLog('up: BLOQUEADO (había otro gesto interno activo)')
+      return
+    }
     const deltaX = e.clientX - start.x
     const deltaY = e.clientY - start.y
     // Solo cuenta si el movimiento es claramente más horizontal que
     // vertical — si no, era scroll normal de la pantalla.
-    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) {
+      swipeDebugLog(`up: no cuenta como deslizar (dx=${deltaX.toFixed(0)} dy=${deltaY.toFixed(0)})`)
+      return
+    }
     const index = order.indexOf(current)
-    if (index === -1) return
+    if (index === -1) {
+      swipeDebugLog(`up: "${current}" no está en la lista de paradas`)
+      return
+    }
     const nextIndex = deltaX < 0 ? index + 1 : index - 1
-    if (nextIndex < 0 || nextIndex >= order.length) return
+    if (nextIndex < 0 || nextIndex >= order.length) {
+      swipeDebugLog(`up: en el extremo ("${current}"), no cambia`)
+      return
+    }
+    swipeDebugLog(`up: CAMBIA de "${current}" a "${order[nextIndex]}" (dx=${deltaX.toFixed(0)})`)
     onChange(order[nextIndex])
   }
 
   const onPointerCancel = () => {
     startRef.current = null
+    swipeDebugLog('cancel (el navegador se quedó con el gesto)')
   }
 
   return { onPointerDown, onPointerUp, onPointerCancel }

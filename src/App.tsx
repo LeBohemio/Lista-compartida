@@ -6,6 +6,7 @@ import { applyTheme } from './lib/theme'
 import OfflineBanner from './components/OfflineBanner'
 import ProtectedRoute from './components/ProtectedRoute'
 import MainLayout from './components/MainLayout'
+import SwipeDebugOverlay from './components/SwipeDebugOverlay'
 
 // "Mis listas" es la primera pantalla que ve casi todo el mundo (tanto justo
 // tras entrar como cada vez que se reabre la PWA con la sesión ya
@@ -65,6 +66,8 @@ function App() {
 
   return (
     <>
+      {/* Temporal, para diagnosticar lo del deslizar — ver swipeDebug.ts. */}
+      <SwipeDebugOverlay />
       <OfflineBanner />
       <Suspense fallback={<RouteFallback />}>
         <Routes>

@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n'
 import { useToast } from '../context/ToastContext'
 import { useListData } from '../hooks/useListData'
 import { useSwipeNav } from '../hooks/useSwipeNav'
+import { swipeDebugLog } from '../lib/swipeDebug'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
 import ItemsPanel from '../components/ItemsPanel'
@@ -273,7 +274,7 @@ export default function ListDetailPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col pb-16"
+      className="min-h-screen pb-16"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
     >
       {/* Cabecera pegada de verdad al borde de arriba (antes era una
@@ -465,7 +466,10 @@ export default function ListDetailPage() {
         {showTabsRow && (
         <div className="relative mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-white/10 p-1">
           <button
-            onClick={() => setTab('notas')}
+            onClick={() => {
+              swipeDebugLog('CLIC en pestaña "Tareas"')
+              setTab('notas')
+            }}
             className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               tab === 'notas'
                 ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -476,7 +480,10 @@ export default function ListDetailPage() {
           </button>
           {list.expenses_enabled ? (
             <button
-              onClick={() => setTab('gastos')}
+              onClick={() => {
+                swipeDebugLog('CLIC en pestaña "Gastos"')
+                setTab('gastos')
+              }}
               className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
                 tab === 'gastos'
                   ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -496,7 +503,10 @@ export default function ListDetailPage() {
             </button>
           )}
           <button
-            onClick={() => setTab('chat')}
+            onClick={() => {
+              swipeDebugLog('CLIC en pestaña "Chat"')
+              setTab('chat')
+            }}
             className={`relative flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               activeTab === 'chat'
                 ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -514,13 +524,15 @@ export default function ListDetailPage() {
         )}
       </header>
 
-      {/* "flex-1" (junto con el "flex flex-col" del div de arriba) hace que
-          este <main> ocupe siempre todo el alto disponible, aunque la
-          pestaña activa tenga poco contenido (por ejemplo, "Tareas" sin
-          ninguna tarea todavía) — si no, el área donde se detecta el
-          deslizar entre pestañas se quedaba tan bajita como el propio
-          contenido, y no reconocía el dedo en la mitad de abajo de la
-          pantalla.
+      {/* "min-h-screen" en <main> (en vez de tocar el <div> de fuera con
+          flex, que podía afectar al alto de la cabecera de arriba) hace que
+          este bloque ocupe al menos una pantalla entera, aunque la pestaña
+          activa tenga poco contenido (por ejemplo, "Tareas" sin ninguna
+          tarea todavía) — si no, el área donde se detecta el deslizar entre
+          pestañas se quedaba tan bajita como el propio contenido, y no
+          reconocía el dedo en la mitad de abajo de la pantalla. Puede dejar
+          algo de espacio de más para hacer scroll de sobra al final, pero
+          es la opción más segura: no toca el tamaño de nada más.
 
           select-none + touch-callout: mismo arreglo que ya llevan las filas
           arrastrables de ListsPage.tsx/NotesPage.tsx — sin esto, el
@@ -529,7 +541,7 @@ export default function ListDetailPage() {
           selección nativa, que se quedaba a medias hasta dar un toque para
           quitarla (parecía que la pantalla se quedaba "colgada" tras
           deslizar). */}
-      <main className="mx-auto max-w-2xl flex-1 touch-pan-y select-none [-webkit-touch-callout:none] px-4 py-6" {...swipeNav}>
+      <main className="mx-auto min-h-screen max-w-2xl touch-pan-y select-none [-webkit-touch-callout:none] px-4 py-6" {...swipeNav}>
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">

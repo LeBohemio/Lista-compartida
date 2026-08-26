@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useLanguage } from '../lib/i18n'
 import { NAV_TABS } from '../lib/navRoutes'
+import { swipeDebugLog } from '../lib/swipeDebug'
 
 // Barra de navegación fija, persistente en toda la app (Mis listas /
 // Contactos / Ajustes) — ver MainLayout.tsx. Solo se muestra envolviendo
@@ -28,6 +29,8 @@ export default function BottomNav({ pendingContactRequests = 0 }: { pendingConta
           <NavLink
             key={tab.to}
             to={tab.to}
+            onClick={() => swipeDebugLog(`CLIC en botón "${tab.to}"`)}
+            onPointerDown={() => swipeDebugLog(`pointerdown en botón "${tab.to}"`)}
             className="relative flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-medium transition"
           >
             {({ isActive }) => (
