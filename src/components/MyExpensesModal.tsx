@@ -29,6 +29,12 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const myCurrency = profile?.currency ?? DEFAULT_CURRENCY
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [settlements, setSettlements] = useState<SettlementRow[]>([])
+  // Liquidaciones que TÚ has pagado (a diferencia de "settlements", que son
+  // las que te han pagado A TI) — antes no se pedían aquí, y por eso no
+  // sumaban como gasto: pagar tu parte a alguien es tan "gasto tuyo" como
+  // pagar directamente al anotarlo (ver comentario junto a "netTotal" más
+  // abajo).
+  const [settlementsPaid, setSettlementsPaid] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [monthOffset, setMonthOffset] = useState(0)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -49,18 +55,26 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
       // que alguien dice haber hecho pero que todavía no has confirmado
       // no debe sumar aquí.
       .not('confirmed_at', 'is', null)
+    let settlementsPaidQuery = supabase
+      .from('settlements')
+      .select('id, amount, created_at')
+      .eq('from_user', user.id)
+      .not('confirmed_at', 'is', null)
     // Corte personal (ver migration_v13.sql): puramente una vista propia,
     // no borra ni afecta a nada compartido con el resto de la lista.
     if (profile?.expenses_reset_at) {
       expensesQuery = expensesQuery.gte('created_at', profile.expenses_reset_at)
       settlementsQuery = settlementsQuery.gte('created_at', profile.expenses_reset_at)
+      settlementsPaidQuery = settlementsPaidQuery.gte('created_at', profile.expenses_reset_at)
     }
     Promise.all([
       expensesQuery.order('created_at', { ascending: false }),
       settlementsQuery.order('created_at', { ascending: false }),
-    ]).then(([expRes, settRes]) => {
+      settlementsPaidQuery.order('created_at', { ascending: false }),
+    ]).then(([expRes, settRes, settPaidRes]) => {
       setExpenses(((expRes.data as unknown as ExpenseRow[]) ?? []))
       setSettlements(((settRes.data as unknown as SettlementRow[]) ?? []))
+      setSettlementsPaid(((settPaidRes.data as unknown as SettlementRow[]) ?? []))
       setLoading(false)
     })
   }
@@ -95,6 +109,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
 
   const monthExpenses = expenses.filter((e) => monthKey(e.created_at) === key)
   const monthSettlements = settlements.filter((s) => monthKey(s.created_at) === key)
+  const monthSettlementsPaid = settlementsPaid.filter((s) => monthKey(s.created_at) === key)
 
   const byList = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null; currency: CurrencyCode; total: number }>()
@@ -114,6 +129,15 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
 
   const totalMonth = monthExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0)
   const totalCollected = monthSettlements.reduce((sum, s) => sum + Number(s.amount), 0)
+  const totalSettled = monthSettlementsPaid.reduce((sum, s) => sum + Number(s.amount), 0)
+  // Lo que de verdad ha salido de tu bolsillo este mes por gastos
+  // compartidos: lo que pagaste directamente al anotar un gasto, MÁS lo que
+  // has pagado después para saldar tu parte con alguien — a diferencia de
+  // "totalMonth" (arriba), que por sí solo se quedaba corto porque no veía
+  // ese segundo tipo de pago. Lo que otros te han devuelto a ti
+  // (totalCollected) se resta, porque ese dinero vuelve a tu bolsillo y ya
+  // no es un gasto real tuyo.
+  const netTotal = totalMonth + totalSettled - totalCollected
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
@@ -166,50 +190,73 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
 
         {loading ? (
           <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
-        ) : byList.length === 0 ? (
+        ) : byList.length === 0 && totalSettled === 0 && totalCollected === 0 ? (
+          // Antes esto solo miraba "byList" (los gastos que pagaste
+          // directamente): si en el mes solo habías pagado para saldar tu
+          // parte, sin haber anotado ningún gasto tú mismo, se veía como
+          // "vacío" aunque sí hubiera movimiento real que mostrar.
           <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('myExpenses.empty')}</p>
         ) : (
           <>
-            <div className="mb-5 space-y-3">
-              {byList.map((row) => {
-                const pct = byList[0].total > 0 ? Math.max(4, Math.round((row.total / byList[0].total) * 100)) : 0
-                return (
-                  <div key={row.name}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: row.color ?? '#94a3b8' }}
-                          aria-hidden="true"
+            {byList.length > 0 && (
+              <div className="mb-5 space-y-3">
+                {byList.map((row) => {
+                  const pct = byList[0].total > 0 ? Math.max(4, Math.round((row.total / byList[0].total) * 100)) : 0
+                  return (
+                    <div key={row.name}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: row.color ?? '#94a3b8' }}
+                            aria-hidden="true"
+                          />
+                          {row.name}
+                        </span>
+                        <span className="font-medium text-slate-800 dark:text-slate-100">
+                          {formatCurrency(row.total, row.currency, language)}
+                        </span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: row.color ?? '#94a3b8' }}
                         />
-                        {row.name}
-                      </span>
-                      <span className="font-medium text-slate-800 dark:text-slate-100">
-                        {formatCurrency(row.total, row.currency, language)}
-                      </span>
+                      </div>
                     </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, backgroundColor: row.color ?? '#94a3b8' }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex items-center justify-between border-t border-[var(--color-glass-border)] pt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              <span>{t('myExpenses.total')}</span>
-              <span>{formatCurrency(totalMonth, myCurrency, language)}</span>
-            </div>
-
-            {totalCollected > 0 && (
-              <div className="mt-2 flex items-center justify-between text-sm text-green-600 dark:text-green-400">
-                <span>{t('myExpenses.collected')}</span>
-                <span className="font-medium">{formatCurrency(totalCollected, myCurrency, language)}</span>
+                  )
+                })}
               </div>
             )}
+
+            {/* Desglose completo antes del Total — para que se entienda de
+                dónde sale ese número, en vez de que parezca sacado de la
+                manga: lo que pagaste directamente (arriba, por lista), lo
+                que has pagado después para saldar tu parte, y lo que te han
+                devuelto a ti (esto último restando, porque ese dinero ha
+                vuelto a tu bolsillo). */}
+            <div className="space-y-1.5 border-t border-[var(--color-glass-border)] pt-3 text-sm">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                <span>{t('myExpenses.paidDirectly')}</span>
+                <span>{formatCurrency(totalMonth, myCurrency, language)}</span>
+              </div>
+              {totalSettled > 0 && (
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                  <span>{t('myExpenses.settled')}</span>
+                  <span>{formatCurrency(totalSettled, myCurrency, language)}</span>
+                </div>
+              )}
+              {totalCollected > 0 && (
+                <div className="flex items-center justify-between text-green-600 dark:text-green-400">
+                  <span>{t('myExpenses.collected')}</span>
+                  <span className="font-medium">−{formatCurrency(totalCollected, myCurrency, language)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-[var(--color-glass-border)] pt-1.5 font-semibold text-slate-900 dark:text-slate-100">
+                <span>{t('myExpenses.total')}</span>
+                <span>{formatCurrency(netTotal, myCurrency, language)}</span>
+              </div>
+            </div>
           </>
         )}
       </div>
