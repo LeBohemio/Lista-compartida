@@ -96,9 +96,20 @@ html, body, #root {
    elemento desplazado), esto evita que TODA la página gane scroll
    horizontal y arrastre con ella a los elementos "fixed" (como la barra
    del chat), que es lo que hacía que el botón de enviar apareciera cortado
-   por el borde derecho. */
+   por el borde derecho.
+
+   "overscroll-behavior-x: none" es aparte y para otra cosa: Chrome tiene su
+   PROPIO gesto nativo de "deslizar desde el borde para volver atrás" (o
+   hacia adelante), completamente separado del deslizar entre pantallas que
+   programamos nosotros (useSwipeNav.ts) — "touch-action: pan-y" evita que
+   el contenido de la página se arrastre de lado, pero no evita ESTE gesto
+   de Chrome, que es de la propia interfaz del navegador. Sin desactivarlo,
+   Chrome se queda a medio armar ese gesto suyo durante nuestro deslizar, y
+   hacía falta un toque suelto después para que la pantalla "volviera a la
+   normalidad" y reconociera los botones otra vez. */
 html, body {
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 body {
