@@ -448,6 +448,17 @@ export function PauseIcon(props: IconProps) {
   )
 }
 
+// Flechita "hacia arriba" de las guías del candado al grabar audio (ver
+// ChatPanel.tsx) — se van encendiendo una a una según se arrastra el botón
+// del micrófono, marcando cuánto queda para llegar al candado.
+export function ChevronUpIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 15.5 12 8l7 7.5" />
+    </Base>
+  )
+}
+
 /**
  * "Insignia de cristal" (propuesta B elegida): la mini-tarjeta de cristal
  * esmerilado que envuelve a cada icono. `active` cambia el cristal neutro

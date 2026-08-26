@@ -22,6 +22,7 @@ import ForwardMessageModal from './ForwardMessageModal'
 import {
   CameraIcon,
   CheckIcon,
+  ChevronUpIcon,
   CloseIcon,
   CopyIcon,
   EditIcon,
@@ -772,17 +773,18 @@ export default function ChatPanel({
     }, MIC_HOLD_THRESHOLD_MS)
   }
 
-  // Altura del "carril" (el canal por encima del botón que enseña el
-  // candado) y distancia que hay que arrastrar hacia arriba para bloquear.
-  // Elegidas a propósito para que, al llegar al tope del arrastre, el
-  // CENTRO del botón (40px) coincida con el centro del candado dentro del
-  // carril — y como el botón es bastante más grande que el candado (16px),
-  // al coincidir los centros el candado queda cubierto entero por el
-  // botón (recorrido completo de verdad), no solo rozado por debajo. Ver
-  // el comentario junto al JSX del carril para la cuenta exacta si cambia
-  // alguna de las dos.
-  const LOCK_RAIL_HEIGHT_PX = 80
-  const LOCK_THRESHOLD_PX = 64
+  // El botón de grabar vive DENTRO de una única "cápsula" (no es un botón
+  // suelto con un carril flotando aparte por encima, con un hueco entre
+  // medias — así era antes, y no llegaba a sentirse como que el botón de
+  // verdad "subía hasta el candado"). Al empezar a grabar, la cápsula crece
+  // hacia arriba (CAPSULE_HEIGHT_PX) y el botón, que nace pegado a su base,
+  // se desliza hacia arriba POR DENTRO de ella (LOCK_THRESHOLD_PX de
+  // recorrido real) hasta cubrir el candado que aparece fijo arriba del
+  // todo. Solo se bloquea si de verdad se llega hasta ahí arriba — nada de
+  // umbrales cortos que bloqueen con un roce.
+  const CAPSULE_HEIGHT_PX = 200
+  const LOCK_THRESHOLD_PX = 150
+  const LOCK_CHEVRON_COUNT = 4
 
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
     // Una vez bloqueada, ya no hace falta seguir el dedo (puede incluso
@@ -1146,50 +1148,74 @@ export default function ChatPanel({
                   <SendIcon className="h-4 w-4" />
                 </button>
               ) : (
-                <div className="relative shrink-0">
-                  {/* El "carril": un canal fijo por encima del botón que
-                      enseña hasta dónde hay que deslizar para bloquear.
-                      Solo se ve mientras se está grabando y sin bloquear
-                      todavía — el propio botón (más abajo) se mueve dentro
-                      de este canal siguiendo el dedo de verdad, en vez de
-                      que el bloqueo salte de golpe sin ningún aviso. */}
-                  {recording && !locked && (
-                    // El candado va centrado verticalmente dentro del
-                    // carril (items-center, sin padding a mano) para que la
-                    // cuenta sea simple y no se rompa si cambia algún
-                    // margen: su centro queda a "separación (mb-1) + mitad
-                    // del carril" del borde de arriba del botón en reposo.
-                    // LOCK_THRESHOLD_PX (arriba, junto a los otros umbrales)
-                    // está calculado para que el CENTRO del botón llegue
-                    // justo ahí al tope del arrastre — mismo sitio, así que
-                    // el botón (más grande) cubre el candado entero en vez
-                    // de quedarse corto.
-                    <div
-                      className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex w-11 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--color-glass)] shadow-inner"
-                      style={{ height: LOCK_RAIL_HEIGHT_PX }}
-                    >
-                      <LockIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onPointerDown={handleMicPointerDown}
-                    onPointerMove={handleMicPointerMove}
-                    onPointerUp={handleMicPointerUp}
-                    onPointerCancel={handleMicPointerUp}
-                    disabled={sending && !recording}
-                    className={`relative flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow-[0_10px_20px_-10px_var(--color-glow)] transition-transform disabled:opacity-50 ${
-                      slideCancelHint ? 'bg-red-500' : 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)]'
+                // Envoltorio con el mismo hueco de siempre en la fila (40x10):
+                // la cápsula de abajo crece hacia ARRIBA sobre esto (absolute,
+                // anclada por bottom-0), así que no empuja ni agranda la
+                // barra de escritura — solo "flota" por encima, igual que
+                // hacía antes el carril suelto.
+                <div className="relative h-10 w-11 shrink-0">
+                  <div
+                    className={`absolute inset-x-0 bottom-0 flex flex-col items-center justify-end rounded-full transition-[height] duration-150 ${
+                      recording && !locked ? 'bg-[var(--color-glass)] pb-[3px] shadow-inner' : ''
                     }`}
-                    style={{
-                      touchAction: 'none',
-                      transform: recording ? `translateY(${dragY}px) scale(1.1)` : undefined,
-                    }}
-                    aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
-                    title={recording ? t('chat.recording') : t('chat.attachAudio')}
+                    style={{ height: recording && !locked ? CAPSULE_HEIGHT_PX : 40 }}
                   >
-                    <MicIcon className="h-5 w-5" />
-                  </button>
+                    {/* El micrófono y el candado viven DENTRO de la misma
+                        cápsula — no un botón suelto con un carril flotando
+                        aparte por encima con un hueco entre medias (así era
+                        antes, y nunca se sentía como que el botón de verdad
+                        "llegaba" al candado). El botón nace pegado a la base
+                        y sube por dentro de ella de verdad (ver
+                        LOCK_THRESHOLD_PX más arriba). Las flechas se van
+                        encendiendo una a una según se acerca, y el candado
+                        se colorea al pasar del 60% del recorrido — ninguna
+                        de las dos cosas decide el bloqueo, solo lo anuncian;
+                        el bloqueo real sigue siendo el umbral en
+                        handleMicPointerMove. */}
+                    {recording && !locked && (
+                      <div className="pointer-events-none absolute inset-x-0 top-3 flex flex-col items-center gap-1.5">
+                        <div
+                          className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border bg-[var(--color-surface)] shadow-sm transition-colors ${
+                            dragY <= -LOCK_THRESHOLD_PX * 0.6
+                              ? 'border-brand-300 text-brand-500 dark:border-brand-700'
+                              : 'border-[var(--color-surface-border)] text-slate-400 dark:text-slate-500'
+                          }`}
+                        >
+                          <LockIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex flex-col-reverse gap-1.5">
+                          {Array.from({ length: LOCK_CHEVRON_COUNT }).map((_, i) => {
+                            const lit = Math.round((dragY / -LOCK_THRESHOLD_PX) * LOCK_CHEVRON_COUNT) > i
+                            return (
+                              <ChevronUpIcon
+                                key={i}
+                                className={`h-2 w-3.5 text-brand-500 transition-all ${lit ? 'opacity-100 -translate-y-0.5' : 'opacity-25'}`}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onPointerDown={handleMicPointerDown}
+                      onPointerMove={handleMicPointerMove}
+                      onPointerUp={handleMicPointerUp}
+                      onPointerCancel={handleMicPointerUp}
+                      disabled={sending && !recording}
+                      className={`relative z-[1] flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-white shadow-[0_10px_20px_-10px_var(--color-glow)] transition-transform disabled:opacity-50 ${
+                        slideCancelHint ? 'bg-red-500' : 'bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-brand-600)]'
+                      }`}
+                      style={{
+                        touchAction: 'none',
+                        transform: recording ? `translateY(${dragY}px) scale(1.1)` : undefined,
+                      }}
+                      aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
+                      title={recording ? t('chat.recording') : t('chat.attachAudio')}
+                    >
+                      <MicIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </form>
