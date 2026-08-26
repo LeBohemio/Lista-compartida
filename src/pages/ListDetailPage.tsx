@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useToast } from '../context/ToastContext'
 import { useListData } from '../hooks/useListData'
+import { horizontalGestureClaim } from '../lib/gestureClaim'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
 import ItemsPanel from '../components/ItemsPanel'
@@ -53,6 +54,48 @@ export default function ListDetailPage() {
   const [tab, setTab] = useState<Tab>(
     initialTab === 'gastos' || initialTab === 'chat' ? initialTab : 'notas',
   )
+  // Deslizar hacia los lados sobre el contenido también mueve entre
+  // Tareas/Gastos/Chat, en ese mismo orden — pero solo entre estas 3, sin
+  // salir a la navegación principal (Mis listas, Notas…): para eso hay que
+  // usar la flecha de atrás, a propósito, para no salirse de la lista sin
+  // querer. "Gastos" solo entra en el recorrido si la lista los tiene
+  // activados. Igual que en MainLayout.tsx, el gesto va escrito aquí
+  // mismo, sin pasar por ningún hook compartido — calcado del carrusel de
+  // categorías de AvatarPicker.tsx.
+  const tabOrder = useMemo<Tab[]>(
+    () => (list?.expenses_enabled ? ['notas', 'gastos', 'chat'] : ['notas', 'chat']),
+    [list?.expenses_enabled],
+  )
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  const SWIPE_THRESHOLD_PX = 60
+
+  const handleTabSwipePointerDown = (e: ReactPointerEvent) => {
+    if (horizontalGestureClaim.current) {
+      swipeStartRef.current = null
+      return
+    }
+    swipeStartRef.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handleTabSwipePointerUp = (e: ReactPointerEvent) => {
+    const start = swipeStartRef.current
+    swipeStartRef.current = null
+    if (!start) return
+    if (horizontalGestureClaim.current) return
+    const deltaX = e.clientX - start.x
+    const deltaY = e.clientY - start.y
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return
+    const index = tabOrder.indexOf(tab)
+    if (index === -1) return
+    const nextIndex = deltaX < 0 ? index + 1 : index - 1
+    if (nextIndex < 0 || nextIndex >= tabOrder.length) return
+    setTab(tabOrder[nextIndex])
+  }
+
+  const handleTabSwipePointerCancel = () => {
+    swipeStartRef.current = null
+  }
+
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
@@ -258,9 +301,17 @@ export default function ListDetailPage() {
   }
 
   return (
+    // El deslizar se reconoce aquí, en el bloque de fuera que envuelve
+    // TANTO la cabecera (con las pestañas) COMO el contenido — así el
+    // botón que se toca justo después de deslizar está siempre dentro de
+    // la misma zona deslizada, nunca fuera (ver el comentario de
+    // handleTabSwipePointerDown más arriba).
     <div
-      className="min-h-screen pb-16"
+      className="min-h-screen touch-pan-y select-none pb-16 [-webkit-touch-callout:none]"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
+      onPointerDown={handleTabSwipePointerDown}
+      onPointerUp={handleTabSwipePointerUp}
+      onPointerCancel={handleTabSwipePointerCancel}
     >
       {/* Cabecera pegada de verdad al borde de arriba (antes era una
           "burbuja" de cristal flotante, separada del borde con top-3+mx-3
