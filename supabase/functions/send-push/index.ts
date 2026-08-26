@@ -129,6 +129,24 @@ async function notifyUser(userId: string, field: NotifyField, payload: PushPaylo
   )
 }
 
+// Texto corto para un mensaje dentro del aviso — lo mismo que se ve en la
+// propia burbuja del chat cuando no hay texto (foto/nota de voz), pero en
+// una línea. Se usa tanto para el mensaje que acaba de llegar como para los
+// anteriores que se añaden debajo (ver HISTORY_LINES más abajo).
+function messagePreview(m: { content?: unknown; image_path?: unknown; audio_path?: unknown }): string {
+  return (m.content as string | null) || (m.image_path ? '📷 Foto' : null) || (m.audio_path ? '🎤 Nota de voz' : '') || ''
+}
+
+// Cuántos mensajes como mucho se apilan dentro de un mismo aviso. Android
+// (y por tanto Chrome) ya sabe mostrar un cuerpo de varias líneas como un
+// aviso "expandible" — solo enseña la última línea hasta que lo despliegas
+// (deslizando hacia abajo con dos dedos o manteniendo pulsado), y entonces
+// se ven todas — así que basta con mandar varias líneas en "body" para que
+// se comporte igual que el resumen de mensajes de WhatsApp al desplegar,
+// aunque aquí sea solo texto plano (sin burbujas ni foto por línea, eso sí
+// es un estilo nativo de Android que no está al alcance de una web).
+const HISTORY_LINES = 4
+
 async function handleMessages(record: Record<string, unknown>) {
   const listId = record.list_id as string | null
   const toUserId = record.to_user_id as string | null
@@ -151,10 +169,21 @@ async function handleMessages(record: Record<string, unknown>) {
     ])
     if (!sender || isCurrentlyMuted(myContactRow)) return
 
-    const bodyText =
-      (record.content as string | null) ||
-      (record.image_path ? '📷 Foto' : null) ||
-      (record.audio_path ? '🎤 Nota de voz' : '')
+    // Los últimos mensajes que ESTA persona te ha mandado a ti, del más
+    // antiguo al más reciente — si llegan varios seguidos (lo típico:
+    // alguien escribe 3-4 líneas sueltas en vez de una), el aviso los
+    // apila todos en vez de ir sustituyendo el anterior por el siguiente y
+    // dejar solo el último visible. Si por lo que sea esta consulta falla,
+    // no rompe el aviso: se sigue mandando igualmente, solo que con el
+    // mensaje suelto de siempre.
+    const { data: history } = await supabaseAdmin
+      .from('messages')
+      .select('content, image_path, audio_path')
+      .eq('sender_id', senderId)
+      .eq('to_user_id', toUserId)
+      .order('created_at', { ascending: false })
+      .limit(HISTORY_LINES)
+    const bodyText = history && history.length > 0 ? history.reverse().map(messagePreview).join('\n') : messagePreview(record)
     await notifyUser(toUserId, 'notify_chat', {
       title: sender.username,
       body: bodyText,
@@ -180,13 +209,28 @@ async function handleMessages(record: Record<string, unknown>) {
   ])
   if (!list || !sender || !members) return
 
-  const bodyText =
-      (record.content as string | null) ||
-      (record.image_path ? '📷 Foto' : null) ||
-      (record.audio_path ? '🎤 Nota de voz' : '')
+  // Igual que en el mensaje directo (ver comentario de más arriba), pero
+  // aquí puede escribir más de una persona — así que cada línea lleva
+  // delante quién la mandó, igual que ya se hacía con el mensaje suelto.
+  let bodyText = `${sender.username}: ${messagePreview(record)}`
+  const { data: history } = await supabaseAdmin
+    .from('messages')
+    .select('sender_id, content, image_path, audio_path')
+    .eq('list_id', listId)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LINES)
+  if (history && history.length > 0) {
+    const senderIds = [...new Set(history.map((m) => m.sender_id as string))]
+    const { data: authors } = await supabaseAdmin.from('profiles').select('id, username').in('id', senderIds)
+    const nameById = new Map((authors ?? []).map((a) => [a.id, a.username as string]))
+    bodyText = history
+      .reverse()
+      .map((m) => `${nameById.get(m.sender_id as string) ?? sender.username}: ${messagePreview(m)}`)
+      .join('\n')
+  }
   const payload: PushPayload = {
     title: list.name,
-    body: `${sender.username}: ${bodyText}`,
+    body: bodyText,
     url: `/lists/${listId}?tab=chat`,
     tag: `chat-${listId}`,
     // Si la lista tiene foto puesta (ver migration_v21.sql), se usa como
