@@ -286,7 +286,17 @@ self.addEventListener('push', (event: PushEvent) => {
       const options: ExtendedNotificationOptions = {
         body: payload.body,
         icon: payload.icon || '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        // El icono pequeño (badge) es distinto del grande a propósito: en
+        // Android, este es el que se ve diminuto en la barra de estado, y el
+        // sistema lo pinta SIEMPRE solo con su canal alfa — ignora el color
+        // que tenga. Usar ahí el icono normal (fondo índigo sólido, opaco
+        // entero) salía como un cuadrado/blob liso, sin forma reconocible.
+        // badge-monochrome.png es solo la silueta blanca del "NU" y la
+        // chispa, sin fondo — así sí se ve una forma de verdad, sea cual sea
+        // el color con que Android decida pintarla. No tiene sentido
+        // personalizarlo por aviso (nombre del remitente, foto...): es un
+        // sello de "esto es NoteUs", no del contenido del mensaje.
+        badge: '/icons/badge-monochrome.png',
         tag: payload.tag,
         data: { url: payload.url || '/', convType: payload.convType, convId: payload.convId },
         actions,

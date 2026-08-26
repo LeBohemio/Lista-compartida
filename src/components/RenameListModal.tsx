@@ -49,8 +49,11 @@ export default function RenameListModal({
     setError(null)
     setUploadingPhoto(true)
 
-    const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
-    const { error: uploadErr } = await supabase.storage.from('list-photos').upload(path, blob, { contentType: 'image/jpeg' })
+    // .png (no .jpg): AvatarCropper ya exporta el recorte en PNG para
+    // conservar la transparencia real fuera del círculo — ver el comentario
+    // en AvatarCropper.tsx.
+    const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
+    const { error: uploadErr } = await supabase.storage.from('list-photos').upload(path, blob, { contentType: 'image/png' })
     if (uploadErr) {
       setUploadingPhoto(false)
       setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))

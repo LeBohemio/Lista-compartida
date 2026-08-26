@@ -90,13 +90,20 @@ export default function AvatarCropper({
     const drawY = (CONTAINER_SIZE / 2 - displayedH / 2 + offset.y) * ratio
 
     ctx.drawImage(imgRef.current, drawX, drawY, drawW, drawH)
-    canvas.toBlob(
-      (blob) => {
-        if (blob) onConfirm(blob)
-      },
-      'image/jpeg',
-      0.92,
-    )
+    // PNG, no JPEG: el recorte de arriba (ctx.clip a un círculo) deja fuera
+    // del círculo transparente de verdad — JPEG no tiene canal alfa, así que
+    // exportar en ese formato rellenaba esas esquinas de negro por dentro
+    // del propio archivo (solo se veían bien porque el CSS ya recorta a
+    // círculo en todos lados donde se muestra en tamaño pequeño). Eso se
+    // notaba en dos sitios: al ampliar la foto (ver Avatar.tsx, que además
+    // fuerza su propio recorte CSS como red de seguridad para fotos
+    // antiguas ya subidas en JPEG) y en el icono de las notificaciones del
+    // móvil, que no aplica NINGÚN recorte por su cuenta — ahí sí se veía el
+    // cuadrado entero. Con PNG el archivo en sí ya es un círculo de verdad
+    // con transparencia alrededor, así que también sale bien ahí.
+    canvas.toBlob((blob) => {
+      if (blob) onConfirm(blob)
+    }, 'image/png')
   }
 
   return createPortal(

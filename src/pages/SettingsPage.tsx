@@ -178,11 +178,14 @@ export default function SettingsPage() {
     setPreviewUrl(URL.createObjectURL(blob))
     setUploading(true)
 
-    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    // .png (no .jpg): AvatarCropper ya exporta el recorte en PNG para
+    // conservar la transparencia real fuera del círculo — ver el comentario
+    // en AvatarCropper.tsx.
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
 
     const { error: uploadErr } = await supabase.storage
       .from('avatars')
-      .upload(path, blob, { contentType: 'image/jpeg' })
+      .upload(path, blob, { contentType: 'image/png' })
 
     if (uploadErr) {
       setError(t('profile.errorUploadPhoto', { message: uploadErr.message }))
