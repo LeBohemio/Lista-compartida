@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
+import { horizontalGestureClaim } from '../lib/gestureClaim'
 import { CloseIcon } from './icons'
 
 const AVATAR_CATEGORIES: { slug: string; labelKey: TranslationKey }[] = [
@@ -53,10 +54,16 @@ export default function AvatarPicker({
 
   const handleGridPointerDown = (e: ReactPointerEvent) => {
     swipeStartRef.current = { x: e.clientX, y: e.clientY }
+    // Se marca "cogido" durante todo el gesto (no solo si acaba siendo un
+    // swipe de verdad): así, mientras el dedo está sobre esta rejilla, el
+    // swipe de cambiar de pantalla (ver gestureClaim.ts) no compite por el
+    // mismo arrastre horizontal.
+    horizontalGestureClaim.current = true
   }
   const handleGridPointerUp = (e: ReactPointerEvent) => {
     const start = swipeStartRef.current
     swipeStartRef.current = null
+    horizontalGestureClaim.current = false
     if (!start) return
     const deltaX = e.clientX - start.x
     const deltaY = e.clientY - start.y
@@ -65,6 +72,15 @@ export default function AvatarPicker({
     // haciendo scroll normal por la rejilla, o solo has tocado una foto.
     if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return
     goToCategory(deltaX < 0 ? activeIndex + 1 : activeIndex - 1)
+  }
+  // Red de seguridad: si el gesto se cancela (un gesto nativo del propio
+  // navegador se cuela a mitad, por ejemplo) y nunca llega el "pointer up",
+  // sin esto la bandera compartida se quedaría en "cogida" para siempre y
+  // el swipe de cambiar de pantalla dejaría de funcionar en toda la app
+  // hasta el próximo toque en esta rejilla.
+  const handleGridPointerCancel = () => {
+    swipeStartRef.current = null
+    horizontalGestureClaim.current = false
   }
 
   // Cuando la categoría activa cambia por deslizar (no solo al tocar su
@@ -135,6 +151,7 @@ export default function AvatarPicker({
           className="flex-1 touch-pan-y overflow-y-auto px-6 py-4"
           onPointerDown={handleGridPointerDown}
           onPointerUp={handleGridPointerUp}
+          onPointerCancel={handleGridPointerCancel}
         >
           <div className="grid grid-cols-5 gap-3">
             {Array.from({ length: AVATARS_PER_CATEGORY }, (_, i) => {

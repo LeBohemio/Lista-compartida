@@ -7,6 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { horizontalGestureClaim } from '../lib/gestureClaim'
 
 /**
  * Reordenar una lista arrastrando desde un asa dedicada (el icono ⠿ que se
@@ -163,6 +164,11 @@ export function useDragReorder<T>({
 
   const beginDrag = useCallback(
     (id: string, startY: number, startX: number, target: HTMLElement, pointerId: number) => {
+      // Avisa al swipe de cambiar de pestaña/pantalla (ver gestureClaim.ts)
+      // de que este arrastre (aunque sea principalmente vertical, también
+      // sigue al dedo en horizontal, ver el comentario de dragStartXRef más
+      // arriba) ya es cosa de reordenar, no de cambiar de pantalla.
+      horizontalGestureClaim.current = true
       baseOrderRef.current = displayItems
       setDragOrder(displayItems)
       setDraggingId(id)
@@ -427,6 +433,7 @@ export function useDragReorder<T>({
   const handlePointerUp = useCallback(() => {
     const draggingId = draggingIdRef.current
     if (!draggingId) return
+    horizontalGestureClaim.current = false
     if (autoScrollFrameRef.current != null) {
       cancelAnimationFrame(autoScrollFrameRef.current)
       autoScrollFrameRef.current = null

@@ -226,6 +226,13 @@ export type Expense = {
   paid_by: string | null
   created_by: string | null
   created_at: string
+  // Archivo adjunto general (factura en PDF, Word…) — distinto de
+  // "receipt_image_path", que es la foto del ticket usada para el OCR. Ver
+  // migration_v44.sql.
+  file_path: string | null
+  file_name: string | null
+  file_mime_type: string | null
+  file_size_bytes: number | null
   // true cuando el reparto no suma el total (importes personalizados o
   // porcentajes incompletos) — se guardó igualmente al salir del
   // formulario, como borrador, para no perder lo ya escrito.

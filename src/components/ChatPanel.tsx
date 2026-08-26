@@ -14,6 +14,8 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage, type TranslationKey } from '../lib/i18n'
 import { useLongPress } from '../hooks/useLongPress'
 import { compressImage } from '../lib/imageCompression'
+import { horizontalGestureClaim } from '../lib/gestureClaim'
+import { formatFileSize } from '../lib/files'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
 import Toast from './Toast'
@@ -47,15 +49,6 @@ function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(s / 60)
   const seconds = s % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
-
-// "245 KB", "3.1 MB"... para mostrar el peso del archivo adjunto sin tener
-// que descargarlo primero (el tamaño se guarda en la fila al subirlo, ver
-// migration_v31.sql).
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 // Resumen corto de un mensaje para mostrarlo citado — encima del
@@ -1659,6 +1652,10 @@ function VoiceMessagePlayer({
 
   const handleSeekPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     draggingSeekRef.current = true
+    // Avisa al swipe de cambiar de pestaña (ver gestureClaim.ts) de que
+    // este arrastre horizontal ya está cogido — así no se dispara un
+    // cambio de pestaña a la vez que se adelanta el audio.
+    horizontalGestureClaim.current = true
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -1676,6 +1673,7 @@ function VoiceMessagePlayer({
   const endSeek = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!draggingSeekRef.current) return
     draggingSeekRef.current = false
+    horizontalGestureClaim.current = false
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -1842,6 +1840,9 @@ function MessageBubble({
     if (!draggingRef.current && dx <= 6) return
     if (!draggingRef.current) {
       draggingRef.current = true
+      // Igual que en el adelantar del audio: avisa al swipe de cambiar de
+      // pestaña de que este arrastre ya es cosa de "responder al mensaje".
+      horizontalGestureClaim.current = true
       try {
         e.currentTarget.setPointerCapture(e.pointerId)
       } catch {
@@ -1868,6 +1869,7 @@ function MessageBubble({
     if (draggingRef.current && armed) onSwipeReply(m)
     dragStartXRef.current = null
     draggingRef.current = false
+    horizontalGestureClaim.current = false
     setArmed(false)
     setDragX(0)
   }

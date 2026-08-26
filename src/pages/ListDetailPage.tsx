@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useToast } from '../context/ToastContext'
 import { useListData } from '../hooks/useListData'
+import { useSwipeNav } from '../hooks/useSwipeNav'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
 import ItemsPanel from '../components/ItemsPanel'
@@ -53,6 +54,19 @@ export default function ListDetailPage() {
   const [tab, setTab] = useState<Tab>(
     initialTab === 'gastos' || initialTab === 'chat' ? initialTab : 'notas',
   )
+  // Deslizar hacia los lados sobre el contenido también mueve entre
+  // Tareas/Gastos/Chat, en ese mismo orden — pero solo entre estas 3, sin
+  // salir a la navegación principal (Mis listas, Notas…): para eso hay que
+  // usar la flecha de atrás, a propósito, para no salirse de la lista sin
+  // querer. "Gastos" solo entra en el recorrido si la lista los tiene
+  // activados — si no, no hay contenido real en esa pestaña (ver el botón
+  // de activarlos, más abajo) y no tendría sentido poder deslizar hasta
+  // ahí.
+  const tabOrder = useMemo<Tab[]>(
+    () => (list?.expenses_enabled ? ['notas', 'gastos', 'chat'] : ['notas', 'chat']),
+    [list?.expenses_enabled],
+  )
+  const swipeNav = useSwipeNav({ order: tabOrder, current: tab, onChange: setTab })
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
@@ -500,7 +514,7 @@ export default function ListDetailPage() {
         )}
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
+      <main className="mx-auto max-w-2xl touch-pan-y px-4 py-6" {...swipeNav}>
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">

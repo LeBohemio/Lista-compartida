@@ -1,13 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { useLanguage, type TranslationKey } from '../lib/i18n'
-import { ContactsIcon, ListsIcon, NotesIcon, SettingsIcon } from './icons'
-
-const TABS: { to: string; Icon: typeof ListsIcon; labelKey: TranslationKey }[] = [
-  { to: '/lists', Icon: ListsIcon, labelKey: 'nav.tabLists' },
-  { to: '/notes', Icon: NotesIcon, labelKey: 'nav.tabNotes' },
-  { to: '/contacts', Icon: ContactsIcon, labelKey: 'nav.tabContacts' },
-  { to: '/settings', Icon: SettingsIcon, labelKey: 'nav.tabSettings' },
-]
+import { useLanguage } from '../lib/i18n'
+import { NAV_TABS } from '../lib/navRoutes'
 
 // Barra de navegación fija, persistente en toda la app (Mis listas /
 // Contactos / Ajustes) — ver MainLayout.tsx. Solo se muestra envolviendo
@@ -31,7 +24,7 @@ export default function BottomNav({ pendingContactRequests = 0 }: { pendingConta
       <span className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[var(--color-brand-400)] opacity-50 blur-2xl" />
       <span className="pointer-events-none absolute -bottom-12 left-10 h-24 w-24 rounded-full bg-[var(--color-brand-300)] opacity-30 blur-xl" />
       <div className="relative mx-auto flex w-full max-w-sm items-center gap-1">
-        {TABS.map((tab) => (
+        {NAV_TABS.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}

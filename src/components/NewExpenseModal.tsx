@@ -8,7 +8,8 @@ import { compressImage } from '../lib/imageCompression'
 import { EXPENSE_CATEGORIES } from '../lib/categories'
 import { formatCurrency, splitEqually } from '../lib/balances'
 import { currencySymbol, type CurrencyCode } from '../lib/currencies'
-import { CameraIcon, GalleryIcon } from './icons'
+import { CameraIcon, FileAttachmentIcon, GalleryIcon } from './icons'
+import { formatFileSize } from '../lib/files'
 import type { Expense, ExpenseCategory, ListMember } from '../lib/types'
 
 type SplitMode = 'equal' | 'custom' | 'percent'
@@ -63,6 +64,11 @@ export default function NewExpenseModal({
   // (ChatPanel.tsx).
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  // Adjunto de archivo (factura en PDF, Word…) — independiente de la foto
+  // del ticket de arriba: esa es para el OCR, esto es solo para guardar un
+  // documento junto al gasto, tal cual, sin tocar el importe ni la
+  // categoría. Mismo input que ya usa el chat para documentos.
+  const attachmentInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -70,6 +76,8 @@ export default function NewExpenseModal({
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(editing?.ocr_confidence ?? null)
   const [ocrChecked, setOcrChecked] = useState(false)
+
+  const [attachment, setAttachment] = useState<File | null>(null)
 
   const [description, setDescription] = useState(editing?.description ?? initial?.description ?? '')
   const [category, setCategory] = useState<ExpenseCategory>(() => {
@@ -130,6 +138,12 @@ export default function NewExpenseModal({
       setOcrRunning(false)
       setOcrChecked(true)
     }
+  }
+
+  const handleAttachment = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setAttachment(f)
   }
 
   const totalAmount = Number.parseFloat(amountInput.replace(',', '.'))
@@ -200,6 +214,26 @@ export default function NewExpenseModal({
       receiptPath = path
     }
 
+    // El archivo adjunto (factura, etc.) se sube tal cual, sin comprimir
+    // (a diferencia de la foto del ticket, puede ser un PDF) — si no se
+    // eligió uno nuevo, se conserva el que ya hubiera al editar.
+    let attachmentPath: string | null = editing?.file_path ?? null
+    let attachmentName: string | null = editing?.file_name ?? null
+    let attachmentMimeType: string | null = editing?.file_mime_type ?? null
+    let attachmentSizeBytes: number | null = editing?.file_size_bytes ?? null
+    if (attachment) {
+      const ext = attachment.name.split('.').pop() || 'bin'
+      const path = `${listId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error: attachmentUploadErr } = await supabase.storage
+        .from('expense-files')
+        .upload(path, attachment, { contentType: attachment.type || 'application/octet-stream' })
+      if (attachmentUploadErr) return t('expenses.errorAttachmentUpload', { message: attachmentUploadErr.message })
+      attachmentPath = path
+      attachmentName = attachment.name
+      attachmentMimeType = attachment.type || null
+      attachmentSizeBytes = attachment.size
+    }
+
     const isDraft = !splitComplete
     let expenseId: string
     if (isEditing) {
@@ -214,6 +248,10 @@ export default function NewExpenseModal({
           paid_by: noDebt ? null : paidBy,
           no_debt: noDebt,
           is_draft: isDraft,
+          file_path: attachmentPath,
+          file_name: attachmentName,
+          file_mime_type: attachmentMimeType,
+          file_size_bytes: attachmentSizeBytes,
         })
         .eq('id', editing!.id)
       if (updateErr) return updateErr.message
@@ -234,6 +272,10 @@ export default function NewExpenseModal({
           no_debt: noDebt,
           created_by: user!.id,
           is_draft: isDraft,
+          file_path: attachmentPath,
+          file_name: attachmentName,
+          file_mime_type: attachmentMimeType,
+          file_size_bytes: attachmentSizeBytes,
         })
         .select()
         .single()
@@ -360,6 +402,39 @@ export default function NewExpenseModal({
             {ocrChecked && !ocrRunning && (
               <p className={`mt-2 text-sm ${needsManualReview ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
                 {needsManualReview ? t('expenses.ocrNeedsReview') : t('expenses.ocrDetected')}
+              </p>
+            )}
+          </div>
+
+          {/* Adjunto de archivo, aparte de la foto del ticket de arriba —
+              para guardar por ejemplo la factura en PDF de la luz o el gas
+              junto al gasto, sin pasar por el OCR. Mismos tipos de archivo
+              que ya admite el chat para documentos. */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              {t('expenses.attachFile')} {t('expenses.receiptOptional')}
+            </label>
+            <button
+              type="button"
+              onClick={() => attachmentInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 border-transparent bg-brand-50 dark:bg-brand-950/40 dark:text-brand-400"
+            >
+              <FileAttachmentIcon className="h-4 w-4" />
+              {attachment ? attachment.name : t('expenses.chooseFile')}
+            </button>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleAttachment}
+              className="hidden"
+            />
+            {attachment && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatFileSize(attachment.size)}</p>
+            )}
+            {!attachment && isEditing && editing?.file_name && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                {t('expenses.attachmentSavedHint', { name: editing.file_name })}
               </p>
             )}
           </div>

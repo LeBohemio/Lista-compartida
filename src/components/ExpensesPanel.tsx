@@ -10,8 +10,9 @@ import NewExpenseModal from './NewExpenseModal'
 import BalanceSummary from './BalanceSummary'
 import Avatar from './Avatar'
 import UndoToast from './UndoToast'
-import { CheckIcon, CloseIcon, EditIcon, HandshakeIcon, LockIcon, TrashIcon } from './icons'
+import { CheckIcon, CloseIcon, EditIcon, FileAttachmentIcon, HandshakeIcon, LockIcon, TrashIcon } from './icons'
 import { EXPENSE_CATEGORIES, categoryIcon } from '../lib/categories'
+import { formatFileSize } from '../lib/files'
 
 const UNDO_DELAY_MS = 5000
 const SEARCH_THRESHOLD = 8
@@ -44,6 +45,7 @@ export default function ExpensesPanel({
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | null>(null)
 
@@ -101,13 +103,19 @@ export default function ExpensesPanel({
     if (expandedId === expense.id) {
       setExpandedId(null)
       setReceiptUrl(null)
+      setAttachmentUrl(null)
       return
     }
     setExpandedId(expense.id)
     setReceiptUrl(null)
+    setAttachmentUrl(null)
     if (expense.receipt_image_path) {
       const { data } = await supabase.storage.from('receipts').createSignedUrl(expense.receipt_image_path, 3600)
       setReceiptUrl(data?.signedUrl ?? null)
+    }
+    if (expense.file_path) {
+      const { data } = await supabase.storage.from('expense-files').createSignedUrl(expense.file_path, 3600)
+      setAttachmentUrl(data?.signedUrl ?? null)
     }
   }
 
@@ -335,6 +343,37 @@ export default function ExpensesPanel({
                           <p className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.loadingImage')}</p>
                         )}
                       </div>
+                    )}
+                    {row.data.file_path && (
+                      // Sin visor embebido, igual que en el chat: tocarlo lo
+                      // abre en una pestaña nueva con el visor del propio
+                      // navegador/teléfono.
+                      <a
+                        href={attachmentUrl ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!attachmentUrl) e.preventDefault()
+                        }}
+                        className={`mb-3 flex items-center gap-2.5 rounded-lg bg-black/5 px-2.5 py-2 dark:bg-white/5 ${
+                          attachmentUrl ? 'cursor-pointer' : 'cursor-default opacity-70'
+                        }`}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-glass)] text-[var(--color-brand-600)]">
+                          <FileAttachmentIcon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {row.data.file_name ?? t('chat.replyFile')}
+                          </span>
+                          {row.data.file_size_bytes != null && (
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {formatFileSize(row.data.file_size_bytes)}
+                            </span>
+                          )}
+                        </span>
+                      </a>
                     )}
                     <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{t('expenses.breakdown')}</p>
                     <div className="space-y-1">
