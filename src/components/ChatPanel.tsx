@@ -1620,10 +1620,68 @@ function VoiceMessagePlayer({
 }) {
   const { t } = useLanguage()
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const waveformRef = useRef<HTMLDivElement | null>(null)
+  const draggingSeekRef = useRef(false)
   const [playing, setPlaying] = useState(false)
   const [currentSeconds, setCurrentSeconds] = useState(0)
+  // Velocidad de reproducción: se va turnando entre estas tres al tocar el
+  // botón "1×" — igual que WhatsApp, sin desplegable ni nada que elegir.
+  const PLAYBACK_RATES = [1, 1.5, 2] as const
+  const [rateIndex, setRateIndex] = useState(0)
+  const rate = PLAYBACK_RATES[rateIndex]
   const bars = useMemo(() => waveformBars(seed), [seed])
   const progress = totalSeconds > 0 ? Math.min(1, currentSeconds / totalSeconds) : 0
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = rate
+  }, [rate])
+
+  // Adelantar/atrasar tocando o arrastrando sobre la propia onda — la
+  // posición se calcula sobre "totalSeconds" (la duración guardada al
+  // grabar, ver el comentario grande de arriba), no sobre "audio.duration":
+  // esa puede venir rota en un audio grabado con MediaRecorder, pero mover
+  // audio.currentTime a un punto calculado con la duración buena sí funciona
+  // bien igualmente.
+  const seekToClientX = (clientX: number) => {
+    const audio = audioRef.current
+    const el = waveformRef.current
+    if (!audio || !el || totalSeconds <= 0) return
+    const rect = el.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const next = ratio * totalSeconds
+    audio.currentTime = next
+    setCurrentSeconds(next)
+  }
+
+  const handleSeekPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    draggingSeekRef.current = true
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // sin soporte de pointer capture: sigue funcionando, solo que se
+      // corta si el dedo se sale de la onda mientras arrastra.
+    }
+    seekToClientX(e.clientX)
+  }
+
+  const handleSeekPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingSeekRef.current) return
+    seekToClientX(e.clientX)
+  }
+
+  const endSeek = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingSeekRef.current) return
+    draggingSeekRef.current = false
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // nada que liberar si no se llegó a capturar.
+    }
+  }
+
+  const cyclePlaybackRate = () => {
+    setRateIndex((i) => (i + 1) % PLAYBACK_RATES.length)
+  }
 
   useEffect(() => {
     const audio = audioRef.current
@@ -1675,14 +1733,26 @@ function VoiceMessagePlayer({
       >
         {playing ? <PauseIcon className="h-3.5 w-3.5" /> : <PlayIcon className="ml-0.5 h-3.5 w-3.5" />}
       </button>
-      <div className="relative h-6 w-32 shrink-0">
+      {/* Tocar o arrastrar sobre la onda adelanta/atrasa el audio (ver
+          seekToClientX más arriba) — antes esto era solo decorativo. El
+          "touch-action: none" evita que el dedo, al arrastrar, mueva la
+          lista de mensajes en vez de mover la posición del audio. */}
+      <div
+        ref={waveformRef}
+        onPointerDown={handleSeekPointerDown}
+        onPointerMove={handleSeekPointerMove}
+        onPointerUp={endSeek}
+        onPointerCancel={endSeek}
+        className="relative h-6 w-32 shrink-0 cursor-pointer select-none"
+        style={{ touchAction: 'none' }}
+      >
         <div className="absolute inset-0 flex items-center gap-[2px]">
           {bars.map((h, i) => (
             <span key={i} className={`min-w-[2px] flex-1 rounded-full ${barBaseClass}`} style={{ height: `${h}%` }} />
           ))}
         </div>
         <div
-          className="absolute inset-0 flex items-center gap-[2px]"
+          className="pointer-events-none absolute inset-0 flex items-center gap-[2px]"
           style={{ clipPath: `inset(0 ${(100 - progress * 100).toFixed(2)}% 0 0)` }}
         >
           {bars.map((h, i) => (
@@ -1693,6 +1763,19 @@ function VoiceMessagePlayer({
       <span className={`shrink-0 text-xs tabular-nums ${isMine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
         {formatDuration(playing || currentSeconds > 0 ? currentSeconds : totalSeconds)}
       </span>
+      {/* Velocidad de reproducción — se toca para ir rotando entre 1×, 1.5×
+          y 2×, igual que WhatsApp. Se guarda en estado del propio mensaje
+          (no global): cada nota de voz recuerda la suya por separado. */}
+      <button
+        type="button"
+        onClick={cyclePlaybackRate}
+        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+          isMine ? 'bg-white/20 text-white' : 'bg-[var(--color-glass)] text-[var(--color-brand-600)]'
+        }`}
+        aria-label={t('chat.playbackSpeed')}
+      >
+        {rate}×
+      </button>
     </div>
   )
 }
@@ -1778,7 +1861,15 @@ function MessageBubble({
     <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
       {!isMine && (
         <div className="w-7 shrink-0">
-          {isFirstInGroup && <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />}
+          {/* Las notas de voz siempre llevan la foto de quien la manda, esté
+              o no al principio de su grupo de mensajes seguidos — a
+              diferencia del resto (texto, fotos…), que solo la llevan en el
+              primer mensaje del grupo. Al ser un mensaje que hay que tocar
+              para reproducir, conviene ver de quién es sin tener que subir
+              la vista hasta el mensaje anterior para comprobarlo. */}
+          {(isFirstInGroup || m.audio_path) && (
+            <Avatar username={m.sender?.username ?? '?'} avatarUrl={m.sender?.avatar_url} size={28} />
+          )}
         </div>
       )}
       <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
