@@ -756,6 +756,14 @@ export default function ChatPanel({
   // izquierda para cancelar — igual que WhatsApp. Usamos Pointer Events con
   // "capture" para seguir recibiendo el movimiento y la soltada aunque el
   // dedo se salga del botón mientras se desliza.
+  // Se pone a "true" en cuanto se apoya el dedo y a "false" en cuanto se
+  // suelta/cancela DE VERDAD (ver releaseMicGesture) — a diferencia de
+  // "pressActive" (estado de React, para pintar), esto es una ref que se
+  // puede leer sin arrastrar cierres obsoletos desde el listener global de
+  // más abajo, y sirve para que releaseMicGesture no haga nada dos veces si
+  // se llega a llamar desde dos sitios para el mismo gesto (ver más abajo).
+  const gestureActiveRef = useRef(false)
+
   const handleMicPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
     if (sending || recording) return
     try {
@@ -764,6 +772,7 @@ export default function ChatPanel({
       // algún navegador raro sin soporte de pointer capture: seguimos sin
       // eso, simplemente no habrá gesto de deslizar para cancelar.
     }
+    gestureActiveRef.current = true
     recordingStartXRef.current = e.clientX
     recordingStartYRef.current = e.clientY
     cancelledRef.current = false
@@ -833,12 +842,22 @@ export default function ChatPanel({
     setSlideCancelHint(shouldCancel)
   }
 
-  const handleMicPointerUp = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {
-      // nada que liberar si no se llegó a capturar.
-    }
+  // Toda la limpieza de "se soltó/canceló el gesto" en un solo sitio,
+  // llamable tanto desde el propio botón como desde el respaldo global de
+  // más abajo (ver el useEffect de "pointerup"/"pointercancel" en window).
+  // Por qué hace falta ese respaldo: en un móvil real el gesto puede
+  // interrumpirse sin que el botón llegue a recibir su propio evento de
+  // soltar — una notificación entrante, un gesto del sistema, o (visto en
+  // una captura real) que llegue un mensaje nuevo mientras tanto y el
+  // navegador, en algún punto, deje de entregarle eventos a ESE botón en
+  // concreto. Sin este respaldo, "pressActive" se quedaba en true para
+  // siempre: la cápsula (candado + flechas) se veía "congelada" en pantalla
+  // encima de mensajes posteriores, sin ninguna forma de que desapareciera
+  // sola. gestureActiveRef hace que esto no se ejecute dos veces si al final
+  // SÍ llegan ambos avisos (el del botón y el global) para el mismo gesto.
+  const releaseMicGesture = () => {
+    if (!gestureActiveRef.current) return
+    gestureActiveRef.current = false
     // El dedo ya no está apoyado en ningún caso a partir de aquí — incluso
     // si queda bloqueada, la cápsula/candado (que dependen de esto y no de
     // "locked") tienen que desaparecer ya, y la propia condición "!locked"
@@ -874,6 +893,30 @@ export default function ChatPanel({
       pendingReleaseRef.current = shouldSend ? 'send' : 'cancel'
     }
   }
+
+  const handleMicPointerUp = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // nada que liberar si no se llegó a capturar.
+    }
+    releaseMicGesture()
+  }
+
+  // Respaldo global: si por lo que sea el propio botón nunca llega a recibir
+  // su "pointerup"/"pointercancel" (ver el porqué en releaseMicGesture),
+  // esto lo pilla igualmente — el navegador siempre entrega el evento a
+  // "window" al soltar el dedo, aunque el elemento original ya no lo reciba.
+  useEffect(() => {
+    if (!pressActive) return
+    window.addEventListener('pointerup', releaseMicGesture)
+    window.addEventListener('pointercancel', releaseMicGesture)
+    return () => {
+      window.removeEventListener('pointerup', releaseMicGesture)
+      window.removeEventListener('pointercancel', releaseMicGesture)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pressActive])
 
   const requestDeleteMessage = (messageId: string) => {
     setPendingDeleteIds((prev) => new Set(prev).add(messageId))
