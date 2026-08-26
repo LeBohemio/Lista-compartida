@@ -4,8 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../lib/i18n'
 import { useToast } from '../context/ToastContext'
 import { useListData } from '../hooks/useListData'
-import { useSwipeNav } from '../hooks/useSwipeNav'
-import { swipeDebugLog } from '../lib/swipeDebug'
 import { supabase } from '../lib/supabaseClient'
 import { colorForList } from '../lib/colors'
 import ItemsPanel from '../components/ItemsPanel'
@@ -55,19 +53,6 @@ export default function ListDetailPage() {
   const [tab, setTab] = useState<Tab>(
     initialTab === 'gastos' || initialTab === 'chat' ? initialTab : 'notas',
   )
-  // Deslizar hacia los lados sobre el contenido también mueve entre
-  // Tareas/Gastos/Chat, en ese mismo orden — pero solo entre estas 3, sin
-  // salir a la navegación principal (Mis listas, Notas…): para eso hay que
-  // usar la flecha de atrás, a propósito, para no salirse de la lista sin
-  // querer. "Gastos" solo entra en el recorrido si la lista los tiene
-  // activados — si no, no hay contenido real en esa pestaña (ver el botón
-  // de activarlos, más abajo) y no tendría sentido poder deslizar hasta
-  // ahí.
-  const tabOrder = useMemo<Tab[]>(
-    () => (list?.expenses_enabled ? ['notas', 'gastos', 'chat'] : ['notas', 'chat']),
-    [list?.expenses_enabled],
-  )
-  const swipeNav = useSwipeNav({ order: tabOrder, current: tab, onChange: setTab })
   const [showInvite, setShowInvite] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showRename, setShowRename] = useState(false)
@@ -273,20 +258,9 @@ export default function ListDetailPage() {
   }
 
   return (
-    // El deslizar entre Tareas/Gastos/Chat se reconoce aquí, en el bloque
-    // de fuera que envuelve TANTO la cabecera (con las pestañas) COMO el
-    // contenido — antes solo estaba puesto en <main>, y la cabecera con las
-    // pestañas quedaba fuera de esa zona, como hermana. En todos los sitios
-    // donde deslizar ya funcionaba bien en la app (avatares, mensajes del
-    // chat…), lo que se toca justo después de deslizar está SIEMPRE dentro
-    // de la misma zona que se deslizó — nunca fuera. Con las pestañas como
-    // hermanas de <main>, esta era la única zona de deslizar donde el
-    // siguiente toque caía en un elemento de fuera, y ahí es justo donde se
-    // quedaban sin reconocer el toque hasta apretarlas una segunda vez.
     <div
-      className="min-h-screen touch-pan-y select-none pb-16 [-webkit-touch-callout:none]"
+      className="min-h-screen pb-16"
       style={profile?.background_color ? { backgroundColor: profile.background_color } : undefined}
-      {...swipeNav}
     >
       {/* Cabecera pegada de verdad al borde de arriba (antes era una
           "burbuja" de cristal flotante, separada del borde con top-3+mx-3
@@ -477,10 +451,7 @@ export default function ListDetailPage() {
         {showTabsRow && (
         <div className="relative mx-auto mt-3 flex max-w-2xl gap-1 rounded-full bg-white/10 p-1">
           <button
-            onClick={() => {
-              swipeDebugLog('CLIC en pestaña "Tareas"')
-              setTab('notas')
-            }}
+            onClick={() => setTab('notas')}
             className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               tab === 'notas'
                 ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -491,10 +462,7 @@ export default function ListDetailPage() {
           </button>
           {list.expenses_enabled ? (
             <button
-              onClick={() => {
-                swipeDebugLog('CLIC en pestaña "Gastos"')
-                setTab('gastos')
-              }}
+              onClick={() => setTab('gastos')}
               className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
                 tab === 'gastos'
                   ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -514,10 +482,7 @@ export default function ListDetailPage() {
             </button>
           )}
           <button
-            onClick={() => {
-              swipeDebugLog('CLIC en pestaña "Chat"')
-              setTab('chat')
-            }}
+            onClick={() => setTab('chat')}
             className={`relative flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
               activeTab === 'chat'
                 ? 'bg-white text-[var(--color-brand-700)] shadow-[0_8px_16px_-8px_rgba(20,21,26,0.4)]'
@@ -535,10 +500,6 @@ export default function ListDetailPage() {
         )}
       </header>
 
-      {/* El deslizar y su min-h-screen ahora viven en el <div> de fuera (ver
-          arriba) — <main> se queda simple, sin manejadores propios: le
-          llegan igual porque los eventos burbujean desde dentro hasta el
-          <div> que los escucha. */}
       <main className="mx-auto max-w-2xl px-4 py-6">
         {isCompleted && (
           <div className="glass-panel mb-4 flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
