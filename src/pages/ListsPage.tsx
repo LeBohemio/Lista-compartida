@@ -11,6 +11,7 @@ import GreetingSummary from '../components/GreetingSummary'
 import Logo from '../components/Logo'
 import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
+import LeaveListModal from '../components/LeaveListModal'
 import ContextMenu from '../components/ContextMenu'
 import Toast from '../components/Toast'
 import {
@@ -38,7 +39,7 @@ export default function ListsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
-  const [confirmTarget, setConfirmTarget] = useState<{ listId: string; name: string; isOwner: boolean } | null>(null)
+  const [confirmTarget, setConfirmTarget] = useState<ListWithMembership | null>(null)
   const [confirmComplete, setConfirmComplete] = useState<{ listId: string; name: string } | null>(null)
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const [reorderMode, setReorderMode] = useState(false)
@@ -110,48 +111,10 @@ export default function ListsPage() {
     refetch()
   }
 
-  const requestDeleteOrLeave = (e: MouseEvent, listId: string, name: string, isOwner: boolean) => {
+  const requestDeleteOrLeave = (e: MouseEvent, list: ListWithMembership) => {
     e.stopPropagation()
     setActionError(null)
-    setConfirmTarget({ listId, name, isOwner })
-  }
-
-  const confirmDeleteOrLeave = async () => {
-    if (!confirmTarget) return
-    const { listId, isOwner } = confirmTarget
-    setConfirmTarget(null)
-    // La quitamos de la vista al instante, sin esperar a la respuesta del
-    // servidor ni a que llegue el evento de tiempo real — así no hace
-    // falta refrescar la página para verla desaparecer.
-    setPendingDeleteIds((prev) => new Set(prev).add(listId))
-    if (isOwner) {
-      const { error: err } = await supabase.from('lists').delete().eq('id', listId)
-      if (err) {
-        setPendingDeleteIds((prev) => {
-          const next = new Set(prev)
-          next.delete(listId)
-          return next
-        })
-        setActionError(t('list.errorDelete', { message: err.message }))
-        return
-      }
-    } else {
-      const { error: err } = await supabase
-        .from('list_members')
-        .delete()
-        .eq('list_id', listId)
-        .eq('user_id', profile!.id)
-      if (err) {
-        setPendingDeleteIds((prev) => {
-          const next = new Set(prev)
-          next.delete(listId)
-          return next
-        })
-        setActionError(t('list.errorLeave', { message: err.message }))
-        return
-      }
-    }
-    refetch()
+    setConfirmTarget(list)
   }
 
   const requestComplete = (listId: string, name: string) => {
@@ -398,7 +361,7 @@ export default function ListsPage() {
                     onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                     onDuplicate={() => duplicateList(l)}
                     onComplete={() => requestComplete(l.id, l.name)}
-                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l)}
                   />
                 ))}
               </div>
@@ -434,7 +397,7 @@ export default function ListsPage() {
                   onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                   onDuplicate={() => duplicateList(l)}
                   onComplete={() => requestComplete(l.id, l.name)}
-                  onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                  onDeleteRequest={(e) => requestDeleteOrLeave(e, l)}
                 />
               ))}
             </div>
@@ -462,7 +425,7 @@ export default function ListsPage() {
                     onTogglePin={() => togglePin(l.id, !l.membership.pinned)}
                     onDuplicate={() => duplicateList(l)}
                     onReactivate={() => reactivateList(l.id)}
-                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l.id, l.name, l.owner_id === profile?.id)}
+                    onDeleteRequest={(e) => requestDeleteOrLeave(e, l)}
                   />
                 ))}
               </div>
@@ -518,17 +481,24 @@ export default function ListsPage() {
       )}
 
       {confirmTarget && (
-        <ConfirmDialog
-          title={confirmTarget.isOwner ? t('list.deleteTitle') : t('list.leaveTitle')}
-          message={
-            confirmTarget.isOwner
-              ? t('dialogs.deleteMessage', { name: confirmTarget.name })
-              : t('list.leaveConfirm', { name: confirmTarget.name })
-          }
-          confirmLabel={confirmTarget.isOwner ? t('menu.delete') : t('list.leaveButton')}
-          danger={confirmTarget.isOwner}
-          onCancel={() => setConfirmTarget(null)}
-          onConfirm={confirmDeleteOrLeave}
+        <LeaveListModal
+          listId={confirmTarget.id}
+          listName={confirmTarget.name}
+          listColor={confirmTarget.color}
+          currency={confirmTarget.currency}
+          isOwner={confirmTarget.owner_id === profile?.id}
+          otherMembers={(memberAvatars[confirmTarget.id] ?? []).filter((m) => m.id !== profile?.id)}
+          onClose={() => setConfirmTarget(null)}
+          onDone={() => {
+            // La quitamos de la vista al instante, sin esperar a que llegue
+            // el evento de tiempo real — así no hace falta refrescar la
+            // página para verla desaparecer. Vale para los 3 casos (borrada
+            // de verdad, salida sin más, o mando cedido y salida): en los
+            // tres dejas de ser miembro aceptado, así que en los tres deja
+            // de ser "tuya".
+            setPendingDeleteIds((prev) => new Set(prev).add(confirmTarget.id))
+            refetch()
+          }}
         />
       )}
 

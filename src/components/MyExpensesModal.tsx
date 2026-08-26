@@ -11,7 +11,22 @@ import { CloseIcon } from './icons'
 
 type ListRef = { name: string; color: string | null; currency: CurrencyCode }
 type ExpenseRow = { id: string; list_id: string; total_amount: number; created_at: string; list: ListRef | null }
-type SettlementRow = { id: string; amount: number; created_at: string }
+type SettlementRow = { id: string; list_id: string; amount: number; created_at: string }
+// Resumen de una lista que se borró del todo (nadie más dentro) y en la que
+// elegiste "mantener en mi contabilidad" al borrarla — ver LeaveListModal.tsx
+// y migration_v45.sql. Un gasto normal no puede sobrevivir sin su lista en
+// la base de datos, así que esto es lo único que queda de él: un resumen ya
+// calculado, mes a mes, en vez de las filas originales.
+type CarryoverRow = {
+  id: string
+  list_name: string
+  list_color: string | null
+  currency: CurrencyCode
+  period_start: string
+  paid_directly: number
+  paid_to_settle: number
+  collected: number
+}
 
 function monthKey(dateStr: string) {
   const d = new Date(dateStr)
@@ -35,6 +50,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   // pagar directamente al anotarlo (ver comentario junto a "netTotal" más
   // abajo).
   const [settlementsPaid, setSettlementsPaid] = useState<SettlementRow[]>([])
+  const [carryover, setCarryover] = useState<CarryoverRow[]>([])
   const [loading, setLoading] = useState(true)
   const [monthOffset, setMonthOffset] = useState(0)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -49,7 +65,7 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
       .eq('paid_by', user.id)
     let settlementsQuery = supabase
       .from('settlements')
-      .select('id, amount, created_at')
+      .select('id, list_id, amount, created_at')
       .eq('to_user', user.id)
       // Solo lo ya confirmado cuenta como "cobrado de verdad" — un pago
       // que alguien dice haber hecho pero que todavía no has confirmado
@@ -57,24 +73,39 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
       .not('confirmed_at', 'is', null)
     let settlementsPaidQuery = supabase
       .from('settlements')
-      .select('id, amount, created_at')
+      .select('id, list_id, amount, created_at')
       .eq('from_user', user.id)
       .not('confirmed_at', 'is', null)
+    let carryoverQuery = supabase
+      .from('personal_expense_carryover')
+      .select('id, list_name, list_color, currency, period_start, paid_directly, paid_to_settle, collected')
+      .eq('user_id', user.id)
     // Corte personal (ver migration_v13.sql): puramente una vista propia,
     // no borra ni afecta a nada compartido con el resto de la lista.
     if (profile?.expenses_reset_at) {
       expensesQuery = expensesQuery.gte('created_at', profile.expenses_reset_at)
       settlementsQuery = settlementsQuery.gte('created_at', profile.expenses_reset_at)
       settlementsPaidQuery = settlementsPaidQuery.gte('created_at', profile.expenses_reset_at)
+      carryoverQuery = carryoverQuery.gte('period_start', profile.expenses_reset_at)
     }
     Promise.all([
       expensesQuery.order('created_at', { ascending: false }),
       settlementsQuery.order('created_at', { ascending: false }),
       settlementsPaidQuery.order('created_at', { ascending: false }),
-    ]).then(([expRes, settRes, settPaidRes]) => {
-      setExpenses(((expRes.data as unknown as ExpenseRow[]) ?? []))
-      setSettlements(((settRes.data as unknown as SettlementRow[]) ?? []))
-      setSettlementsPaid(((settPaidRes.data as unknown as SettlementRow[]) ?? []))
+      carryoverQuery.order('period_start', { ascending: false }),
+      // Listas de las que has salido (o cedido el mando y salido) eligiendo
+      // "eliminar de mi contabilidad" — ver LeaveListModal.tsx. La lista
+      // sigue existiendo tal cual para quien se quedó en ella; esto solo
+      // dice qué NO debe contar ya en TU resumen.
+      supabase.from('personal_expense_exclusions').select('list_id').eq('user_id', user.id),
+    ]).then(([expRes, settRes, settPaidRes, carryoverRes, exclRes]) => {
+      const excluded = new Set(((exclRes.data as unknown as { list_id: string }[]) ?? []).map((r) => r.list_id))
+      setExpenses((((expRes.data as unknown as ExpenseRow[]) ?? [])).filter((e) => !excluded.has(e.list_id)))
+      setSettlements((((settRes.data as unknown as SettlementRow[]) ?? [])).filter((s) => !excluded.has(s.list_id)))
+      setSettlementsPaid(
+        (((settPaidRes.data as unknown as SettlementRow[]) ?? [])).filter((s) => !excluded.has(s.list_id)),
+      )
+      setCarryover(((carryoverRes.data as unknown as CarryoverRow[]) ?? []))
       setLoading(false)
     })
   }
@@ -110,6 +141,11 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
   const monthExpenses = expenses.filter((e) => monthKey(e.created_at) === key)
   const monthSettlements = settlements.filter((s) => monthKey(s.created_at) === key)
   const monthSettlementsPaid = settlementsPaid.filter((s) => monthKey(s.created_at) === key)
+  // Listas ya borradas del todo (nadie más dentro) donde elegiste "mantener
+  // en mi contabilidad" al borrarlas — ver LeaveListModal.tsx. No hay filas
+  // de gasto/liquidación originales que sumar (se borraron con la lista),
+  // así que este resumen ya calculado ocupa su sitio.
+  const monthCarryover = carryover.filter((c) => monthKey(c.period_start) === key)
 
   const byList = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null; currency: CurrencyCode; total: number }>()
@@ -123,13 +159,28 @@ export default function MyExpensesModal({ onClose }: { onClose: () => void }) {
       cur.total += Number(e.total_amount)
       map.set(e.list_id, cur)
     }
+    for (const c of monthCarryover) {
+      if (Number(c.paid_directly) === 0) continue
+      map.set(`carryover:${c.id}`, {
+        name: c.list_name,
+        color: c.list_color,
+        currency: c.currency,
+        total: Number(c.paid_directly),
+      })
+    }
     return Array.from(map.values()).sort((a, b) => b.total - a.total)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, expenses])
+  }, [key, expenses, carryover])
 
-  const totalMonth = monthExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0)
-  const totalCollected = monthSettlements.reduce((sum, s) => sum + Number(s.amount), 0)
-  const totalSettled = monthSettlementsPaid.reduce((sum, s) => sum + Number(s.amount), 0)
+  const totalMonth =
+    monthExpenses.reduce((sum, e) => sum + Number(e.total_amount), 0) +
+    monthCarryover.reduce((sum, c) => sum + Number(c.paid_directly), 0)
+  const totalCollected =
+    monthSettlements.reduce((sum, s) => sum + Number(s.amount), 0) +
+    monthCarryover.reduce((sum, c) => sum + Number(c.collected), 0)
+  const totalSettled =
+    monthSettlementsPaid.reduce((sum, s) => sum + Number(s.amount), 0) +
+    monthCarryover.reduce((sum, c) => sum + Number(c.paid_to_settle), 0)
   // Lo que de verdad ha salido de tu bolsillo este mes por gastos
   // compartidos: lo que pagaste directamente al anotar un gasto, MÁS lo que
   // has pagado después para saldar tu parte con alguien — a diferencia de
