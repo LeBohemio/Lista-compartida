@@ -772,7 +772,17 @@ export default function ChatPanel({
     }, MIC_HOLD_THRESHOLD_MS)
   }
 
-  const LOCK_THRESHOLD_PX = 80
+  // Altura del "carril" (el canal por encima del botón que enseña el
+  // candado) y distancia que hay que arrastrar hacia arriba para bloquear.
+  // Elegidas a propósito para que, al llegar al tope del arrastre, el
+  // CENTRO del botón (40px) coincida con el centro del candado dentro del
+  // carril — y como el botón es bastante más grande que el candado (16px),
+  // al coincidir los centros el candado queda cubierto entero por el
+  // botón (recorrido completo de verdad), no solo rozado por debajo. Ver
+  // el comentario junto al JSX del carril para la cuenta exacta si cambia
+  // alguna de las dos.
+  const LOCK_RAIL_HEIGHT_PX = 80
+  const LOCK_THRESHOLD_PX = 64
 
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
     // Una vez bloqueada, ya no hace falta seguir el dedo (puede incluso
@@ -786,6 +796,11 @@ export default function ChatPanel({
       setDragY(0)
       cancelledRef.current = false
       setSlideCancelHint(false)
+      // Vibración corta al llegar al candado: confirma sin tener que mirar
+      // la pantalla que la grabación ya quedó bloqueada (sigue sola,
+      // aunque se suelte el dedo) — mismo patrón que el aviso de "armado"
+      // al deslizar un mensaje para responder (más abajo en este archivo).
+      if (navigator.vibrate) navigator.vibrate(20)
       return
     }
     // El botón sigue al dedo de verdad mientras se arrastra hacia arriba
@@ -1139,18 +1154,19 @@ export default function ChatPanel({
                       de este canal siguiendo el dedo de verdad, en vez de
                       que el bloqueo salte de golpe sin ningún aviso. */}
                   {recording && !locked && (
-                    // Altura calculada para que el CENTRO del botón, al
-                    // llegar justo al umbral de bloqueo (dragY =
-                    // -LOCK_THRESHOLD_PX), coincida con el centro del
-                    // candado — antes el canal era más alto que el
-                    // recorrido real del botón, así que nunca llegaba a
-                    // tocarlo. Si cambian mb-1 (4px), pt-2 (8px) o el
-                    // tamaño del icono (16px) hay que volver a cuadrar esta
-                    // cuenta: altura = LOCK_THRESHOLD_PX - separación - pt
-                    // - mitad_icono + mitad_botón.
+                    // El candado va centrado verticalmente dentro del
+                    // carril (items-center, sin padding a mano) para que la
+                    // cuenta sea simple y no se rompa si cambia algún
+                    // margen: su centro queda a "separación (mb-1) + mitad
+                    // del carril" del borde de arriba del botón en reposo.
+                    // LOCK_THRESHOLD_PX (arriba, junto a los otros umbrales)
+                    // está calculado para que el CENTRO del botón llegue
+                    // justo ahí al tope del arrastre — mismo sitio, así que
+                    // el botón (más grande) cubre el candado entero en vez
+                    // de quedarse corto.
                     <div
-                      className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex w-11 -translate-x-1/2 items-start justify-center rounded-full bg-[var(--color-glass)] pt-2 shadow-inner"
-                      style={{ height: LOCK_THRESHOLD_PX - 8 }}
+                      className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex w-11 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--color-glass)] shadow-inner"
+                      style={{ height: LOCK_RAIL_HEIGHT_PX }}
                     >
                       <LockIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
