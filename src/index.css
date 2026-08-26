@@ -112,6 +112,19 @@ html, body {
   overscroll-behavior-x: none;
 }
 
+/* CONFIRMADO con capturas reales del registro de depuración (ver
+   swipeDebug.ts): un botón pulsado poco después de deslizar (menos de un
+   segundo) a veces se quedaba sin "clic" del todo — el navegador reserva
+   un ratito tras cualquier toque en pantalla por si llega un segundo toque
+   y hay que tratarlo como "doble toque para hacer zoom", y si el botón se
+   pulsa justo en ese ratito, el clic se podía perder por el camino.
+   "touch-action: manipulation" en todo lo que se toca (botones y enlaces)
+   le dice al navegador que aquí no hace falta esperar a ver si hay un
+   segundo toque — reacciona al instante, siempre. */
+button, a {
+  touch-action: manipulation;
+}
+
 body {
   background-color: #f8fafc;
   -webkit-tap-highlight-color: transparent;
