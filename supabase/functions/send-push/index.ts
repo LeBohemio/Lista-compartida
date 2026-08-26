@@ -255,12 +255,18 @@ async function handleListMembers(record: Record<string, unknown>) {
 // las invitaciones a listas lo hacían) — ver migration_v40.sql para el
 // trigger que hacía falta añadir.
 async function handleNoteMembers(record: Record<string, unknown>) {
-  if (record.status !== 'invited') return
+  if (record.status !== 'invited') {
+    console.log(`[send-push] note_members: ignorado, status=${record.status}`)
+    return
+  }
   const noteId = record.note_id as string
   const userId = record.user_id as string
 
   const { data: note } = await supabaseAdmin.from('notes').select('title').eq('id', noteId).maybeSingle()
-  if (!note) return
+  if (!note) {
+    console.log(`[send-push] note_members: no se encontró la nota ${noteId}`)
+    return
+  }
 
   await notifyUser(userId, 'notify_invites', {
     title: 'NoteUs',
@@ -277,12 +283,18 @@ async function handleNoteMembers(record: Record<string, unknown>) {
 // contigo), y así no hace falta ni una columna ni un interruptor nuevo en
 // Ajustes.
 async function handleContactRequest(record: Record<string, unknown>) {
-  if (record.status !== 'pending') return
+  if (record.status !== 'pending') {
+    console.log(`[send-push] contact_requests: ignorado, status=${record.status}`)
+    return
+  }
   const fromUserId = record.from_user_id as string
   const toUserId = record.to_user_id as string
 
   const { data: sender } = await supabaseAdmin.from('profiles').select('username').eq('id', fromUserId).maybeSingle()
-  if (!sender) return
+  if (!sender) {
+    console.log(`[send-push] contact_requests: no se encontró el perfil ${fromUserId}`)
+    return
+  }
 
   await notifyUser(toUserId, 'notify_invites', {
     title: 'NoteUs',
@@ -336,7 +348,15 @@ Deno.serve(async (req) => {
     return new Response('bad request', { status: 400 })
   }
 
+  // Este log de aquí es a propósito, para poder ver en los Logs de la
+  // función (Supabase → Edge Functions → send-push → Logs, NO la pestaña
+  // "Invocations" — esa solo enseña que la petición HTTP llegó y con qué
+  // código respondió, no lo que pasó dentro) exactamente qué tabla y qué
+  // tipo de evento llegó en cada aviso.
+  console.log(`[send-push] recibido: table=${body.table} type=${body.type}`)
+
   if (body.type !== 'INSERT' || !body.record) {
+    console.log('[send-push] ignorado: no es un INSERT o no trae "record"')
     return new Response('ignored', { status: 200 })
   }
 
@@ -360,6 +380,8 @@ Deno.serve(async (req) => {
       case 'settlements':
         await handleSettlements(body.record)
         break
+      default:
+        console.log(`[send-push] tabla sin manejar: ${body.table}`)
     }
   } catch (err) {
     console.error('send-push error', err)
