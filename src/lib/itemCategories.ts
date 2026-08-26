@@ -94,11 +94,37 @@ const KEYWORDS: Record<Exclude<ItemCategoryId, 'varios'>, string[]> = {
     'avocados', 'lemon', 'lemons', 'orange', 'oranges', 'grape', 'grapes', 'mushroom', 'mushrooms',
     'spinach', 'cucumber', 'cucumbers', 'cherry', 'cherries', 'pineapple', 'pineapples', 'mangoes',
     'pear', 'pears', 'watermelon',
+    // Ampliación: más verdura de siempre, hierbas frescas y variantes
+    // latinoamericanas que antes no estaban (elote/choclo por maíz, palta ya
+    // estaba pero faltaba zapallo, etc.).
+    'acelga', 'acelgas', 'col', 'coles', 'repollo', 'repollos', 'lombarda', 'berro', 'berros',
+    'chalota', 'chalotas', 'escalonia', 'escalonias', 'chile', 'chiles', 'jalapeno', 'jalapenos',
+    'morron', 'morrones', 'zapallo', 'zapallos', 'zapallito', 'zapallitos', 'elote', 'elotes',
+    'maiz', 'choclo', 'choclos', 'yuca', 'yucas', 'mandioca', 'name', 'malanga', 'quimbombo',
+    'okra', 'esparrago', 'esparragos', 'alcaparra', 'alcaparras', 'aceituna', 'aceitunas',
+    'pepinillo', 'pepinillos', 'tamarindo', 'lichi', 'litchi', 'carambola', 'pitahaya', 'pitaya',
+    'grosella', 'grosellas', 'chirimoya', 'chirimoyas', 'caqui', 'caquis', 'granadilla',
+    'granadillas', 'maracuya', 'maracuyas', 'guayaba', 'guayabas', 'lima', 'limas',
+    'albahaca', 'oregano', 'tomillo', 'romero', 'laurel', 'eneldo', 'menta', 'hierbabuena',
+    'corn', 'zucchini', 'kale', 'cabbage', 'beet', 'beetroot', 'asparagus', 'celery', 'eggplant',
+    'squash', 'pumpkin', 'radish', 'leek', 'artichoke', 'olive', 'olives', 'pickle', 'pickles',
+    'cauliflower', 'peas', 'broccoli', 'basil', 'thyme', 'rosemary', 'parsley', 'mint', 'ginger',
+    'herbs',
   ],
   lacteos: [
     'leche', 'huevo', 'huevos', 'yogur', 'yogures', 'yogurt', 'queso', 'quesos', 'mantequilla',
     'nata', 'margarina', 'requeson', 'cuajada', 'natillas', 'kefir', 'milk', 'egg', 'eggs',
     'cheese', 'butter', 'yoghurt', 'cream',
+    // Ampliación: postres lácteos, quesos concretos y claras/yemas sueltas.
+    'flan', 'flanes', 'petit suisse', 'actimel', 'danonino', 'mascarpone', 'ricotta',
+    'mozzarella', 'parmesano', 'gouda', 'cheddar', 'brie', 'camembert', 'manchego', 'burgos',
+    'clara', 'claras', 'yema', 'yemas', 'cottage cheese', 'sour cream', 'condensed milk',
+    'custard', 'omelette', 'omelet',
+    // "tortilla" a secas es más bien pan de trigo/maíz (ver panadería); como
+    // frase completa, en cambio, es claramente la tortilla de huevo — de ahí
+    // que estas vayan aquí, buscadas como texto, y no como palabra suelta.
+    'tortilla de patatas', 'tortilla espanola', 'tortilla francesa', 'tortilla de huevo',
+    'tortilla de papa',
   ],
   carne_pescado: [
     'pollo', 'carne', 'carnes', 'ternera', 'cerdo', 'jamon', 'filete', 'filetes', 'chuleta',
@@ -110,6 +136,17 @@ const KEYWORDS: Record<Exclude<ItemCategoryId, 'varios'>, string[]> = {
     'calamares', 'mejillon', 'mejillones', 'almeja', 'almejas', 'langostino', 'langostinos',
     'marisco', 'mariscos', 'chicken', 'beef', 'pork', 'fish', 'tuna', 'shrimp', 'sausage',
     'sausages', 'meat', 'ham',
+    // Ampliación: aves y carnes menos habituales, embutidos concretos,
+    // pescado y marisco que faltaban, y sus equivalentes en inglés.
+    'pavo', 'pavos', 'conejo', 'conejos', 'cordero', 'corderos', 'cabrito', 'cabritos', 'venado',
+    'codorniz', 'codornices', 'pato', 'patos', 'foie', 'pate', 'mortadela', 'salami', 'fuet',
+    'beicon', 'tocino', 'tocineta', 'cecina', 'sobrasada', 'butifarra', 'salchichon', 'embutido',
+    'embutidos', 'milanesa', 'milanesas', 'bife', 'bifes', 'trucha', 'truchas', 'rape',
+    'rodaballo', 'besugo', 'caballa', 'sepia', 'sepias', 'camaron', 'camarones', 'cangrejo',
+    'cangrejos', 'langosta', 'langostas', 'vieira', 'vieiras', 'berberecho', 'berberechos',
+    'surimi', 'gulas', 'angulas', 'bonito', 'anchoa', 'anchoas',
+    'turkey', 'duck', 'rabbit', 'lamb', 'veal', 'steak', 'crab', 'lobster', 'prawn',
+    'prawns', 'trout', 'clams', 'mussels', 'octopus', 'squid', 'cod', 'anchovy', 'anchovies',
   ],
   panaderia: [
     'pan', 'panes', 'baguette', 'croissant', 'croissants', 'bolleria', 'magdalena', 'magdalenas',
@@ -117,6 +154,15 @@ const KEYWORDS: Record<Exclude<ItemCategoryId, 'varios'>, string[]> = {
     'tortas', 'empanada', 'empanadas', 'palmera', 'palmeras', 'ensaimada', 'ensaimadas', 'galleta',
     'galletas', 'rosquilla', 'rosquillas', 'bread', 'bun', 'buns', 'pastry', 'muffin', 'muffins',
     'bagel', 'bagels', 'toast', 'cookie', 'cookies',
+    // Ampliación: aquí es donde vive "tortilla" a secas (la de trigo/maíz
+    // para wraps y fajitas — la más habitual al escribir solo esa palabra
+    // suelta; la tortilla de patatas/huevo se busca aparte, ver lácteos) y
+    // el resto de bollería y panes que faltaban.
+    'tortilla', 'tortillas', 'tortitas', 'picos', 'colines', 'grisines', 'chapata', 'chapatas',
+    'pita', 'wrap', 'wraps', 'sobao', 'sobaos', 'napolitana', 'napolitanas', 'berlina', 'berlinas',
+    'caracola', 'caracolas', 'trenza', 'trenzas', 'roscon', 'roscones', 'torrija', 'torrijas',
+    'churro', 'churros', 'porra', 'porras', 'bunuelo', 'bunuelos', 'pretzel', 'pretzels',
+    'biscote', 'biscotes', 'cracker', 'crackers', 'panecillo', 'panecillos', 'mollete', 'molletes',
   ],
   limpieza: [
     'detergente', 'lavavajillas', 'lejia', 'suavizante', 'friegasuelos', 'papel higienico',
@@ -125,23 +171,52 @@ const KEYWORDS: Record<Exclude<ItemCategoryId, 'varios'>, string[]> = {
     'cepillo de dientes', 'fregona', 'bayeta', 'bayetas', 'ambientador', 'insecticida',
     'quitamanchas', 'cleaning', 'detergent', 'soap', 'toilet paper', 'tissue', 'tissues',
     'shampoo', 'toothpaste', 'trash bag',
+    // Ampliación: más limpieza del hogar y también higiene personal (esta
+    // categoría ya mezclaba las dos cosas — jabón, champú… — así que sigue
+    // la misma idea) que antes caía en "varios".
+    'limpiacristales', 'quitagrasa', 'desinfectante', 'papel de cocina', 'papel aluminio',
+    'papel film', 'bolsa de congelacion', 'estropajo', 'estropajos', 'recogedor', 'escoba',
+    'escobas', 'mopa', 'mopas', 'desatascador', 'guante de goma', 'guantes de goma',
+    'crema solar', 'protector solar', 'maquinilla de afeitar', 'cuchillas de afeitar',
+    'compresa', 'compresas', 'tampon', 'tampones', 'panal', 'panales', 'toallita', 'toallitas',
+    'algodon', 'bastoncillos', 'hilo dental', 'enjuague bucal', 'acondicionador',
+    'rollo de cocina', 'conditioner', 'deodorant', 'razor', 'diaper', 'diapers', 'wipes',
+    'sunscreen', 'paper towel', 'fabric softener', 'dish soap',
   ],
   bebidas: [
     'agua', 'cerveza', 'cervezas', 'vino', 'vinos', 'refresco', 'refrescos', 'cola', 'zumo',
     'zumos', 'jugo', 'jugos', 'cafe', 'te', 'bebida', 'bebidas', 'cava', 'sidra', 'whisky', 'ron',
     'ginebra', 'vodka', 'licor', 'mosto', 'batido', 'batidos', 'horchata', 'tonica', 'infusion',
     'infusiones', 'water', 'beer', 'wine', 'soda', 'juice', 'coffee', 'tea', 'drink', 'drinks',
+    // Ampliación: más bebidas de siempre (champán/cava ya estaba con ese
+    // nombre, faltaba "champan") y alguna sin alcohol que faltaba.
+    'champan', 'champagne', 'granizado', 'granizados', 'smoothie', 'smoothies', 'malta',
+    'chocolate caliente', 'kombucha', 'isotonica', 'isotonicas', 'energetica', 'energeticas',
+    'manzanilla', 'hot chocolate', 'lemonade', 'limonada', 'sparkling water', 'milkshake',
   ],
 }
 
 export function detectItemCategory(content: string): ItemCategoryId {
   const norm = normalize(content)
   const tokens = new Set(tokenize(content))
-  for (const [category, words] of Object.entries(KEYWORDS) as [Exclude<ItemCategoryId, 'varios'>, string[]][]) {
+  const entries = Object.entries(KEYWORDS) as [Exclude<ItemCategoryId, 'varios'>, string[]][]
+  // Dos pasadas, no una: primero TODAS las frases de varias palabras (de
+  // cualquier categoría) y solo si ninguna encaja se mira palabra por
+  // palabra. Hace falta en ese orden por casos como "tortilla de patatas":
+  // sin esto, como fruta_verdura se recorre antes que lácteos, la palabra
+  // suelta "patatas" (patata, fruta y verdura) ganaba siempre a la frase
+  // completa "tortilla de patatas" (lácteos, ver más arriba), aunque esa
+  // frase sea la pista mucho más concreta de las dos.
+  for (const [category, words] of entries) {
     for (const word of words) {
       const nw = normalize(word)
-      const isPhrase = nw.includes(' ')
-      if (isPhrase ? norm.includes(nw) : tokens.has(nw)) return category
+      if (nw.includes(' ') && norm.includes(nw)) return category
+    }
+  }
+  for (const [category, words] of entries) {
+    for (const word of words) {
+      const nw = normalize(word)
+      if (!nw.includes(' ') && tokens.has(nw)) return category
     }
   }
   return 'varios'

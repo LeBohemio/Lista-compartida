@@ -22,9 +22,21 @@ describe('detectItemCategory', () => {
     // "cola" está en bebidas, pero "chocolate" no debe caer ahí solo por
     // llevar esas letras dentro.
     expect(detectItemCategory('chocolate')).toBe('varios')
-    // "pan" está en panadería, pero "champán" no debe caer ahí por llevarlo
-    // dentro.
-    expect(detectItemCategory('champán')).toBe('varios')
+    // "pan" está en panadería, pero "pantalla" no debe caer ahí por
+    // llevarlo dentro.
+    expect(detectItemCategory('pantalla')).toBe('varios')
+  })
+
+  it('reconoce vocabulario ampliado que antes caía en "varios"', () => {
+    // Ejemplos concretos de la ampliación de vocabulario: antes ninguna de
+    // estas caía en su categoría real.
+    expect(detectItemCategory('tortillas')).toBe('panaderia')
+    // Frase completa: la tortilla de huevo, a diferencia de la palabra
+    // suelta "tortilla" (que es la de trigo/maíz, ver arriba), es lácteos.
+    expect(detectItemCategory('tortilla de patatas')).toBe('lacteos')
+    expect(detectItemCategory('champán')).toBe('bebidas')
+    expect(detectItemCategory('pavo')).toBe('carne_pescado')
+    expect(detectItemCategory('col rizada')).toBe('fruta_verdura')
   })
 
   it('sí busca como texto (no por token) las palabras clave de varias palabras', () => {
