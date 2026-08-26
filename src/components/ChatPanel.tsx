@@ -230,6 +230,9 @@ export default function ChatPanel({
   const recordingStartYRef = useRef<number | null>(null)
   const cancelledRef = useRef(false)
   const pendingReleaseRef = useRef<'send' | 'cancel' | null>(null)
+  // Cuenta atrás corta entre "el dedo YA llegó arriba del todo" y "se activa
+  // de verdad el modo bloqueado" — ver el porqué en handleMicPointerMove.
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -417,6 +420,7 @@ export default function ChatPanel({
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
       if (micHoldTimerRef.current) clearTimeout(micHoldTimerRef.current)
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current)
       recordingStreamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
@@ -773,6 +777,10 @@ export default function ChatPanel({
       // eso, simplemente no habrá gesto de deslizar para cancelar.
     }
     gestureActiveRef.current = true
+    if (lockTimerRef.current) {
+      clearTimeout(lockTimerRef.current)
+      lockTimerRef.current = null
+    }
     recordingStartXRef.current = e.clientX
     recordingStartYRef.current = e.clientY
     cancelledRef.current = false
@@ -802,6 +810,10 @@ export default function ChatPanel({
   const CAPSULE_HEIGHT_PX = 162
   const LOCK_THRESHOLD_PX = 112
   const LOCK_CHEVRON_COUNT = 4
+  // Cuánto se deja el botón quieto arriba del todo, tapando el candado,
+  // antes de pasar a los botones de "bloqueada" — ver el comentario grande
+  // en handleMicPointerMove sobre por qué hace falta este instante.
+  const LOCK_CONFIRM_DELAY_MS = 180
 
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
     // Antes este "if" también exigía "recording" (el estado ya confirmado
@@ -822,8 +834,22 @@ export default function ChatPanel({
     const dx = e.clientX - recordingStartXRef.current
     const dy = e.clientY - recordingStartYRef.current
     if (dy < -LOCK_THRESHOLD_PX) {
-      setLocked(true)
-      setDragY(0)
+      // OJO con esto: antes, en cuanto se cruzaba el umbral, "locked" pasaba
+      // a true Y "dragY" se reseteaba a 0 EN EL MISMO render — React pinta
+      // los dos cambios juntos, así que la cápsula (con el botón subido)
+      // desaparecía de golpe para dar paso a los botones de "bloqueada" sin
+      // que llegara a pintarse ni un solo fotograma con el botón de verdad
+      // ARRIBA DEL TODO, tapando el candado. Como los eventos de arrastre no
+      // llegan a cada píxel (el navegador los agrupa), el último fotograma
+      // visible antes de ese salto podía estar a varios píxeles todavía del
+      // candado — así que, por rápido que fuera el umbral, SIEMPRE se sentía
+      // como si bloqueara "antes de llegar". Ahora primero se deja el botón
+      // clavado exactamente en la posición de arriba del todo (no en 0) y
+      // solo un instante después (LOCK_CONFIRM_DELAY_MS) se activa el modo
+      // bloqueado de verdad — así da tiempo a ver, de verdad, el botón
+      // llegando y tapando el candado antes de que cambie la barra.
+      if (lockTimerRef.current) return
+      setDragY(-LOCK_THRESHOLD_PX)
       cancelledRef.current = false
       setSlideCancelHint(false)
       // Vibración corta al llegar al candado: confirma sin tener que mirar
@@ -831,6 +857,10 @@ export default function ChatPanel({
       // aunque se suelte el dedo) — mismo patrón que el aviso de "armado"
       // al deslizar un mensaje para responder (más abajo en este archivo).
       if (navigator.vibrate) navigator.vibrate(20)
+      lockTimerRef.current = setTimeout(() => {
+        lockTimerRef.current = null
+        setLocked(true)
+      }, LOCK_CONFIRM_DELAY_MS)
       return
     }
     // El botón sigue al dedo de verdad mientras se arrastra hacia arriba
@@ -864,6 +894,19 @@ export default function ChatPanel({
     // de más abajo se encarga de que la barra de controles bloqueados no
     // parpadee de más.
     setPressActive(false)
+    if (lockTimerRef.current) {
+      // El dedo ya había llegado arriba del todo (ver handleMicPointerMove)
+      // y se soltó justo durante el breve instante en que el botón se
+      // queda quieto tapando el candado, antes de que "locked" pasara a
+      // true por sí solo. Como el objetivo YA se cumplió, se bloquea al
+      // momento en vez de tratarlo como una soltada normal (que, con
+      // "locked" todavía en false aquí, habría cortado o cancelado la
+      // grabación sin motivo).
+      clearTimeout(lockTimerRef.current)
+      lockTimerRef.current = null
+      setLocked(true)
+      return
+    }
     if (micHoldTimerRef.current) {
       // Se ha soltado antes de que se cumpliera el umbral: el micrófono no
       // ha llegado a arrancar (ni se ha pedido permiso), así que un toque
