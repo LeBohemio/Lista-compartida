@@ -207,6 +207,12 @@ export default function ChatPanel({
   // dentro del "carril" mientras se arrastra, en vez de que el bloqueo
   // ocurra de golpe sin ningún aviso visual previo.
   const [dragY, setDragY] = useState(0)
+  // Dedo apoyado en el botón del micro AHORA MISMO (desde el pointerdown
+  // hasta soltar o cancelar) — a propósito NO es lo mismo que "recording":
+  // ese tarda un rato más en confirmarse de verdad (ver comentario en
+  // handleMicPointerMove) y, si la cápsula/candado dependieran de él en vez
+  // de esto, tardarían ese mismo rato en aparecer tras apoyar el dedo.
+  const [pressActive, setPressActive] = useState(false)
   const [micErrorKind, setMicErrorKind] = useState<'denied' | 'notfound' | 'other' | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -765,6 +771,7 @@ export default function ChatPanel({
     setSlideCancelHint(false)
     setLocked(false)
     setDragY(0)
+    setPressActive(true)
     // No arrancamos a grabar al instante: esperamos un poco a ver si de
     // verdad es un "mantener pulsado" y no un toque suelto.
     micHoldTimerRef.current = setTimeout(() => {
@@ -781,16 +788,28 @@ export default function ChatPanel({
   // se desliza hacia arriba POR DENTRO de ella (LOCK_THRESHOLD_PX de
   // recorrido real) hasta cubrir el candado que aparece fijo arriba del
   // todo. Solo se bloquea si de verdad se llega hasta ahí arriba — nada de
-  // umbrales cortos que bloqueen con un roce.
-  const CAPSULE_HEIGHT_PX = 200
-  const LOCK_THRESHOLD_PX = 150
+  // umbrales cortos que bloqueen con un roce. 112px son 3/4 del recorrido
+  // que había antes (150px) — quedó un pelín largo.
+  const CAPSULE_HEIGHT_PX = 162
+  const LOCK_THRESHOLD_PX = 112
   const LOCK_CHEVRON_COUNT = 4
 
   const handleMicPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    // Una vez bloqueada, ya no hace falta seguir el dedo (puede incluso
-    // haberse soltado) — la grabación sigue sola hasta que se pulse uno de
-    // los botones de la barra bloqueada.
-    if (!recording || locked || recordingStartXRef.current == null || recordingStartYRef.current == null) return
+    // Antes este "if" también exigía "recording" (el estado ya confirmado
+    // de que el MediaRecorder arrancó). El problema: entre el pointerdown y
+    // ese momento pasan, como mínimo, los MIC_HOLD_THRESHOLD_MS de "esto va
+    // en serio" MÁS lo que tarde el navegador en resolver getUserMedia (ver
+    // startRecording) — y durante todo ese rato, con "recording" aún en
+    // false, este manejador se cortaba aquí mismo y NO llegaba a leer la
+    // posición del dedo ni una sola vez. Si la persona deslizaba rápido y
+    // seguido (lo normal al "mantener e ir deslizando" de un tirón), para
+    // cuando por fin llegaba el primer evento que sí se procesaba, el dedo
+    // ya podía estar muy arriba — y ese primer cálculo, de golpe, ya salía
+    // por encima del umbral: se bloqueaba "de repente", sin sensación de
+    // recorrido. Ahora se sigue el dedo desde el primer pointerdown (los
+    // refs ya están puestos, aunque "recording" tarde un poco más en
+    // confirmarse), así que no se pierde ningún tramo del gesto.
+    if (locked || recordingStartXRef.current == null || recordingStartYRef.current == null) return
     const dx = e.clientX - recordingStartXRef.current
     const dy = e.clientY - recordingStartYRef.current
     if (dy < -LOCK_THRESHOLD_PX) {
@@ -820,6 +839,12 @@ export default function ChatPanel({
     } catch {
       // nada que liberar si no se llegó a capturar.
     }
+    // El dedo ya no está apoyado en ningún caso a partir de aquí — incluso
+    // si queda bloqueada, la cápsula/candado (que dependen de esto y no de
+    // "locked") tienen que desaparecer ya, y la propia condición "!locked"
+    // de más abajo se encarga de que la barra de controles bloqueados no
+    // parpadee de más.
+    setPressActive(false)
     if (micHoldTimerRef.current) {
       // Se ha soltado antes de que se cumpliera el umbral: el micrófono no
       // ha llegado a arrancar (ni se ha pedido permiso), así que un toque
@@ -1100,8 +1125,12 @@ export default function ChatPanel({
               )}
 
               {/* Grabación bloqueada: botón para descartarla sin enviar nada
-                  (aparece a la izquierda del botón de enviar/detener). */}
-              {recording && locked && (
+                  (aparece a la izquierda del botón de enviar/detener). Mira
+                  solo "locked" (no "recording && locked"): al bloquear muy
+                  rápido, "recording" puede tardar un pelín más en
+                  confirmarse (getUserMedia es asíncrono) y con la condición
+                  vieja esta barra tardaba ese mismo pelín en aparecer. */}
+              {locked && (
                 <button
                   type="button"
                   onClick={() => stopRecording(false)}
@@ -1132,7 +1161,7 @@ export default function ChatPanel({
                 >
                   <SendIcon className="h-4 w-4" />
                 </button>
-              ) : recording && locked ? (
+              ) : locked ? (
                 // Grabación bloqueada: este botón sustituye al micrófono
                 // (el gesto de mantener pulsado ya terminó al soltar el
                 // dedo tras deslizar hacia arriba) — un toque normal detiene
@@ -1156,9 +1185,9 @@ export default function ChatPanel({
                 <div className="relative h-10 w-11 shrink-0">
                   <div
                     className={`absolute inset-x-0 bottom-0 flex flex-col items-center justify-end rounded-full transition-[height] duration-150 ${
-                      recording && !locked ? 'bg-[var(--color-glass)] pb-[3px] shadow-inner' : ''
+                      pressActive && !locked ? 'bg-[var(--color-glass)] pb-[3px] shadow-inner' : ''
                     }`}
-                    style={{ height: recording && !locked ? CAPSULE_HEIGHT_PX : 40 }}
+                    style={{ height: pressActive && !locked ? CAPSULE_HEIGHT_PX : 40 }}
                   >
                     {/* El micrófono y el candado viven DENTRO de la misma
                         cápsula — no un botón suelto con un carril flotando
@@ -1172,7 +1201,7 @@ export default function ChatPanel({
                         de las dos cosas decide el bloqueo, solo lo anuncian;
                         el bloqueo real sigue siendo el umbral en
                         handleMicPointerMove. */}
-                    {recording && !locked && (
+                    {pressActive && !locked && (
                       <div className="pointer-events-none absolute inset-x-0 top-3 flex flex-col items-center gap-1.5">
                         <div
                           className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border bg-[var(--color-surface)] shadow-sm transition-colors ${
@@ -1208,7 +1237,7 @@ export default function ChatPanel({
                       }`}
                       style={{
                         touchAction: 'none',
-                        transform: recording ? `translateY(${dragY}px) scale(1.1)` : undefined,
+                        transform: pressActive ? `translateY(${dragY}px) scale(1.1)` : undefined,
                       }}
                       aria-label={recording ? t('chat.recording') : t('chat.attachAudio')}
                       title={recording ? t('chat.recording') : t('chat.attachAudio')}
