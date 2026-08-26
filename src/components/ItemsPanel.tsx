@@ -1059,7 +1059,18 @@ function ItemRow({
             className="h-5 w-5 shrink-0 rounded border-slate-300 accent-green-600 focus:ring-green-500 disabled:opacity-60"
           />
         </div>
-        <div className="min-w-0 flex-1" {...(!editing && !inReorder ? longPress : {})}>
+        {/* select-none (y touch-callout) van siempre puestos aquí, editando
+            o no — ver el mismo comentario en ListRow (ListsPage.tsx): sin
+            esto, mantener pulsado el texto del artículo para abrir el menú
+            contextual podía confundirse con "seleccionar texto" y el
+            navegador sacaba su selección nativa en vez de (o a la vez que)
+            el menú. No afecta a poder escribir/seleccionar dentro del
+            <input> de edición: user-select en un contenedor no bloquea la
+            selección nativa del propio campo de texto. */}
+        <div
+          className="min-w-0 flex-1 select-none [-webkit-touch-callout:none]"
+          {...(!editing && !inReorder ? longPress : {})}
+        >
           {editing ? (
             <input
               type="text"

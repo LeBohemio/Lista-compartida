@@ -474,9 +474,14 @@ function NoteRow({
       tabIndex={inReorder ? undefined : 0}
       onClick={inReorder ? undefined : onOpen}
       onKeyDown={inReorder ? undefined : handleKeyDown}
-      className={`glass-panel relative flex w-full items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition ${
-        inReorder ? 'select-none' : ''
-      } ${dragging ? 'shadow-lg ring-2 ring-brand-300' : ''}`}
+      // select-none (y touch-callout) van SIEMPRE puestos, no solo durante
+      // el arrastre para reordenar — ver el mismo comentario en ListRow
+      // (ListsPage.tsx): mantener pulsado en uso normal para abrir el menú
+      // contextual podía confundirse con "seleccionar texto" si esta
+      // protección faltaba fuera del modo reordenar.
+      className={`glass-panel relative flex w-full select-none items-start gap-3 rounded-2xl px-3.5 pb-3.5 pt-5 text-left transition [-webkit-touch-callout:none] ${
+        dragging ? 'shadow-lg ring-2 ring-brand-300' : ''
+      }`}
       {...(inReorder ? {} : longPress)}
     >
       <span

@@ -615,7 +615,14 @@ function ListRow({
       onKeyDown={inReorder ? undefined : handleKeyDown}
       role={inReorder ? undefined : 'button'}
       tabIndex={inReorder ? undefined : 0}
-      className={`w-full p-4 text-left transition ${inReorder ? 'select-none' : ''} ${
+      // select-none (y touch-callout) van SIEMPRE puestos, no solo durante
+      // el arrastre para reordenar — esta fila también se mantiene pulsada
+      // para abrir el menú contextual (ver longPress más abajo), y antes
+      // esa protección solo estaba puesta en modo reordenar: al mantener
+      // pulsado en el uso normal, el navegador podía confundirlo con "querer
+      // seleccionar texto" (por ejemplo el "+N" de fotos de más miembros) y
+      // sacaba su selección nativa en vez de (o a la vez que) el menú.
+      className={`w-full select-none p-4 text-left transition [-webkit-touch-callout:none] ${
         dragging
           ? 'relative rounded-xl shadow-lg ring-2 ring-brand-300 bg-[var(--color-surface)]'
           : 'hover:bg-slate-50 dark:hover:bg-white/5'
