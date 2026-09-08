@@ -346,6 +346,28 @@ export function TextSizeIcon(props: IconProps) {
   )
 }
 
+// Deshacer/rehacer del editor de notas (barra de formato de
+// NoteDetailPage.tsx) — con nombre distinto del UndoIcon de más abajo, que
+// es un icono totalmente distinto (una lista completada que vuelve a
+// activarse), para no chocar con él.
+export function TextUndoIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M7 8.5 4 11.5l3 3" />
+      <path d="M4 11.5h10.5a5 5 0 0 1 0 10h-2" />
+    </Base>
+  )
+}
+
+export function TextRedoIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M17 8.5l3 3-3 3" />
+      <path d="M20 11.5H9.5a5 5 0 0 0 0 10h2" />
+    </Base>
+  )
+}
+
 export function PaletteIcon(props: IconProps) {
   return (
     <Base {...props}>

@@ -13,16 +13,22 @@
 // deja pasar las etiquetas de la lista blanca de abajo, y de todas las
 // demás se queda solo con el texto de dentro.
 
-const ALLOWED_TAGS = new Set(['DIV', 'BR', 'B', 'STRONG', 'H3', 'FONT', 'OL', 'UL', 'LI'])
+const ALLOWED_TAGS = new Set(['DIV', 'BR', 'B', 'STRONG', 'H3', 'SPAN', 'OL', 'UL', 'LI'])
+
+// Límites razonables para un tamaño de letra dentro de una nota — evita
+// tamaños absurdos (una persona con datos manipulados a mano, o un tamaño
+// heredado de pegar contenido raro de fuera).
+const MIN_FONT_SIZE_PX = 8
+const MAX_FONT_SIZE_PX = 72
 
 /**
  * Limpia un HTML de nota dejando solo las etiquetas permitidas (párrafos,
- * negrita, subtítulo, tamaño de letra y listas numeradas) y, dentro de
- * <font>, solo el atributo "size" con un valor de 1 a 7 (la escala clásica
- * que usa document.execCommand('fontSize', ...) — ver NoteDetailPage.tsx).
- * Cualquier otra etiqueta se "desenvuelve" (se queda su texto de dentro,
- * pero no la etiqueta en sí) en vez de borrarse entera, para no perder
- * contenido que la persona sí escribió.
+ * negrita, subtítulo, tamaño de letra y listas numeradas). Dentro de un
+ * <span>, solo se conserva un "font-size: Npx" válido en su atributo style
+ * — cualquier otra cosa en el style (o un span sin tamaño de letra válido)
+ * hace que el <span> se "desenvuelva" (se queda su texto de dentro, pero no
+ * la etiqueta). Lo mismo para cualquier otra etiqueta que no esté en la
+ * lista blanca: se pierde la etiqueta, nunca el texto que hay dentro.
  *
  * Usa DOMParser en vez de tocar el DOM real de la página: así el HTML no
  * llega a ejecutarse ni a disparar ningún evento mientras lo analizamos.
@@ -40,11 +46,20 @@ export function sanitizeNoteHtml(html: string): string {
 
     if (!ALLOWED_TAGS.has(el.tagName)) return childResults
 
-    const rebuilt = doc.createElement(el.tagName)
-    if (el.tagName === 'FONT') {
-      const size = el.getAttribute('size')
-      if (size && /^[1-7]$/.test(size)) rebuilt.setAttribute('size', size)
+    if (el.tagName === 'SPAN') {
+      const match = /^(\d+(?:\.\d+)?)px$/.exec(el.style.fontSize)
+      if (!match) return childResults // span sin tamaño válido: se desenvuelve
+      const px = Math.min(MAX_FONT_SIZE_PX, Math.max(MIN_FONT_SIZE_PX, parseFloat(match[1])))
+      const span = doc.createElement('span')
+      // Se reconstruye el valor desde el número ya validado, nunca se copia
+      // el atributo style original tal cual — así no hay forma de colar
+      // nada más ahí dentro.
+      span.style.fontSize = `${px}px`
+      childResults.forEach((child) => span.appendChild(child))
+      return [span]
     }
+
+    const rebuilt = doc.createElement(el.tagName)
     childResults.forEach((child) => rebuilt.appendChild(child))
     return [rebuilt]
   }
