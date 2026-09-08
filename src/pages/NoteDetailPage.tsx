@@ -220,27 +220,57 @@ export default function NoteDetailPage() {
 
   // document.execCommand('fontSize', ...) resultó poco fiable en el móvil
   // (el motivo original de la queja de "no funciona"), así que el tamaño de
-  // letra se aplica a mano: se envuelve el texto seleccionado en un
-  // <span style="font-size:Npx">. range.surroundContents lanza una
-  // excepción cuando la selección cruza varios elementos de bloque a la vez
-  // (por ejemplo, si abarca un salto de línea) porque en ese caso no forma
-  // un único trozo continuo que se pueda "envolver" tal cual — para ese
-  // caso se usa en su lugar extractContents + insertNode, que sí admite un
-  // trozo con varias piezas dentro.
+  // letra se aplica a mano con un <span style="font-size:Npx">. Hay dos
+  // casos distintos:
+  //
+  // 1. Con texto seleccionado: se ENVUELVE la selección en el span.
+  //    range.surroundContents lanza una excepción cuando la selección cruza
+  //    varios elementos de bloque a la vez (por ejemplo, si abarca un salto
+  //    de línea) porque en ese caso no forma un único trozo continuo que se
+  //    pueda "envolver" tal cual — para ese caso se usa en su lugar
+  //    extractContents + insertNode, que sí admite un trozo con varias
+  //    piezas dentro.
+  // 2. Sin texto seleccionado, con el cursor a secas (por ejemplo, antes de
+  //    escribir nada): también tiene que "funcionar", como pidió quien usa
+  //    la app — no tiene sentido obligar a escribir primero y seleccionar
+  //    después solo para poder elegir el tamaño con el que se va a escribir.
+  //    Aquí no hay nada que envolver todavía, así que se deja preparado el
+  //    punto de escritura: se inserta un span vacío (con un carácter
+  //    invisible dentro, porque los navegadores no dejan colocar el cursor
+  //    dentro de un elemento totalmente vacío) y se deja el cursor justo
+  //    detrás de ese carácter — así, lo próximo que se teclee cae dentro de
+  //    ese mismo span y sale ya con el tamaño elegido.
   const applyFontSize = (size: string) => {
     const el = bodyDivRef.current
     if (!el) return
     el.focus()
     const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      // Sin texto seleccionado no hay nada que envolver — de momento el
-      // tamaño de letra solo se aplica a texto ya escrito y seleccionado.
+    if (!selection || selection.rangeCount === 0) {
       setFormatMenuOpen(false)
       return
     }
     const range = selection.getRangeAt(0)
     const span = document.createElement('span')
     span.style.fontSize = `${size}px`
+
+    if (selection.isCollapsed) {
+      // U+200B: espacio de ancho cero, para poder colocar el cursor dentro
+      // del span (ver comentario de más arriba). String.fromCharCode en vez
+      // de escribir el carácter invisible tal cual en el código fuente, que
+      // sería imposible de distinguir a simple vista de un espacio en
+      // blanco normal (o de estar vacío del todo) al releer este archivo.
+      span.appendChild(document.createTextNode(String.fromCharCode(8203)))
+      range.insertNode(span)
+      const newRange = document.createRange()
+      newRange.setStart(span.firstChild as Node, 1)
+      newRange.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(newRange)
+      setFormatMenuOpen(false)
+      syncBodyFromDom()
+      return
+    }
+
     try {
       range.surroundContents(span)
     } catch {
