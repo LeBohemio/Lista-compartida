@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ClipboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -9,8 +16,27 @@ import { supabase } from '../lib/supabaseClient'
 import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
-import { CloseIcon, HelpCircleIcon, NumberedListIcon, TrashIcon } from '../components/icons'
+import {
+  BoldIcon,
+  CloseIcon,
+  HelpCircleIcon,
+  NumberedListIcon,
+  SubtitleIcon,
+  TextSizeIcon,
+  TrashIcon,
+} from '../components/icons'
 import { PALETTE, colorForNote, colorNameKey } from '../lib/colors'
+
+// Escala clásica de document.execCommand('fontSize', ...) — solo se admiten
+// valores del 1 al 7 (ver sanitizeNoteHtml en lib/richText.ts). Cuatro
+// tamaños son de sobra para una nota; el resto de valores se dejan sin usar
+// a propósito para que el salto entre opciones se note de verdad.
+const FONT_SIZE_OPTIONS: { value: string; labelKey: 'apuntes.fontSizeSmall' | 'apuntes.fontSizeNormal' | 'apuntes.fontSizeLarge' | 'apuntes.fontSizeHuge' }[] = [
+  { value: '2', labelKey: 'apuntes.fontSizeSmall' },
+  { value: '3', labelKey: 'apuntes.fontSizeNormal' },
+  { value: '5', labelKey: 'apuntes.fontSizeLarge' },
+  { value: '7', labelKey: 'apuntes.fontSizeHuge' },
+]
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -24,11 +50,11 @@ export default function NoteDetailPage() {
   const { note, members, myMembership, isOwner, loading, error, refetch, updateNote } = useNoteDetail(noteId)
 
   const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
   const [showMembers, setShowMembers] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showNumberedHelp, setShowNumberedHelp] = useState(false)
+  const [showSizeMenu, setShowSizeMenu] = useState(false)
   // Aviso discreto de "toca aquí para cambiar el color" — solo aparece la
   // vez que se acaba de crear la nota (CreateNoteModal navega aquí con
   // justCreated:true, ver NotesPage.tsx), no cada vez que se abre la nota.
@@ -43,12 +69,12 @@ export default function NoteDetailPage() {
   // que ya existían en las traducciones pero no se usaban en ningún sitio.
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const titleAreaRef = useRef<HTMLTextAreaElement>(null)
-  const bodyAreaRef = useRef<HTMLTextAreaElement>(null)
-  // Tras numerar (o quitar la numeración), el textarea es controlado por
-  // React así que no podemos tocar su selección directamente en el mismo
-  // gesto — guardamos aquí dónde debe quedar el cursor y la aplicamos en el
-  // useEffect de más abajo, una vez el nuevo valor ya está pintado.
-  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
+  // El cuerpo ahora es un <div contentEditable> (para poder tener negrita,
+  // subtítulos y tamaños de letra de verdad, no solo texto plano) en vez de
+  // un <textarea> — por eso es "no controlado": React no le pone el
+  // contenido en cada render (eso le rompería el cursor mientras escribes),
+  // se lo ponemos nosotros a mano vía este ref, solo cuando hace falta.
+  const bodyDivRef = useRef<HTMLDivElement>(null)
 
   // Mientras la persona tiene el campo enfocado (escribiendo), no le
   // pisamos lo que está tecleando con lo que llegue de la base de datos
@@ -64,7 +90,13 @@ export default function NoteDetailPage() {
   }, [note?.title, note])
 
   useEffect(() => {
-    if (note && !bodyFocusedRef.current) setBody(note.body)
+    if (!note || bodyFocusedRef.current) return
+    // Contenido no controlado (ver bodyDivRef arriba): lo pintamos a mano
+    // solo cuando la persona no lo tiene enfocada — ni lo suyo propio ya
+    // reflejado, ni un cambio de otro miembro le pisa lo que está
+    // escribiendo ahora mismo.
+    const el = bodyDivRef.current
+    if (el && el.innerHTML !== note.body) el.innerHTML = note.body
   }, [note?.body, note])
 
   useEffect(() => {
@@ -117,59 +149,66 @@ export default function NoteDetailPage() {
     scheduleSave({ title: value }, titleTimerRef)
   }
 
-  const handleBodyChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-    setBody(value)
-    scheduleSave({ body: value }, bodyTimerRef)
+  // Lee el HTML que hay ahora mismo en el editor y programa el guardado —
+  // lo llaman tanto el evento nativo "input" (al teclear o pegar) como cada
+  // botón de la barra de formato después de aplicar su comando.
+  const syncBodyFromDom = () => {
+    const el = bodyDivRef.current
+    if (!el) return
+    scheduleSave({ body: el.innerHTML }, bodyTimerRef)
   }
 
-  useEffect(() => {
-    const pending = pendingSelectionRef.current
-    if (!pending) return
-    pendingSelectionRef.current = null
-    const el = bodyAreaRef.current
-    if (!el) return
-    el.focus()
-    el.setSelectionRange(pending.start, pending.end)
-  }, [body])
+  const handleBodyInput = () => syncBodyFromDom()
+
+  // Al pegar, se inserta solo texto plano (nunca el formato/estilo de
+  // origen) — así una nota no acaba llena de fuentes y colores ajenos
+  // pegados de otra web o app, y de paso nos ahorramos tener que sanear en
+  // el momento cualquier HTML raro que traiga el portapapeles.
+  const handleBodyPaste = (e: ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text/plain')
+    document.execCommand('insertText', false, text)
+  }
+
+  // Los botones de la barra de formato son <button>, así que sin esto el
+  // navegador les daría el foco (y con él se perdería la selección de
+  // texto del editor) antes de que llegue a ejecutarse el onClick. Al
+  // cancelar el mousedown, el editor conserva el foco y su selección.
+  const preventToolbarFocusSteal = (e: ReactMouseEvent) => e.preventDefault()
+
+  const applyBold = () => {
+    bodyDivRef.current?.focus()
+    document.execCommand('bold')
+    syncBodyFromDom()
+  }
+
+  // Convierte la línea actual en subtítulo (<h3>), o la devuelve a texto
+  // normal si ya lo era — solo afecta a la línea del cursor (o a las
+  // líneas seleccionadas), nunca a toda la nota de golpe.
+  const applySubtitle = () => {
+    bodyDivRef.current?.focus()
+    const current = document.queryCommandValue('formatBlock')
+    const isSubtitle = current?.toLowerCase() === 'h3'
+    document.execCommand('formatBlock', false, isSubtitle ? 'div' : 'h3')
+    syncBodyFromDom()
+  }
+
+  const applyFontSize = (size: string) => {
+    bodyDivRef.current?.focus()
+    document.execCommand('fontSize', false, size)
+    setShowSizeMenu(false)
+    syncBodyFromDom()
+  }
 
   // Numera (o, si ya estaban numeradas, quita la numeración de) solo las
   // líneas tocadas por la selección actual — o, si no hay nada seleccionado,
-  // solo la línea donde está el cursor. A propósito no toca el resto de la
-  // nota: pedir "numerar" no debe convertir toda la nota en una lista
-  // obligatoria, solo el trozo que de verdad quieres numerar ahora mismo.
+  // solo la línea donde está el cursor. document.execCommand se encarga de
+  // no tocar el resto de la nota y de alternar entre numerar/desnumerar por
+  // sí solo, así que no hace falta calcular nada a mano.
   const toggleNumberedList = () => {
-    const el = bodyAreaRef.current
-    if (!el) return
-    const { selectionStart, selectionEnd, value } = el
-
-    // Si la selección incluye el salto de línea final (por ejemplo, al
-    // seleccionar arrastrando hasta el principio de la siguiente línea), no
-    // contamos esa línea siguiente como parte del bloque a numerar.
-    const effectiveEnd =
-      selectionEnd > selectionStart && value[selectionEnd - 1] === '\n' ? selectionEnd - 1 : selectionEnd
-
-    const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
-    const nextNewline = value.indexOf('\n', effectiveEnd)
-    const lineEnd = nextNewline === -1 ? value.length : nextNewline
-
-    const block = value.slice(lineStart, lineEnd)
-    const lines = block.split('\n')
-    const contentLines = lines.filter((line) => line.trim() !== '')
-    const alreadyNumbered = contentLines.length > 0 && contentLines.every((line) => /^\d+\.\s/.test(line))
-
-    let counter = 1
-    const newLines = lines.map((line) => {
-      if (line.trim() === '') return line
-      if (alreadyNumbered) return line.replace(/^\d+\.\s/, '')
-      return `${counter++}. ${line}`
-    })
-    const newBlock = newLines.join('\n')
-
-    const newValue = value.slice(0, lineStart) + newBlock + value.slice(lineEnd)
-    pendingSelectionRef.current = { start: lineStart, end: lineStart + newBlock.length }
-    setBody(newValue)
-    scheduleSave({ body: newValue }, bodyTimerRef)
+    bodyDivRef.current?.focus()
+    document.execCommand('insertOrderedList')
+    syncBodyFromDom()
   }
 
   const removeMember = async () => {
@@ -390,13 +429,78 @@ export default function NoteDetailPage() {
               </p>
             )}
             <div className="mb-3 mt-3 h-px bg-[var(--color-glass-border)]" />
-            {/* Numerar solo actúa sobre la línea del cursor, o sobre las
-                líneas que tengas seleccionadas — nunca sobre toda la nota
-                de golpe (ver toggleNumberedList). Pulsarlo otra vez sobre
-                líneas ya numeradas quita la numeración. */}
-            <div className="relative mb-2 flex items-center gap-1">
+            {/* Barra de formato: negrita y subtítulo actúan sobre el texto
+                seleccionado (o desde donde esté el cursor, para lo próximo
+                que se teclee); tamaño de letra abre un menú con 4 tamaños;
+                numerar solo actúa sobre la línea del cursor, o sobre las
+                líneas seleccionadas — nunca sobre toda la nota de golpe.
+                Pulsar de nuevo sobre algo ya aplicado lo quita (subtítulo,
+                negrita y numerado son los tres "interruptores"). Todos usan
+                onMouseDown={preventToolbarFocusSteal} para que el editor no
+                pierda el foco (y con él, la selección) al tocar el botón. */}
+            <div className="relative mb-2 flex flex-wrap items-center gap-1">
               <button
                 type="button"
+                onMouseDown={preventToolbarFocusSteal}
+                onClick={applyBold}
+                aria-label={t('apuntes.bold')}
+                title={t('apuntes.boldHint')}
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
+              >
+                <BoldIcon className="h-4 w-4" />
+                {t('apuntes.bold')}
+              </button>
+              <button
+                type="button"
+                onMouseDown={preventToolbarFocusSteal}
+                onClick={applySubtitle}
+                aria-label={t('apuntes.subtitle')}
+                title={t('apuntes.subtitleHint')}
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
+              >
+                <SubtitleIcon className="h-4 w-4" />
+                {t('apuntes.subtitle')}
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => setShowSizeMenu((s) => !s)}
+                  aria-label={t('apuntes.fontSize')}
+                  title={t('apuntes.fontSize')}
+                  className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
+                >
+                  <TextSizeIcon className="h-4 w-4" />
+                  {t('apuntes.fontSize')}
+                </button>
+                {showSizeMenu && (
+                  <>
+                    {createPortal(
+                      <div className="fixed inset-0 z-[5]" onClick={() => setShowSizeMenu(false)} />,
+                      document.body,
+                    )}
+                    <div
+                      className="glass-panel absolute left-0 top-full z-10 mt-1 flex flex-col overflow-hidden rounded-xl py-1 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)]"
+                      style={{ width: '150px' }}
+                    >
+                      {FONT_SIZE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onMouseDown={preventToolbarFocusSteal}
+                          onClick={() => applyFontSize(opt.value)}
+                          className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5"
+                        >
+                          {t(opt.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onMouseDown={preventToolbarFocusSteal}
                 onClick={toggleNumberedList}
                 aria-label={t('apuntes.numberedList')}
                 title={t('apuntes.numberedListHint')}
@@ -407,6 +511,7 @@ export default function NoteDetailPage() {
               </button>
               <button
                 type="button"
+                onMouseDown={preventToolbarFocusSteal}
                 onClick={() => setShowNumberedHelp((s) => !s)}
                 aria-label={t('apuntes.numberedListHelpCta')}
                 title={t('apuntes.numberedListHelpCta')}
@@ -432,17 +537,18 @@ export default function NoteDetailPage() {
                 </>
               )}
             </div>
-            <textarea
-              ref={bodyAreaRef}
-              value={body}
-              onChange={handleBodyChange}
+            <div
+              ref={bodyDivRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={handleBodyInput}
+              onPaste={handleBodyPaste}
               onFocus={() => (bodyFocusedRef.current = true)}
               onBlur={() => {
                 bodyFocusedRef.current = false
               }}
-              placeholder={t('apuntes.bodyPlaceholder')}
-              rows={16}
-              className="w-full resize-none border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
+              data-placeholder={t('apuntes.bodyPlaceholder')}
+              className="note-body-editable min-h-[20rem] w-full border-0 bg-transparent px-0 text-base leading-relaxed text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-100"
             />
           </div>
         </div>

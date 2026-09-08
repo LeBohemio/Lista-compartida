@@ -24,6 +24,7 @@ import {
   TrashIcon,
 } from '../components/icons'
 import { PALETTE, colorForNote, colorNameKey } from '../lib/colors'
+import { htmlToPlainText, sanitizeNoteHtml } from '../lib/richText'
 import type { NoteWithMembership } from '../lib/types'
 
 // Pantalla de "Notas comunes" (ver migration_v23.sql) — algo aparte de las
@@ -148,7 +149,10 @@ export default function NotesPage() {
       setActionError(rpcErr?.message ?? t('apuntes.createError'))
       return
     }
-    const { error: bodyErr } = await supabase.from('notes').update({ body: n.body, color: n.color }).eq('id', newNote.id)
+    const { error: bodyErr } = await supabase
+      .from('notes')
+      .update({ body: sanitizeNoteHtml(n.body), color: n.color })
+      .eq('id', newNote.id)
     if (bodyErr) setActionError(t('common.saveError'))
     refetch()
     navigate(`/notes/${newNote.id}`)
@@ -460,7 +464,7 @@ function NoteRow({
 }) {
   const { t } = useLanguage()
   const longPress = useLongPress(onOpenMenu)
-  const snippet = n.body.trim().slice(0, 80)
+  const snippet = htmlToPlainText(n.body).slice(0, 80)
   const inReorder = reorderMode && !!onDragPointerDown
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

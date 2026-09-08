@@ -154,6 +154,26 @@ html.mesh-bg.dark body {
   backdrop-filter: blur(20px);
 }
 
+/* Cuerpo de una nota (NoteDetailPage): ahora es un <div contentEditable>
+   con negrita/subtítulo/tamaño de letra en vez de un <textarea> de texto
+   plano — ver richText.ts. contentEditable no admite el atributo
+   "placeholder" nativo, así que el "Escribe aquí…" se pinta a mano con
+   este ::before mientras esté vacío. */
+.note-body-editable:empty::before {
+  content: attr(data-placeholder);
+  color: rgb(100 116 139 / 0.6);
+  pointer-events: none;
+}
+.note-body-editable h3 {
+  margin: 0.6em 0 0.3em;
+  font-size: 1.15em;
+  font-weight: 700;
+}
+.note-body-editable ol {
+  margin: 0.2em 0;
+  padding-left: 1.4em;
+}
+
 /* El <textarea> del chat (ChatPanel) crece de alto con overflow-y:auto
    para hacer scroll interno si el texto pasa de cierto tamaño. En Android
    eso reserva de forma permanente el hueco de la barra de scroll aunque no

@@ -4,6 +4,7 @@ import type { Note, NoteMember } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../lib/i18n'
+import { sanitizeNoteHtml } from '../lib/richText'
 
 /**
  * Carga una nota común concreta y sus miembros (ver migration_v23.sql).
@@ -65,13 +66,30 @@ export function useNoteDetail(noteId: string | undefined) {
   const updateNote = useCallback(
     async (patch: { title?: string; body?: string; color?: string | null }) => {
       if (!noteId) return
+      // El cuerpo puede traer HTML (negrita/subtítulo/tamaño, ver
+      // richText.ts) — se limpia aquí, en el único sitio por el que pasa
+      // cualquier guardado, así da igual si viene de teclear, de pegar o de
+      // los botones de la barra de formato.
+      const cleanPatch = patch.body !== undefined ? { ...patch, body: sanitizeNoteHtml(patch.body) } : patch
+      // Actualización optimista: reflejamos el cambio en el estado local al
+      // instante (antes solo se mandaba el UPDATE y se esperaba a que
+      // llegara el evento de tiempo real para refrescar — así, por ejemplo,
+      // cambiar el color de la nota podía dar la sensación de "no hace
+      // nada" hasta que ese evento llegaba, o directamente no notarse si el
+      // tiempo real fallaba).
+      setNote((prev) => (prev ? { ...prev, ...cleanPatch } : prev))
       const { error } = await supabase
         .from('notes')
-        .update({ ...patch, last_activity_at: new Date().toISOString() })
+        .update({ ...cleanPatch, last_activity_at: new Date().toISOString() })
         .eq('id', noteId)
-      if (error) showError(t('common.saveError'))
+      if (error) {
+        showError(t('common.saveError'))
+        // Si de verdad falló el guardado, deshacemos la actualización
+        // optimista trayendo el valor real que hay en el servidor.
+        fetchAll()
+      }
     },
-    [noteId, showError, t],
+    [noteId, showError, t, fetchAll],
   )
 
   const myMembership = members.find((m) => m.user_id === user?.id) ?? null

@@ -308,6 +308,44 @@ export function NumberedListIcon(props: IconProps) {
   )
 }
 
+export function BoldIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      {/* Una "B" gruesa: dos vientres apilados sobre el mismo trazo
+          vertical, como en cualquier icono de negrita. */}
+      <path d="M8 5v14" />
+      <path d="M8 5h5.2a3 3 0 0 1 0 6H8" />
+      <path d="M8 11h5.8a3.3 3.3 0 0 1 0 6.6H8" />
+    </Base>
+  )
+}
+
+export function SubtitleIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      {/* Una "H" (de encabezado/subtítulo) seguida de una rayita corta que
+          representa la línea de texto normal que va debajo. */}
+      <path d="M5 5v14" />
+      <path d="M13 5v14" />
+      <path d="M5 12h8" />
+      <path d="M16.5 16h4" />
+    </Base>
+  )
+}
+
+export function TextSizeIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      {/* "Aa": una A grande y una a pequeña, el icono clásico de tamaño de
+          letra. */}
+      <path d="M4.5 16.5 8 6.5l3.5 10" />
+      <path d="M5.6 13h4.8" />
+      <path d="M20 16.5v-4a2.2 2.2 0 1 0-4.3-.7" />
+      <path d="M20 12.7c0 1.5-1.1 2.4-2.3 2.4-1 0-1.7-.6-1.7-1.4 0-1.1 1.3-1.7 4-1.9" />
+    </Base>
+  )
+}
+
 export function PaletteIcon(props: IconProps) {
   return (
     <Base {...props}>
