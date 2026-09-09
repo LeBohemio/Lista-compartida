@@ -17,11 +17,10 @@ import InviteNoteMemberModal from '../components/InviteNoteMemberModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Avatar from '../components/Avatar'
 import {
-  BoldIcon,
   CloseIcon,
   HelpCircleIcon,
   NumberedListIcon,
-  SubtitleIcon,
+  PaletteIcon,
   TextRedoIcon,
   TextSizeIcon,
   TextUndoIcon,
@@ -29,16 +28,23 @@ import {
 } from '../components/icons'
 import { PALETTE, colorForNote, colorNameKey } from '../lib/colors'
 
-// Tamaños de letra en píxeles reales (ver applyFontSize más abajo, que
-// envuelve el texto seleccionado en un <span style="font-size:...">) — ya
-// no se usa la escala clásica 1-7 de document.execCommand('fontSize', ...),
-// que en algunos navegadores móviles se comportaba de forma poco fiable.
-const FONT_SIZE_OPTIONS: { value: string; labelKey: 'apuntes.fontSizeSmall' | 'apuntes.fontSizeNormal' | 'apuntes.fontSizeLarge' | 'apuntes.fontSizeHuge' }[] = [
-  { value: '13', labelKey: 'apuntes.fontSizeSmall' },
-  { value: '16', labelKey: 'apuntes.fontSizeNormal' },
-  { value: '20', labelKey: 'apuntes.fontSizeLarge' },
-  { value: '28', labelKey: 'apuntes.fontSizeHuge' },
-]
+// Fila que se ve ahora mismo dentro de la barra de formato de abajo — las
+// tres viven en la MISMA barra fija (nunca en una ventanita flotando por
+// encima, ver el comentario grande junto a la barra más abajo): "collapsed"
+// es la fila fina de iconos de siempre, "expanded" es la fila de
+// título/subtítulo/normal + negrita/cursiva/subrayado, y "colors" es la
+// fila con los colores de la nota.
+type ToolbarRow = 'collapsed' | 'expanded' | 'colors'
+
+// Los tres tamaños de línea (Título/Subtítulo/Normal) son EXCLUYENTES entre
+// sí — nunca hay dos activos a la vez, a diferencia de negrita, cursiva y
+// subrayado, que son interruptores independientes combinables entre ellos y
+// con cualquiera de los tres tamaños. "h2" es el título grande y "h3" el
+// subtítulo (ver richText.ts y el CSS de .note-body-editable en index.css)
+// — en pantalla el botón del título se llama "H1", pero por dentro sigue
+// usando la etiqueta <h2>, para no tener que tocar el saneador ni el CSS ya
+// existentes.
+type BlockStyle = 'h2' | 'h3' | 'div'
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -64,8 +70,18 @@ export default function NoteDetailPage() {
   const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number } | null>(null)
   const [showNumberedHelp, setShowNumberedHelp] = useState(false)
   const [helpPos, setHelpPos] = useState<{ bottom: number; left: number } | null>(null)
-  const [formatMenuOpen, setFormatMenuOpen] = useState(false)
-  const [formatMenuPos, setFormatMenuPos] = useState<{ bottom: number; left: number } | null>(null)
+  // Qué fila se ve ahora mismo dentro de la barra de formato fija de abajo
+  // — ver el tipo ToolbarRow más arriba. Ya no es una ventanita flotante
+  // aparte: la misma barra cambia de contenido en el sitio.
+  const [toolbarRow, setToolbarRow] = useState<ToolbarRow>('collapsed')
+  // Estado de formato de la línea/selección actual, para pintar resaltado
+  // (fondo de "activo") en los botones de la fila expandida — se recalcula
+  // con syncFormatState() cada vez que cambia la selección dentro del
+  // cuerpo, y también justo después de aplicar cualquiera de estos formatos.
+  const [activeBlock, setActiveBlock] = useState<BlockStyle>('div')
+  const [boldOn, setBoldOn] = useState(false)
+  const [italicOn, setItalicOn] = useState(false)
+  const [underlineOn, setUnderlineOn] = useState(false)
   // A diferencia de bodyFocusedRef (que solo sirve para que el efecto de
   // sincronización no le pise a la persona lo que está escribiendo), esto
   // sí dispara un re-render: es lo que decide si se ve o no la barra de
@@ -92,13 +108,14 @@ export default function NoteDetailPage() {
   // se lo ponemos nosotros a mano vía este ref, solo cuando hace falta.
   const bodyDivRef = useRef<HTMLDivElement>(null)
 
-  // Botones "pestaña" que abren un menú flotante (color, formato, ayuda de
-  // numerado) — se guarda un ref de cada uno para poder calcular, justo
-  // antes de abrirlo, en qué coordenadas exactas de la PANTALLA (con
-  // getBoundingClientRect, no del árbol de componentes) hay que pintar su
-  // menú una vez portado a document.body.
+  // Botones "pestaña" que abren un menú flotante — se guarda un ref de cada
+  // uno para poder calcular, justo antes de abrirlo, en qué coordenadas
+  // exactas de la PANTALLA (con getBoundingClientRect, no del árbol de
+  // componentes) hay que pintar su menú una vez portado a document.body.
+  // Solo quedan dos: el de color de arriba (colorTabRef) y el de ayuda de
+  // numerado (helpTabRef) — el de formato ya no abre una ventanita aparte,
+  // así que no necesita ref propio (ver toolbarRow).
   const colorTabRef = useRef<HTMLButtonElement>(null)
-  const formatTabRef = useRef<HTMLButtonElement>(null)
   const helpTabRef = useRef<HTMLButtonElement>(null)
 
   // Mientras la persona tiene el campo enfocado (escribiendo), no le
@@ -201,91 +218,52 @@ export default function NoteDetailPage() {
   // cancelar el mousedown, el editor conserva el foco y su selección.
   const preventToolbarFocusSteal = (e: ReactMouseEvent) => e.preventDefault()
 
+  // Recalcula qué formato tiene la línea/selección actual del cuerpo, para
+  // poder resaltar (fondo "activo") el botón correspondiente en la fila
+  // expandida de la barra — se llama tras cada acción de formato y también
+  // cada vez que cambia la selección mientras se escribe (ver
+  // onKeyUp/onMouseUp/onFocus del cuerpo, más abajo).
+  const syncFormatState = () => {
+    const block = document.queryCommandValue('formatBlock')?.toLowerCase()
+    setActiveBlock(block === 'h2' ? 'h2' : block === 'h3' ? 'h3' : 'div')
+    setBoldOn(document.queryCommandState('bold'))
+    setItalicOn(document.queryCommandState('italic'))
+    setUnderlineOn(document.queryCommandState('underline'))
+  }
+
+  // Negrita, cursiva y subrayado son tres interruptores independientes:
+  // cada uno se puede activar/desactivar sin afectar a los otros dos, ni al
+  // tamaño de línea (Título/Subtítulo/Normal) que esté puesto.
   const applyBold = () => {
     bodyDivRef.current?.focus()
     document.execCommand('bold')
+    syncFormatState()
     syncBodyFromDom()
   }
 
-  // Convierte la línea actual en subtítulo (<h3>), o la devuelve a texto
-  // normal si ya lo era — solo afecta a la línea del cursor (o a las
-  // líneas seleccionadas), nunca a toda la nota de golpe.
-  const applySubtitle = () => {
+  const applyItalic = () => {
     bodyDivRef.current?.focus()
-    const current = document.queryCommandValue('formatBlock')
-    const isSubtitle = current?.toLowerCase() === 'h3'
-    document.execCommand('formatBlock', false, isSubtitle ? 'div' : 'h3')
+    document.execCommand('italic')
+    syncFormatState()
     syncBodyFromDom()
   }
 
-  // document.execCommand('fontSize', ...) resultó poco fiable en el móvil
-  // (el motivo original de la queja de "no funciona"), así que el tamaño de
-  // letra se aplica a mano con un <span style="font-size:Npx">. Hay dos
-  // casos distintos:
-  //
-  // 1. Con texto seleccionado: se ENVUELVE la selección en el span.
-  //    range.surroundContents lanza una excepción cuando la selección cruza
-  //    varios elementos de bloque a la vez (por ejemplo, si abarca un salto
-  //    de línea) porque en ese caso no forma un único trozo continuo que se
-  //    pueda "envolver" tal cual — para ese caso se usa en su lugar
-  //    extractContents + insertNode, que sí admite un trozo con varias
-  //    piezas dentro.
-  // 2. Sin texto seleccionado, con el cursor a secas (por ejemplo, antes de
-  //    escribir nada): también tiene que "funcionar", como pidió quien usa
-  //    la app — no tiene sentido obligar a escribir primero y seleccionar
-  //    después solo para poder elegir el tamaño con el que se va a escribir.
-  //    Aquí no hay nada que envolver todavía, así que se deja preparado el
-  //    punto de escritura: se inserta un span vacío (con un carácter
-  //    invisible dentro, porque los navegadores no dejan colocar el cursor
-  //    dentro de un elemento totalmente vacío) y se deja el cursor justo
-  //    detrás de ese carácter — así, lo próximo que se teclee cae dentro de
-  //    ese mismo span y sale ya con el tamaño elegido.
-  const applyFontSize = (size: string) => {
-    const el = bodyDivRef.current
-    if (!el) return
-    el.focus()
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
-      setFormatMenuOpen(false)
-      return
-    }
-    const range = selection.getRangeAt(0)
-    const span = document.createElement('span')
-    span.style.fontSize = `${size}px`
+  const applyUnderline = () => {
+    bodyDivRef.current?.focus()
+    document.execCommand('underline')
+    syncFormatState()
+    syncBodyFromDom()
+  }
 
-    if (selection.isCollapsed) {
-      // U+200B: espacio de ancho cero, para poder colocar el cursor dentro
-      // del span (ver comentario de más arriba). String.fromCharCode en vez
-      // de escribir el carácter invisible tal cual en el código fuente, que
-      // sería imposible de distinguir a simple vista de un espacio en
-      // blanco normal (o de estar vacío del todo) al releer este archivo.
-      span.appendChild(document.createTextNode(String.fromCharCode(8203)))
-      range.insertNode(span)
-      const newRange = document.createRange()
-      newRange.setStart(span.firstChild as Node, 1)
-      newRange.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(newRange)
-      setFormatMenuOpen(false)
-      syncBodyFromDom()
-      return
-    }
-
-    try {
-      range.surroundContents(span)
-    } catch {
-      const frag = range.extractContents()
-      span.appendChild(frag)
-      range.insertNode(span)
-    }
-    // Reselecciona el texto ya envuelto, tanto para que se vea claro qué se
-    // acaba de cambiar como para que tocar otro tamaño justo después actúe
-    // sobre el mismo trozo.
-    const newRange = document.createRange()
-    newRange.selectNodeContents(span)
-    selection.removeAllRanges()
-    selection.addRange(newRange)
-    setFormatMenuOpen(false)
+  // Título (<h2>), Subtítulo (<h3>) y Normal (<div>) son EXCLUYENTES entre
+  // sí — a diferencia del viejo applySubtitle (que alternaba entre h3 y
+  // normal), aquí cada botón fija directamente el tamaño que representa,
+  // sin comprobar cuál estaba puesto antes: tocar "Normal" siempre deja
+  // Normal, tocar "H1" siempre deja Título, etc.
+  const applyBlockStyle = (tag: BlockStyle) => {
+    bodyDivRef.current?.focus()
+    document.execCommand('formatBlock', false, tag)
+    syncFormatState()
     syncBodyFromDom()
   }
 
@@ -315,25 +293,19 @@ export default function NoteDetailPage() {
     syncBodyFromDom()
   }
 
-  // Los tres menús flotantes (color, formato "Aa", ayuda de numerado) se
-  // portan directos a document.body con position:fixed — así que, antes de
-  // abrir cada uno, se mide con getBoundingClientRect en qué coordenadas de
-  // PANTALLA está su botón, para pintar el menú justo ahí (ver el
-  // comentario grande junto a la barra de formato sobre por qué hacía falta
-  // este cambio). Los dos que cuelgan de la barra de abajo (formato y
-  // ayuda) se anclan por su borde inferior ("bottom", no "top") porque la
-  // barra está pegada al fondo de la pantalla y el menú tiene que abrirse
-  // hacia arriba, por encima del botón.
+  // Los dos menús flotantes que quedan (color de arriba, ayuda de numerado)
+  // se portan directos a document.body con position:fixed — así que, antes
+  // de abrir cada uno, se mide con getBoundingClientRect en qué coordenadas
+  // de PANTALLA está su botón, para pintar el menú justo ahí (ver el
+  // comentario grande junto al selector de color sobre por qué hacía falta
+  // este cambio). El de ayuda cuelga de la barra de abajo y se ancla por su
+  // borde inferior ("bottom", no "top") porque la barra está pegada al
+  // fondo de la pantalla y el menú tiene que abrirse hacia arriba, por
+  // encima del botón.
   const openColorPicker = () => {
     const rect = colorTabRef.current?.getBoundingClientRect()
     if (rect) setColorPickerPos({ top: rect.bottom + 8, left: rect.left })
     setShowColorPicker(true)
-  }
-
-  const openFormatMenu = () => {
-    const rect = formatTabRef.current?.getBoundingClientRect()
-    if (rect) setFormatMenuPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left })
-    setFormatMenuOpen(true)
   }
 
   const openNumberedHelp = () => {
@@ -583,11 +555,26 @@ export default function NoteDetailPage() {
               onFocus={() => {
                 bodyFocusedRef.current = true
                 setIsBodyFocused(true)
+                syncFormatState()
               }}
               onBlur={() => {
                 bodyFocusedRef.current = false
                 setIsBodyFocused(false)
+                // Al salir del cuerpo se cierra también cualquier fila
+                // desplegada (formato o colores) — los botones de la propia
+                // barra no disparan este onBlur porque cancelan el
+                // mousedown (ver preventToolbarFocusSteal), así que esto
+                // solo pasa al tocar fuera de verdad.
+                setToolbarRow('collapsed')
               }}
+              // Con el cursor solo (sin escribir) también puede cambiar el
+              // formato "activo" a resaltar en la barra — por ejemplo, al
+              // mover el cursor con las flechas hasta un título ya
+              // existente. onSelect no es fiable en todos los navegadores
+              // para un <div contentEditable>, así que se recalcula también
+              // en cada tecla o clic dentro del cuerpo.
+              onKeyUp={syncFormatState}
+              onMouseUp={syncFormatState}
               data-placeholder={t('apuntes.bodyPlaceholder')}
               // pb-14: para que la barra de formato fija de abajo (solo
               // visible mientras se escribe, ver más abajo) no tape las
@@ -598,163 +585,219 @@ export default function NoteDetailPage() {
         </div>
       </main>
 
-      {/* Barra de formato: una fila estrecha, solo iconos, fija abajo del
-          todo (mismo patrón que el compositor del chat, ver ChatPanel.tsx)
-          en vez de ir metida arriba del texto — así nunca queda tapada por
-          el menú nativo de "Cortar/Copiar/Pegar" que Android saca justo
-          encima de cualquier texto que selecciones. Inspirada directamente
-          en la app de notas que envió como referencia quien usa la app: una
-          fila fina de iconos pegada al teclado, donde "Aa" abre una
-          ventanita aparte con negrita/subtítulo/tamaño en vez de tener
-          todos esos botones siempre a la vista — así se ve mucho más
-          discreta que antes. Deshacer/rehacer van aparte, a la derecha.
-          Todos usan onMouseDown={preventToolbarFocusSteal} para que el
-          editor no pierda el foco (y con él, la selección) al tocar el
-          botón — y la fila solo se muestra mientras el cuerpo está
-          enfocado, para no estorbar el resto del tiempo. */}
+      {/* Barra de formato: una barra PLANA (sin tarjeta ni sombra propia),
+          fija abajo del todo (mismo patrón que el compositor del chat, ver
+          ChatPanel.tsx) en vez de ir metida arriba del texto — así nunca
+          queda tapada por el menú nativo de "Cortar/Copiar/Pegar" que
+          Android saca justo encima de cualquier texto que selecciones.
+          Calcada de las capturas que envió quien usa la app: la MISMA barra
+          cambia de contenido en el sitio según toolbarRow, en vez de abrir
+          una ventanita flotante aparte por encima — "colapsada" es la fila
+          fina de iconos de siempre, y tocar la paleta o "Aa" la transforma,
+          en el sitio, en la fila de colores o de formato; el botón de
+          cerrar (×) de cada una vuelve a dejarla colapsada. Cada botón
+          lleva su propio "chip" circular de fondo (nunca un icono pelado
+          sobre la barra), como en las fotos de referencia. Todos usan
+          onMouseDown={preventToolbarFocusSteal} para que el editor no
+          pierda el foco (y con él, la selección) al tocar el botón — y la
+          barra entera solo se muestra mientras el cuerpo está enfocado,
+          para no estorbar el resto del tiempo. */}
       {isBodyFocused && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-surface-border)] bg-[var(--color-surface)]">
-          <div className="mx-auto flex max-w-2xl items-center gap-1 px-3 py-2">
-            <button
-              type="button"
-              ref={formatTabRef}
-              onMouseDown={preventToolbarFocusSteal}
-              onClick={() => (formatMenuOpen ? setFormatMenuOpen(false) : openFormatMenu())}
-              aria-label={t('apuntes.formatMenu')}
-              title={t('apuntes.formatMenu')}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
-            >
-              <TextSizeIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={preventToolbarFocusSteal}
-              onClick={toggleNumberedList}
-              aria-label={t('apuntes.numberedList')}
-              title={t('apuntes.numberedListHint')}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
-            >
-              <NumberedListIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              ref={helpTabRef}
-              onMouseDown={preventToolbarFocusSteal}
-              onClick={() => (showNumberedHelp ? setShowNumberedHelp(false) : openNumberedHelp())}
-              aria-label={t('apuntes.numberedListHelpCta')}
-              title={t('apuntes.numberedListHelpCta')}
-              className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-            >
-              <HelpCircleIcon className="h-4 w-4" />
-            </button>
-            <div className="flex-1" />
-            <button
-              type="button"
-              onMouseDown={preventToolbarFocusSteal}
-              onClick={applyUndo}
-              aria-label={t('apuntes.undo')}
-              title={t('apuntes.undo')}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
-            >
-              <TextUndoIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={preventToolbarFocusSteal}
-              onClick={applyRedo}
-              aria-label={t('apuntes.redo')}
-              title={t('apuntes.redo')}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
-            >
-              <TextRedoIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Ventanita de formato ("Aa"): negrita, subtítulo y tamaño de letra
-          juntos en un panel pequeño y aparte, en vez de ir sueltos en la
-          barra de abajo — igual que el resto de menús flotantes de esta
-          pantalla, se porta a document.body junto con su fondo de "tocar
-          fuera para cerrar" en una sola llamada a createPortal (ver el
-          comentario grande del selector de color, más arriba, sobre por
-          qué hace falta). Se ancla por su borde inferior porque tiene que
-          abrirse hacia ARRIBA, por encima de la barra que está pegada al
-          fondo de la pantalla. */}
-      {formatMenuOpen && formatMenuPos &&
-        createPortal(
-          <>
-            <div className="fixed inset-0 z-40" onMouseDown={preventToolbarFocusSteal} onClick={() => setFormatMenuOpen(false)} />
-            <div
-              className="glass-panel fixed z-50 flex flex-col gap-2 rounded-2xl p-3 shadow-[0_16px_40px_-16px_rgba(20,21,26,0.45)]"
-              style={{ bottom: formatMenuPos.bottom, left: formatMenuPos.left, width: '210px' }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t('apuntes.formatMenu')}
-                </span>
+          <div className="mx-auto max-w-2xl px-3">
+            {toolbarRow === 'collapsed' && (
+              <div className="flex h-[58px] items-center gap-1.5">
                 <button
                   type="button"
                   onMouseDown={preventToolbarFocusSteal}
-                  onClick={() => setFormatMenuOpen(false)}
-                  aria-label={t('common.close')}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  onClick={() => setToolbarRow('colors')}
+                  aria-label={t('apuntes.changeColor')}
+                  title={t('apuntes.changeColor')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-600 hover:opacity-100 dark:text-slate-300"
                 >
-                  <CloseIcon className="h-3.5 w-3.5" />
+                  <PaletteIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => setToolbarRow('expanded')}
+                  aria-label={t('apuntes.formatMenu')}
+                  title={t('apuntes.formatMenu')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-600 hover:opacity-100 dark:text-slate-300"
+                >
+                  <TextSizeIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={toggleNumberedList}
+                  aria-label={t('apuntes.numberedList')}
+                  title={t('apuntes.numberedListHint')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-600 hover:opacity-100 dark:text-slate-300"
+                >
+                  <NumberedListIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  ref={helpTabRef}
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => (showNumberedHelp ? setShowNumberedHelp(false) : openNumberedHelp())}
+                  aria-label={t('apuntes.numberedListHelpCta')}
+                  title={t('apuntes.numberedListHelpCta')}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-400 hover:opacity-100 dark:text-slate-500"
+                >
+                  <HelpCircleIcon className="h-4 w-4" />
+                </button>
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={applyUndo}
+                  aria-label={t('apuntes.undo')}
+                  title={t('apuntes.undo')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-600 hover:opacity-100 dark:text-slate-300"
+                >
+                  <TextUndoIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={applyRedo}
+                  aria-label={t('apuntes.redo')}
+                  title={t('apuntes.redo')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-600 hover:opacity-100 dark:text-slate-300"
+                >
+                  <TextRedoIcon className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex items-center gap-1">
+            )}
+
+            {/* Fila de formato: tres tamaños EXCLUYENTES entre sí (H1
+                título, H2 subtítulo, Aa normal) más tres interruptores
+                independientes y combinables entre ellos y con cualquiera de
+                los tres tamaños (Negrita/Cursiva/Subrayado) — los tres
+                aplican de verdad sobre el texto seleccionado (o sobre lo
+                próximo que se escriba, si no hay selección), igual que ya
+                hacía Negrita. La "N" se ve bien gorda (font-black) para que
+                no haya duda de que es la de negrita. El botón activo de
+                cada grupo se resalta con el color de acento. */}
+            {toolbarRow === 'expanded' && (
+              <div className="flex h-[58px] items-center gap-1.5 overflow-x-auto">
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => applyBlockStyle('h2')}
+                  aria-label={t('apuntes.titleStyle')}
+                  title={t('apuntes.titleStyleHint')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${activeBlock === 'h2' ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
+                >
+                  H1
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => applyBlockStyle('h3')}
+                  aria-label={t('apuntes.subtitle')}
+                  title={t('apuntes.subtitleHint')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${activeBlock === 'h3' ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
+                >
+                  H2
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => applyBlockStyle('div')}
+                  aria-label={t('apuntes.normalStyle')}
+                  title={t('apuntes.normalStyleHint')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${activeBlock === 'div' ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
+                >
+                  Aa
+                </button>
                 <button
                   type="button"
                   onMouseDown={preventToolbarFocusSteal}
                   onClick={applyBold}
                   aria-label={t('apuntes.bold')}
                   title={t('apuntes.boldHint')}
-                  className="flex flex-1 items-center justify-center rounded-lg py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-black ${boldOn ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
                 >
-                  <BoldIcon className="h-4 w-4" />
+                  N
                 </button>
                 <button
                   type="button"
                   onMouseDown={preventToolbarFocusSteal}
-                  onClick={applySubtitle}
-                  aria-label={t('apuntes.subtitle')}
-                  title={t('apuntes.subtitleHint')}
-                  className="flex flex-1 items-center justify-center rounded-lg py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
+                  onClick={applyItalic}
+                  aria-label={t('apuntes.italic')}
+                  title={t('apuntes.italicHint')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-bold italic ${italicOn ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
                 >
-                  <SubtitleIcon className="h-4 w-4" />
+                  I
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={applyUnderline}
+                  aria-label={t('apuntes.underline')}
+                  title={t('apuntes.underlineHint')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-bold underline decoration-2 underline-offset-2 ${underlineOn ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300' : 'bg-[var(--color-surface-alt)] text-slate-600 dark:text-slate-300'}`}
+                >
+                  U
+                </button>
+                <div className="mx-0.5 h-5 w-px shrink-0 bg-[var(--color-surface-border)]" />
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => setToolbarRow('collapsed')}
+                  aria-label={t('common.close')}
+                  title={t('common.close')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-500 dark:text-slate-400"
+                >
+                  <CloseIcon className="h-4 w-4" />
                 </button>
               </div>
-              {/* Los cuatro tamaños se ven a su propio tamaño real (dentro
-                  de un límite razonable) para que se note de un vistazo
-                  cuál es cuál, en vez de cuatro "A" idénticas con solo la
-                  etiqueta de texto para distinguirlas. */}
-              <div className="flex items-end gap-1">
-                {FONT_SIZE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onMouseDown={preventToolbarFocusSteal}
-                    onClick={() => applyFontSize(opt.value)}
-                    aria-label={t(opt.labelKey)}
-                    title={t(opt.labelKey)}
-                    className="flex flex-1 items-center justify-center rounded-lg py-1.5 font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
-                    style={{ fontSize: `${Math.min(20, Number(opt.value))}px` }}
-                  >
-                    A
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>,
-          document.body,
-        )}
+            )}
 
-      {/* Ayuda del botón de numerar: mismo patrón de portal que los otros
-          dos menús flotantes de esta pantalla (ver comentario grande del
-          selector de color) — antes iba "absolute" dentro de la barra de
-          abajo, que no tiene backdrop-filter así que no le afectaba el bug
-          de apilamiento, pero se deja igual de consistente que el resto. */}
+            {/* Fila de color: la misma barra se transforma en el sitio,
+                igual que la de formato — nada de ventanita aparte flotando
+                por encima. Es una segunda entrada al mismo cambio de color
+                que ya ofrecía (y sigue ofreciendo) la pestañita de arriba
+                de la tarjeta. */}
+            {toolbarRow === 'colors' && (
+              <div className="flex h-[58px] items-center gap-2 overflow-x-auto">
+                {PALETTE.map((c) => (
+                  <button
+                    type="button"
+                    key={c}
+                    onMouseDown={preventToolbarFocusSteal}
+                    onClick={() => updateNote({ color: c })}
+                    aria-label={t(colorNameKey(c))}
+                    title={t(colorNameKey(c))}
+                    className="h-[25px] w-[25px] shrink-0 rounded-full"
+                    style={{ backgroundColor: c, boxShadow: note.color === c ? `0 0 0 2px var(--color-surface), 0 0 0 3.5px ${c}` : 'none' }}
+                  />
+                ))}
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onMouseDown={preventToolbarFocusSteal}
+                  onClick={() => setToolbarRow('collapsed')}
+                  aria-label={t('common.close')}
+                  title={t('common.close')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-alt)] text-slate-500 dark:text-slate-400"
+                >
+                  <CloseIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Ayuda del botón de numerar: mismo patrón de portal que el selector
+          de color de arriba (ver el comentario grande junto a él) — antes
+          iba "absolute" dentro de la barra de abajo, que no tiene
+          backdrop-filter así que no le afectaba el bug de apilamiento, pero
+          se deja igual de consistente que el resto. */}
       {showNumberedHelp && helpPos &&
         createPortal(
           <>

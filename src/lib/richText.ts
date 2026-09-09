@@ -1,8 +1,8 @@
-// Formato enriquecido del cuerpo de una nota (negrita, subtítulo, tamaño de
-// letra) — ver NoteDetailPage.tsx. El cuerpo de una nota (notes.body) sigue
-// siendo una columna de texto normal en la base de datos (no hace falta
-// ninguna migración nueva), pero ahora puede contener un HTML muy limitado
-// en vez de solo texto plano.
+// Formato enriquecido del cuerpo de una nota (negrita, cursiva, subrayado,
+// título, subtítulo) — ver NoteDetailPage.tsx. El cuerpo de una nota
+// (notes.body) sigue siendo una columna de texto normal en la base de datos
+// (no hace falta ninguna migración nueva), pero ahora puede contener un
+// HTML muy limitado en vez de solo texto plano.
 //
 // Como una nota se comparte entre varias personas (cada una con su propia
 // cuenta), lo que escribe una persona se acaba pintando tal cual en la
@@ -12,23 +12,24 @@
 // sueltos, enlaces, imágenes...). sanitizeNoteHtml se encarga de eso: solo
 // deja pasar las etiquetas de la lista blanca de abajo, y de todas las
 // demás se queda solo con el texto de dentro.
+//
+// H2 = título grande, H3 = subtítulo — son tres estilos de línea
+// excluyentes entre sí (Título/Subtítulo/Normal, ver applyBlockStyle en
+// NoteDetailPage.tsx), en vez del tamaño de letra libre en píxeles que
+// tenía la app antes (un <span style="font-size:Npx">): se cambió al pedir
+// que el tamaño funcionase como en la app de referencia que se tomó como
+// modelo, con solo tres tamaños fijos con nombre. Por eso SPAN ya no está
+// en la lista blanca — una nota antigua que tuviera un tamaño de letra
+// suelto simplemente lo pierde la próxima vez que se guarde (el texto no
+// se borra, solo el tamaño).
 
-const ALLOWED_TAGS = new Set(['DIV', 'BR', 'B', 'STRONG', 'H3', 'SPAN', 'OL', 'UL', 'LI'])
-
-// Límites razonables para un tamaño de letra dentro de una nota — evita
-// tamaños absurdos (una persona con datos manipulados a mano, o un tamaño
-// heredado de pegar contenido raro de fuera).
-const MIN_FONT_SIZE_PX = 8
-const MAX_FONT_SIZE_PX = 72
+const ALLOWED_TAGS = new Set(['DIV', 'BR', 'B', 'STRONG', 'H2', 'H3', 'I', 'U', 'OL', 'UL', 'LI'])
 
 /**
  * Limpia un HTML de nota dejando solo las etiquetas permitidas (párrafos,
- * negrita, subtítulo, tamaño de letra y listas numeradas). Dentro de un
- * <span>, solo se conserva un "font-size: Npx" válido en su atributo style
- * — cualquier otra cosa en el style (o un span sin tamaño de letra válido)
- * hace que el <span> se "desenvuelva" (se queda su texto de dentro, pero no
- * la etiqueta). Lo mismo para cualquier otra etiqueta que no esté en la
- * lista blanca: se pierde la etiqueta, nunca el texto que hay dentro.
+ * negrita, cursiva, subrayado, título, subtítulo y listas numeradas).
+ * Cualquier etiqueta que no esté en la lista blanca se "desenvuelve": se
+ * queda su texto de dentro, pero no la etiqueta.
  *
  * Usa DOMParser en vez de tocar el DOM real de la página: así el HTML no
  * llega a ejecutarse ni a disparar ningún evento mientras lo analizamos.
@@ -45,19 +46,6 @@ export function sanitizeNoteHtml(html: string): string {
     el.childNodes.forEach((child) => childResults.push(...clean(child)))
 
     if (!ALLOWED_TAGS.has(el.tagName)) return childResults
-
-    if (el.tagName === 'SPAN') {
-      const match = /^(\d+(?:\.\d+)?)px$/.exec(el.style.fontSize)
-      if (!match) return childResults // span sin tamaño válido: se desenvuelve
-      const px = Math.min(MAX_FONT_SIZE_PX, Math.max(MIN_FONT_SIZE_PX, parseFloat(match[1])))
-      const span = doc.createElement('span')
-      // Se reconstruye el valor desde el número ya validado, nunca se copia
-      // el atributo style original tal cual — así no hay forma de colar
-      // nada más ahí dentro.
-      span.style.fontSize = `${px}px`
-      childResults.forEach((child) => span.appendChild(child))
-      return [span]
-    }
 
     const rebuilt = doc.createElement(el.tagName)
     childResults.forEach((child) => rebuilt.appendChild(child))
@@ -79,7 +67,7 @@ export function sanitizeNoteHtml(html: string): string {
  */
 export function htmlToPlainText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  doc.querySelectorAll('div, h3, li, br').forEach((el) => {
+  doc.querySelectorAll('div, h2, h3, li, br').forEach((el) => {
     el.insertAdjacentText('beforebegin', ' ')
   })
   return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim()

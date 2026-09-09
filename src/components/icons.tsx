@@ -335,13 +335,14 @@ export function SubtitleIcon(props: IconProps) {
 
 export function TextSizeIcon(props: IconProps) {
   return (
-    <Base {...props}>
-      {/* "Aa": una A grande y una a pequeña, el icono clásico de tamaño de
-          letra. */}
-      <path d="M4.5 16.5 8 6.5l3.5 10" />
-      <path d="M5.6 13h4.8" />
-      <path d="M20 16.5v-4a2.2 2.2 0 1 0-4.3-.7" />
-      <path d="M20 12.7c0 1.5-1.1 2.4-2.3 2.4-1 0-1.7-.6-1.7-1.4 0-1.1 1.3-1.7 4-1.9" />
+    <Base {...props} strokeWidth={2.1}>
+      {/* Una "A" mayúscula centrada con una raya gruesa debajo (icono de
+          "formato de texto") — abre el menú de formato del cuerpo de la
+          nota. Antes era una "Aa" pequeña y descentrada hacia la
+          izquierda, que se veía diminuta dentro de su círculo. */}
+      <path d="M8 17 12 6l4 11" />
+      <path d="M9.4 13.5h5.2" />
+      <path d="M7 19h10" strokeWidth={2.8} />
     </Base>
   )
 }
