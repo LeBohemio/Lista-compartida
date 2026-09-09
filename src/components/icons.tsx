@@ -296,14 +296,18 @@ export function SortAlphaIcon(props: IconProps) {
 export function NumberedListIcon(props: IconProps) {
   return (
     <Base {...props}>
-      {/* "1" y "2" a la izquierda, como en cualquier icono de lista
-          numerada, seguidos de una línea horizontal que representa cada
-          fila de texto. */}
-      <path d="M4.6 7.6v3.4" />
-      <path d="M3.9 8.1 4.8 7.5" />
-      <path d="M8 8.3h11" />
-      <path d="M4 15c0-.7.6-1.2 1.3-1.2.7 0 1.3.5 1.3 1.1 0 .9-2.6 1.6-2.6 2.9h2.6" />
-      <path d="M8 16.7h11" />
+      {/* Tres líneas de texto a la derecha, con un "1" y un "2" de verdad
+          (con su gancho curvo, no un simple palito) a la izquierda de las
+          dos primeras — el dibujo clásico de "lista numerada" de cualquier
+          editor de texto, en vez del boceto anterior (una sola línea con un
+          "1" y un "2" demasiado esquemáticos, que no se leían bien a
+          tamaño de icono). */}
+      <path d="M10 6h11" />
+      <path d="M10 12h11" />
+      <path d="M10 18h11" />
+      <path d="M4 6h1v4" />
+      <path d="M4 10h2" />
+      <path d="M6 18H4c0-1 2-2 2-3s-1-1.4-2-1" />
     </Base>
   )
 }

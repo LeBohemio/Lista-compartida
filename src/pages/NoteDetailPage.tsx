@@ -82,6 +82,21 @@ export default function NoteDetailPage() {
   const [boldOn, setBoldOn] = useState(false)
   const [italicOn, setItalicOn] = useState(false)
   const [underlineOn, setUnderlineOn] = useState(false)
+  // Cuánto hay que levantar la barra de formato para que quede pegada
+  // JUSTO encima del teclado en pantalla, en píxeles — ver el efecto de
+  // más abajo que lo calcula con la Visual Viewport API. Con solo CSS
+  // ("fixed" + "bottom: 0") la barra se quedaba anclada al teclado al
+  // hacer scroll hacia abajo (porque ahí el navegador SÍ recalculaba la
+  // posición) pero desaparecía al volver a subir (porque el navegador
+  // deja de recalcularla y la barra se queda pegada al fondo de la
+  // pantalla ENTERA, por debajo del teclado, tapada) — un problema típico
+  // de los navegadores/WebView de móvil, donde "fixed" se ancla a la
+  // ventana de diseño (que no se encoge cuando aparece el teclado) y no a
+  // la ventana VISIBLE de verdad. Calculando el hueco a mano con
+  // window.visualViewport y aplicándolo como "bottom" en cada
+  // resize/scroll de esa ventana visible, la barra se queda anclada de
+  // forma fiable pase lo que pase con el scroll.
+  const [keyboardOffset, setKeyboardOffset] = useState(0)
   // A diferencia de bodyFocusedRef (que solo sirve para que el efecto de
   // sincronización no le pise a la persona lo que está escribiendo), esto
   // sí dispara un re-render: es lo que decide si se ve o no la barra de
@@ -145,6 +160,33 @@ export default function NoteDetailPage() {
     return () => {
       if (titleTimerRef.current) clearTimeout(titleTimerRef.current)
       if (bodyTimerRef.current) clearTimeout(bodyTimerRef.current)
+    }
+  }, [])
+
+  // Mantiene keyboardOffset al día con el hueco real que deja el teclado
+  // (u otra barra del propio navegador) por debajo de la ventana VISIBLE —
+  // ver el comentario grande junto a keyboardOffset más arriba. Se
+  // recalcula en cada "resize" (el teclado aparece/desaparece, o cambia de
+  // alto al sugerir palabras) y en cada "scroll" de la propia Visual
+  // Viewport (algunos navegadores solo actualizan el desplazamiento ahí, no
+  // con un resize aparte). No todos los navegadores tienen
+  // window.visualViewport — donde falte, el hueco se queda en 0 y la barra
+  // se comporta como un "fixed bottom: 0" normal y corriente.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const updateKeyboardOffset = () => {
+      const gap = window.innerHeight - (vv.height + vv.offsetTop)
+      setKeyboardOffset(gap > 0 ? gap : 0)
+    }
+
+    updateKeyboardOffset()
+    vv.addEventListener('resize', updateKeyboardOffset)
+    vv.addEventListener('scroll', updateKeyboardOffset)
+    return () => {
+      vv.removeEventListener('resize', updateKeyboardOffset)
+      vv.removeEventListener('scroll', updateKeyboardOffset)
     }
   }, [])
 
@@ -603,7 +645,14 @@ export default function NoteDetailPage() {
           barra entera solo se muestra mientras el cuerpo está enfocado,
           para no estorbar el resto del tiempo. */}
       {isBodyFocused && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-surface-border)] bg-[var(--color-surface)]">
+        <div
+          className="fixed inset-x-0 z-30 border-t border-[var(--color-surface-border)] bg-[var(--color-surface)]"
+          // "bottom" a mano, en vez de la clase bottom-0 de Tailwind — ver
+          // keyboardOffset más arriba: así la barra queda pegada de verdad
+          // al teclado (o al fondo de la pantalla, si no hay teclado)
+          // pase lo que pase con el scroll.
+          style={{ bottom: keyboardOffset }}
+        >
           <div className="mx-auto max-w-2xl px-3">
             {toolbarRow === 'collapsed' && (
               <div className="flex h-[58px] items-center gap-1.5">
