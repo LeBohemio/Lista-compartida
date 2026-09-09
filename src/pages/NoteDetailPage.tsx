@@ -172,21 +172,46 @@ export default function NoteDetailPage() {
   // con un resize aparte). No todos los navegadores tienen
   // window.visualViewport — donde falte, el hueco se queda en 0 y la barra
   // se comporta como un "fixed bottom: 0" normal y corriente.
+  //
+  // Ambos eventos pueden dispararse muchas veces seguidas mientras la
+  // pantalla del móvil termina de animar (el teclado subiendo, la barra de
+  // direcciones ocultándose al hacer scroll…) — llamar a setState en cada
+  // uno de esos disparos, sin más, es lo que hacía que la barra "vibrara"
+  // al hacer scroll: cada pequeño cambio de un píxel forzaba un nuevo
+  // render y un nuevo repintado, peleándose visualmente con el propio
+  // scroll nativo del navegador. Para evitarlo: (1) como mucho un cálculo
+  // por fotograma, con requestAnimationFrame, en vez de uno por cada
+  // evento suelto; y (2) solo se actualiza el estado (y por tanto se
+  // vuelve a pintar la barra) cuando el hueco cambia de verdad — un
+  // pixel de diferencia de más no cuenta.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
 
-    const updateKeyboardOffset = () => {
-      const gap = window.innerHeight - (vv.height + vv.offsetTop)
-      setKeyboardOffset(gap > 0 ? gap : 0)
+    let frame = 0
+    let lastGap = 0
+
+    const recompute = () => {
+      frame = 0
+      const gap = Math.round(window.innerHeight - (vv.height + vv.offsetTop))
+      const clamped = gap > 0 ? gap : 0
+      if (Math.abs(clamped - lastGap) < 1) return
+      lastGap = clamped
+      setKeyboardOffset(clamped)
     }
 
-    updateKeyboardOffset()
-    vv.addEventListener('resize', updateKeyboardOffset)
-    vv.addEventListener('scroll', updateKeyboardOffset)
+    const scheduleRecompute = () => {
+      if (frame) return
+      frame = requestAnimationFrame(recompute)
+    }
+
+    recompute()
+    vv.addEventListener('resize', scheduleRecompute)
+    vv.addEventListener('scroll', scheduleRecompute)
     return () => {
-      vv.removeEventListener('resize', updateKeyboardOffset)
-      vv.removeEventListener('scroll', updateKeyboardOffset)
+      if (frame) cancelAnimationFrame(frame)
+      vv.removeEventListener('resize', scheduleRecompute)
+      vv.removeEventListener('scroll', scheduleRecompute)
     }
   }, [])
 
@@ -812,7 +837,14 @@ export default function NoteDetailPage() {
                 que ya ofrecía (y sigue ofreciendo) la pestañita de arriba
                 de la tarjeta. */}
             {toolbarRow === 'colors' && (
-              <div className="flex h-[58px] items-center gap-2 overflow-x-auto">
+              // px-1 (y no solo el px-3 del envoltorio de fuera): el
+              // círculo de "seleccionado" se pinta con un box-shadow que
+              // sobresale unos px por FUERA del propio botón — sin este
+              // margen extra aquí dentro, ese anillo del primer color de la
+              // fila quedaba recortado por el propio borde de scroll
+              // (overflow-x-auto), aunque el envoltorio de fuera sí tuviera
+              // hueco de sobra a la izquierda.
+              <div className="-mx-1 flex h-[58px] items-center gap-2 overflow-x-auto px-1">
                 {PALETTE.map((c) => (
                   <button
                     type="button"
